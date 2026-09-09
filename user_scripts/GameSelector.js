@@ -46,17 +46,41 @@
     
   };
 
-  let games = [];
-  let selectedIndex = 0;
+ let games = [];
+let allGames = [];
+let selectedIndex = 0;
 
-  let overlay = null;
-  let listViewport = null;
-  let listTrack = null;
+let currentFilter = "all";
+let filterOpen = false;
+let filterIndex = 0;
 
-  let menuOpen = false;
-  let opening = false;
+const FILTERS = [
+  {
+    id: "all",
+    name: "TODOS"
+  },
+  {
+    id: "gb",
+    name: "GAME BOY"
+  },
+  {
+    id: "gbc",
+    name: "GAME BOY COLOR"
+  },
+  {
+    id: "gba",
+    name: "GAME BOY ADVANCE"
+  }
+];
 
-  let menuAudioContext = null;
+let overlay = null;
+let listViewport = null;
+let listTrack = null;
+
+let menuOpen = false;
+let opening = false;
+
+let menuAudioContext = null;
 
  function friendlyName(filename) {
   return (

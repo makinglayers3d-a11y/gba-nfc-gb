@@ -466,12 +466,14 @@ if (isGBFamily) {
     throw new Error("Falta el núcleo GB/GBC.");
   }
 
-  await window.gbaGB.start(selected.rom);
+ await window.gbaGB.start(selected.rom);
 
-  status.textContent = "";
-  window.__gba = null;
+status.hidden = true;
+status.style.display = "none";
 
-  return;
+window.__gba = null;
+
+return;
 }
 
 canvas.width = 240;

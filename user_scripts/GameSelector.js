@@ -162,6 +162,9 @@ function renderFilterSelector() {
 
   const panel =
     document.createElement("div");
+ 
+  panel.className =
+  "gba-filter-panel";
 
   Object.assign(
     panel.style,
@@ -863,6 +866,16 @@ function updateCoverBackground() {
   };
 }
 function renderList() {
+  if (listTrack) {
+    const filterPanel =
+      listTrack.querySelector(
+        ".gba-filter-panel"
+      );
+
+    if (filterPanel) {
+      filterPanel.remove();
+    }
+  }  
   if (
     !listTrack ||
     !listViewport ||

@@ -150,9 +150,8 @@ if (!LIBRARY_MODE) {
       extRam
     );
 
-    emulator.setBuiltinPalette(
-      vm.palIdx
-    );
+    emulator.setBuiltinPalette(0);
+   
   })();
 }
 

@@ -1734,6 +1734,60 @@ function renderList() {
     const key =
       keyButton.dataset.key;
 
+    if (filterOpen) {
+      if (
+        key === "UP"
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        moveFilterSelection(-1);
+        return;
+      }
+
+      if (
+        key === "DOWN"
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        moveFilterSelection(1);
+        return;
+      }
+
+      if (
+        key === "A" ||
+        key === "START"
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        selectCurrentFilter();
+        return;
+      }
+
+      if (
+        key === "SELECT"
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        return;
+      }
+
+      if (
+        key === "B"
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        closeFilterSelector();
+        return;
+      }
+
+      return;
+    }
+
     if (
       key === "UP"
     ) {
@@ -1754,7 +1808,7 @@ function renderList() {
       return;
     }
 
-        if (
+    if (
       key === "SELECT"
     ) {
       event.preventDefault();
@@ -1763,7 +1817,7 @@ function renderList() {
       openFilterSelector();
       return;
     }
-    
+
     if (
       key === "A" ||
       key === "START"
@@ -1774,16 +1828,6 @@ function renderList() {
       selectCurrentGame();
       return;
     }
-
-    if (
-      key === "B"
-    ) {
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      closeScreenSelector();
-    }
-  }
 
   if (selectGameButton) {
     selectGameButton.addEventListener(

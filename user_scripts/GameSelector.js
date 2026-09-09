@@ -1716,6 +1716,16 @@ function renderList() {
       return;
     }
 
+        if (
+      key === "SELECT"
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      openFilterSelector();
+      return;
+    }
+    
     if (
       key === "A" ||
       key === "START"

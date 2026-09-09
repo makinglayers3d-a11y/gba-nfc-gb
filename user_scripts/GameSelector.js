@@ -102,7 +102,34 @@ let menuAudioContext = null;
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "") || "game";
   }
+function applyGameFilter() {
+  switch (currentFilter) {
+    case "gb":
+      games = allGames.filter((game) =>
+        game.filename.toLowerCase().endsWith(".gb")
+      );
+      break;
 
+    case "gbc":
+      games = allGames.filter((game) =>
+        game.filename.toLowerCase().endsWith(".gbc")
+      );
+      break;
+
+    case "gba":
+      games = allGames.filter((game) =>
+        game.filename.toLowerCase().endsWith(".gba")
+      );
+      break;
+
+    default:
+      games = allGames;
+      break;
+  }
+
+  selectedIndex = 0;
+}
+  
   function findCurrentGame() {
     const currentRom =
       params.get("rom");

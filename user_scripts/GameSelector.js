@@ -708,8 +708,7 @@ Object.assign(
       document.createElement("div");
 
     footer.textContent =
-      "▲ ▼ MOVER   A / START ELEGIR   B VOLVER";
-
+      "▲ ▼ MOVER   A / START ELEGIR   SELECT FILTRO   B VOLVER";
    Object.assign(
   footer.style,
   {

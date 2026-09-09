@@ -1628,88 +1628,94 @@ function renderList() {
     renderList();
   }
 
-  function handleKeyboard(event) {
-    if (!menuOpen) {
-      return;
-    }
-    if (filterOpen) {
-      switch (event.code) {
-        case "ArrowUp":
-          event.preventDefault();
-          event.stopPropagation();
-          event.stopImmediatePropagation();
-          moveFilterSelection(-1);
-          return;
+ function handleKeyboard(event) {
+  if (!menuOpen) {
+    return;
+  }
 
-        case "ArrowDown":
-          event.preventDefault();
-          event.stopPropagation();
-          event.stopImmediatePropagation();
-          moveFilterSelection(1);
-          return;
-
-        case "KeyX":
-        case "Enter":
-          event.preventDefault();
-          event.stopPropagation();
-          event.stopImmediatePropagation();
-          selectCurrentFilter();
-          return;
-
-        case "KeyZ":
-        case "Escape":
-          event.preventDefault();
-          event.stopPropagation();
-          event.stopImmediatePropagation();
-          closeFilterSelector();
-          return;
-
-        case "ShiftLeft":
-        case "ShiftRight":
-          event.preventDefault();
-          event.stopPropagation();
-          event.stopImmediatePropagation();
-          return;
-      }
-    }
+  if (filterOpen) {
     switch (event.code) {
       case "ArrowUp":
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
-        moveSelection(-1);
-        break;
+        moveFilterSelection(-1);
+        return;
 
       case "ArrowDown":
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
-        moveSelection(1);
-        break;
-        
-        case "ShiftLeft":
-        case "ShiftRight":
-         openFilterSelector();
-         break;
+        moveFilterSelection(1);
+        return;
 
       case "KeyX":
       case "Enter":
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
-        selectCurrentGame();
-        break;
+        selectCurrentFilter();
+        return;
 
       case "KeyZ":
       case "Escape":
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
-        closeScreenSelector();
-        break;
+        closeFilterSelector();
+        return;
+
+      case "ShiftLeft":
+      case "ShiftRight":
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        return;
     }
+
+    return;
   }
 
+  switch (event.code) {
+    case "ArrowUp":
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      moveSelection(-1);
+      return;
+
+    case "ArrowDown":
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      moveSelection(1);
+      return;
+
+    case "ShiftLeft":
+    case "ShiftRight":
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      openFilterSelector();
+      return;
+
+    case "KeyX":
+    case "Enter":
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      selectCurrentGame();
+      return;
+
+    case "KeyZ":
+    case "Escape":
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      closeScreenSelector();
+      return;
+  }
+}
   function handlePointer(event) {
     if (!menuOpen) {
       return;

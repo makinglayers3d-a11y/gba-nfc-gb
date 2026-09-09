@@ -129,7 +129,200 @@ function applyGameFilter() {
 
   selectedIndex = 0;
 }
-  
+ function openFilterSelector() {
+  if (!menuOpen || filterOpen) {
+    return;
+  }
+
+  filterOpen = true;
+
+  const currentIndex =
+    FILTERS.findIndex(
+      (filter) =>
+        filter.id === currentFilter
+    );
+
+  filterIndex =
+    currentIndex >= 0
+      ? currentIndex
+      : 0;
+
+  renderFilterSelector();
+}
+
+function renderFilterSelector() {
+  if (!listTrack) {
+    return;
+  }
+
+  listTrack.innerHTML = "";
+
+  const panel =
+    document.createElement("div");
+
+  Object.assign(
+    panel.style,
+    {
+      position: "absolute",
+      left: "8%",
+      right: "5%",
+      top: "16%",
+      bottom: "16%",
+
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+
+      padding: "8% 7%",
+
+      background:
+        "rgba(5, 8, 12, 0.94)",
+
+      border:
+        "1px solid rgba(255,255,255,0.18)",
+
+      boxSizing: "border-box",
+
+      zIndex: "10"
+    }
+  );
+
+  const filterTitle =
+    document.createElement("div");
+
+  filterTitle.textContent =
+    "FILTER";
+
+  Object.assign(
+    filterTitle.style,
+    {
+      fontSize:
+        "clamp(13px, 3.8vw, 22px)",
+
+      fontWeight: "900",
+
+      letterSpacing:
+        "0.12em",
+
+      textAlign: "center",
+
+      marginBottom:
+        "8%"
+    }
+  );
+
+  panel.appendChild(
+    filterTitle
+  );
+
+  FILTERS.forEach(
+    (filter, index) => {
+      const item =
+        document.createElement("div");
+
+      const selected =
+        index === filterIndex;
+
+      item.textContent =
+        (selected ? "▶ " : "  ") +
+        filter.name;
+
+      Object.assign(
+        item.style,
+        {
+          fontSize:
+            "clamp(10px, 2.8vw, 16px)",
+
+          fontWeight:
+            selected
+              ? "900"
+              : "700",
+
+          lineHeight:
+            "1.8",
+
+          letterSpacing:
+            "0.04em",
+
+          opacity:
+            selected
+              ? "1"
+              : "0.55",
+
+          textAlign:
+            "left",
+
+          padding:
+            "2% 0"
+        }
+      );
+
+      panel.appendChild(item);
+    }
+  );
+
+  listTrack.appendChild(
+    panel
+  );
+}
+
+function moveFilterSelection(delta) {
+  if (!filterOpen) {
+    return;
+  }
+
+  filterIndex += delta;
+
+  if (
+    filterIndex < 0
+  ) {
+    filterIndex =
+      FILTERS.length - 1;
+  }
+
+  if (
+    filterIndex >= FILTERS.length
+  ) {
+    filterIndex = 0;
+  }
+
+  playMenuMoveSound();
+  renderFilterSelector();
+}
+
+function selectCurrentFilter() {
+  if (!filterOpen) {
+    return;
+  }
+
+  const filter =
+    FILTERS[filterIndex];
+
+  if (!filter) {
+    return;
+  }
+
+  currentFilter =
+    filter.id;
+
+  applyGameFilter();
+
+  filterOpen = false;
+
+  renderList();
+  updateCoverBackground();
+}
+
+function closeFilterSelector() {
+  if (!filterOpen) {
+    return;
+  }
+
+  filterOpen = false;
+
+  renderList();
+  updateCoverBackground();
+} 
   function findCurrentGame() {
     const currentRom =
       params.get("rom");

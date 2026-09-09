@@ -521,7 +521,7 @@ function updateCoverBackground() {
 
   const baseName =
     filename.replace(
-      /\.gba$/i,
+       /\.(gba|gb|gbc)$/i,
       ""
     );
 

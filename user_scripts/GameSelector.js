@@ -157,6 +157,9 @@ function renderFilterSelector() {
 
   listTrack.innerHTML = "";
 
+  listTrack._gameItems =
+    new Map(); 
+
   const panel =
     document.createElement("div");
 

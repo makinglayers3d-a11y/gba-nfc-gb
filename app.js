@@ -241,15 +241,39 @@ function loadGameType(name, callback) {
 }
 
   function releaseKey(keyName) {
-    if (!emulator) return;
+  if (window.gbaGB) {
+    const gbKeys = {
+      A: "setJoypA",
+      B: "setJoypB",
+      START: "setJoypStart",
+      SELECT: "setJoypSelect",
+      RIGHT: "setJoypRight",
+      LEFT: "setJoypLeft",
+      UP: "setJoypUp",
+      DOWN: "setJoypDown"
+    };
 
-    const value = keyMap[keyName];
+    const methodName = gbKeys[keyName];
 
-    if (value === undefined) return;
+    if (
+      methodName &&
+      typeof window.gbaGB[methodName] === "function"
+    ) {
+      window.gbaGB[methodName](false);
+    }
 
-    emulator.keyUp(value);
+    return;
   }
 
+  if (!emulator) return;
+
+  const value = keyMap[keyName];
+
+  if (value === undefined) return;
+
+  emulator.keyUp(value);
+}
+  
   function updateVolumeUI() {
   const percentage = Math.round(audioVolume * 100);
 

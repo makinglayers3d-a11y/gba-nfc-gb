@@ -453,7 +453,29 @@ window.addEventListener(
       if (rom.length < 1024) {
         throw new Error("ROM inválida");
       }
+const lowerRomPath = selected.rom.toLowerCase();
+const isGBFamily =
+  lowerRomPath.endsWith(".gb") ||
+  lowerRomPath.endsWith(".gbc");
 
+if (isGBFamily) {
+  canvas.width = 160;
+  canvas.height = 144;
+
+  if (!window.gbaGB) {
+    throw new Error("Falta el núcleo GB/GBC.");
+  }
+
+  await window.gbaGB.start(selected.rom);
+
+  status.textContent = "";
+  window.__gba = null;
+
+  return;
+}
+
+canvas.width = 240;
+canvas.height = 160;
       if (typeof GameBoyAdvanceEmulator !== "function") {
         throw new Error("Falta GameBoyAdvanceEmulator");
       }

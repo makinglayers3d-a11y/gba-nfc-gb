@@ -1312,23 +1312,23 @@ function renderList() {
       const files =
         await response.json();
 
-      games =
+          allGames =
         files
-        .filter(
-  (file) => {
-    const name =
-      file.name.toLowerCase();
+          .filter(
+            (file) => {
+              const name =
+                file.name.toLowerCase();
 
-    return (
-      file.type === "file" &&
-      (
-        name.endsWith(".gba") ||
-        name.endsWith(".gb") ||
-        name.endsWith(".gbc")
-      )
-    );
-  }
-)
+              return (
+                file.type === "file" &&
+                (
+                  name.endsWith(".gba") ||
+                  name.endsWith(".gb") ||
+                  name.endsWith(".gbc")
+                )
+              );
+            }
+          )
           .map(
             (file) => ({
               filename: file.name
@@ -1348,6 +1348,8 @@ function renderList() {
                 }
               )
           );
+
+      games = allGames;
 
       findCurrentGame();
 

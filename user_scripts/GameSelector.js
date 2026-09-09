@@ -1289,6 +1289,7 @@ function renderList() {
         await response.json();
 
       games =
+        files
         .filter(
   (file) => {
     const name =

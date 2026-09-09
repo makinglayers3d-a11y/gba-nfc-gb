@@ -2,7 +2,7 @@
 
 (function () {
   const REPO_API =
-    "https://api.github.com/repos/makinglayers3d-a11y/gba-nfc/contents/games";
+    "https://api.github.com/repos/makinglayers3d-a11y/gba-nfc-gb/contents/games";
 
   const selectGameButton =
     document.getElementById("select-game-button");
@@ -58,12 +58,12 @@
 
   let menuAudioContext = null;
 
-  function friendlyName(filename) {
-    return (
-      knownNames[filename] ||
-      filename.replace(/\.gba$/i, "")
-    );
-  }
+ function friendlyName(filename) {
+  return (
+    knownNames[filename] ||
+    filename.replace(/\.(gba|gbc|gb)$/i, "")
+  );
+}
 
   function slugFromFilename(filename) {
     if (knownSlugs[filename]) {
@@ -71,7 +71,7 @@
     }
 
     return filename
-      .replace(/\.gba$/i, "")
+      .replace(/\.(gba|gbc|gb)$/i, "")
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")

@@ -734,19 +734,7 @@ class Video {
       this.module._get_frame_buffer_size(e)
     );
   }
-if (
-  LIBRARY_MODE ||
-  window.navigator.userAgent.match(/iPhone|iPad/)
-) {
-  this.renderer = new Canvas2DRenderer(el);
-} else {
-  try {
-    this.renderer = new WebGLRenderer(el);
-  } catch (error) {
-    console.log(`Error creating WebGLRenderer: ${error}`);
-    this.renderer = new Canvas2DRenderer(el);
-  }
-}
+
   uploadTexture() {
     this.renderer.uploadTexture(this.buffer);
   }

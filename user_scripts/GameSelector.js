@@ -1645,6 +1645,11 @@ function renderList() {
         event.stopImmediatePropagation();
         moveSelection(1);
         break;
+        
+        case "ShiftLeft":
+        case "ShiftRight":
+         openFilterSelector();
+         break;
 
       case "KeyX":
       case "Enter":

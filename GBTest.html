@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  >
+  <title>Prueba Game Boy / Game Boy Color</title>
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: #111;
+      color: #fff;
+      font-family: sans-serif;
+      min-height: 100%;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    canvas {
+      width: min(90vw, 640px);
+      height: auto;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      background: #000;
+      margin-bottom: 20px;
+    }
+
+    #status {
+      opacity: 0.8;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Prueba GB / GBC</h1>
+
+  <canvas
+    id="screen"
+    width="160"
+    height="144"
+  ></canvas>
+
+  <div id="status">
+    Preparando emulador…
+  </div>
+
+  <script src="GB/binjgb.js"></script>
+
+  <script>
+    "use strict";
+
+    const status =
+      document.getElementById("status");
+
+    const canvas =
+      document.getElementById("screen");
+
+    /*
+     * ROM de prueba.
+     *
+     * Más adelante la sustituiremos por:
+     * games/TuJuego.gb
+     * o
+     * games/TuJuego.gbc
+     */
+    const ROM =
+      "games/Pokemon Esmeralda.gba";
+
+    /*
+     * Esta primera prueba NO utiliza todavía
+     * nuestro selector ni app.js.
+     */
+
+    async function startTest() {
+      try {
+        status.textContent =
+          "Cargando núcleo GB/GBC…";
+
+        console.log(
+          "binjgb:",
+          typeof binjgb
+        );
+
+        if (
+          typeof binjgb ===
+          "undefined"
+        ) {
+          throw new Error(
+            "binjgb.js no se ha cargado"
+          );
+        }
+
+        status.textContent =
+          "Núcleo detectado. Preparando prueba…";
+
+        /*
+         * Aquí vamos a conectar la API real
+         * de binjgb en el siguiente paso.
+         */
+
+        console.log(
+          "Canvas:",
+          canvas.width,
+          canvas.height
+        );
+
+        status.textContent =
+          "Núcleo cargado correctamente.";
+      } catch (error) {
+        console.error(error);
+
+        status.textContent =
+          "Error: " +
+          error.message;
+      }
+    }
+
+    startTest();
+  </script>
+
+</body>
+</html>

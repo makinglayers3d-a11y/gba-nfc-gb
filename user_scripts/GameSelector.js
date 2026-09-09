@@ -1629,7 +1629,46 @@ function renderList() {
     if (!menuOpen) {
       return;
     }
+    if (filterOpen) {
+      switch (event.code) {
+        case "ArrowUp":
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          moveFilterSelection(-1);
+          return;
 
+        case "ArrowDown":
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          moveFilterSelection(1);
+          return;
+
+        case "KeyX":
+        case "Enter":
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          selectCurrentFilter();
+          return;
+
+        case "KeyZ":
+        case "Escape":
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          closeFilterSelector();
+          return;
+
+        case "ShiftLeft":
+        case "ShiftRight":
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          return;
+      }
+    }
     switch (event.code) {
       case "ArrowUp":
         event.preventDefault();

@@ -1289,17 +1289,21 @@ function renderList() {
         await response.json();
 
       games =
-        files
-          .filter(
-            (file) => {
-              return (
-                file.type === "file" &&
-                file.name
-                  .toLowerCase()
-                  .endsWith(".gba")
-              );
-            }
-          )
+        .filter(
+  (file) => {
+    const name =
+      file.name.toLowerCase();
+
+    return (
+      file.type === "file" &&
+      (
+        name.endsWith(".gba") ||
+        name.endsWith(".gb") ||
+        name.endsWith(".gbc")
+      )
+    );
+  }
+)
           .map(
             (file) => ({
               filename: file.name
@@ -1335,7 +1339,7 @@ function renderList() {
       );
 
       gameList.innerHTML =
-        '<div class="game-list-status">No se pudo cargar la lista de juegos.</div>';
+        '<div class="game-list-status">No hay juegos compatibles.</div>';
 
       return;
     }

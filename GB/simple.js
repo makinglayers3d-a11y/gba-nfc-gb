@@ -711,21 +711,24 @@ class Video {
     // iPhone Safari doesn't upscale using image-rendering: pixelated on webgl
     // canvases. See https://bugs.webkit.org/show_bug.cgi?id=193895.
     // For now, default to Canvas2D.
-    if (window.navigator.userAgent.match(/iPhone|iPad/)) {
-      this.renderer = new Canvas2DRenderer(el);
-    } else {
-      try {
-        this.renderer = new WebGLRenderer(el);
-      } catch (error) {
-        console.log(`Error creating WebGLRenderer: ${error}`);
-        this.renderer = new Canvas2DRenderer(el);
-      }
-    }
+    
     this.buffer = makeWasmBuffer(
         this.module, this.module._get_frame_buffer_ptr(e),
         this.module._get_frame_buffer_size(e));
   }
-
+if (
+  LIBRARY_MODE ||
+  window.navigator.userAgent.match(/iPhone|iPad/)
+) {
+  this.renderer = new Canvas2DRenderer(el);
+} else {
+  try {
+    this.renderer = new WebGLRenderer(el);
+  } catch (error) {
+    console.log(`Error creating WebGLRenderer: ${error}`);
+    this.renderer = new Canvas2DRenderer(el);
+  }
+}
   uploadTexture() {
     this.renderer.uploadTexture(this.buffer);
   }

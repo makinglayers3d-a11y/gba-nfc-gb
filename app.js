@@ -243,15 +243,29 @@ function loadGameType(name, callback) {
 }
 
 function applyVolume(volume) {
-  volume = Math.min(Math.max(Number(volume), 0), 1);
+  volume = Math.min(
+    Math.max(Number(volume), 0),
+    1
+  );
 
   audioVolume = volume;
 
   if (audioInput) {
-    audioInput.setVolume(audioMuted ? 0 : audioVolume);
+    audioInput.setVolume(
+      audioMuted ? 0 : audioVolume
+    );
   }
 
-  localStorage.setItem("gba-volume", String(audioVolume));
+  if (window.gbaGB) {
+    window.gbaGB.setVolume(
+      audioMuted ? 0 : audioVolume
+    );
+  }
+
+  localStorage.setItem(
+    "gba-volume",
+    String(audioVolume)
+  );
 
   updateVolumeUI();
 }
@@ -647,9 +661,13 @@ if (muteButton) {
       previousVolume = audioVolume;
       audioMuted = true;
 
-      if (audioInput) {
-        audioInput.setVolume(0);
-      }
+     if (audioInput) {
+  audioInput.setVolume(0);
+}
+
+if (window.gbaGB) {
+  window.gbaGB.setVolume(0);
+} 
 
       updateVolumeUI();
     } else {

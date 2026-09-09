@@ -11,7 +11,12 @@
 
 // User configurable.
 const ROM_FILENAME = 'games/Tetris Blast.gb';
+
+const LIBRARY_MODE =
+  window.GBA_GB_LIBRARY_MODE === true;
+
 const ENABLE_FAST_FORWARD = true;
+
 const ENABLE_REWIND = true;
 const ENABLE_PAUSE = false;
 const ENABLE_SWITCH_PALETTES = true;
@@ -121,17 +126,35 @@ class VM {
   }
 };
 
-const vm = new VM();
+if (!LIBRARY_MODE) {
+  (async function go() {
+    let response =
+      await fetch(ROM_FILENAME);
 
-// Load a ROM.
-(async function go() {
-  let response = await fetch(ROM_FILENAME);
-  let romBuffer = await response.arrayBuffer();
-  const extRam = new Uint8Array(JSON.parse(localStorage.getItem('extram')));
-  Emulator.start(await binjgbPromise, romBuffer, extRam);
-  emulator.setBuiltinPalette(vm.palIdx);
-})();
+    let romBuffer =
+      await response.arrayBuffer();
 
+    const storedExtRam =
+      localStorage.getItem("extram");
+
+    const extRam =
+      storedExtRam
+        ? new Uint8Array(
+            JSON.parse(storedExtRam)
+          )
+        : new Uint8Array();
+
+    Emulator.start(
+      await binjgbPromise,
+      romBuffer,
+      extRam
+    );
+
+    emulator.setBuiltinPalette(
+      vm.palIdx
+    );
+  })();
+}
 
 // Copied from demo.js
 function makeWasmBuffer(module, ptr, size) {
@@ -181,17 +204,25 @@ class Emulator {
       this.loadExtRam(extRamBuffer);
     }
 
-    this.bindKeys();
-    this.bindTouch();
+  if (!LIBRARY_MODE) {
+  this.bindKeys();
+  this.bindTouch();
 
-    this.touchEnabled = 'ontouchstart' in document.documentElement;
-    this.updateOnscreenGamepad();
+  this.touchEnabled =
+    "ontouchstart" in
+    document.documentElement;
+
+  this.updateOnscreenGamepad();
+}
   }
 
   destroy() {
+  if (!LIBRARY_MODE) {
     this.unbindTouch();
     this.unbindKeys();
-    this.cancelAnimationFrame();
+  }
+
+  this.cancelAnimationFrame();
     clearInterval(this.rewindIntervalId);
     this.rewind.destroy();
     this.audio.destroy();
@@ -856,3 +887,158 @@ class Rewind {
     this.statePtr = 0;
   }
 }
+window.gbaGB = {
+  async start(romPath) {
+    if (!romPath) {
+      throw new Error(
+        "Falta la ruta de la ROM GB/GBC."
+      );
+    }
+
+    const response =
+      await fetch(
+        romPath,
+        {
+          cache: "no-store"
+        }
+      );
+
+    if (!response.ok) {
+      throw new Error(
+        "HTTP " + response.status
+      );
+    }
+
+    const romBuffer =
+      await response.arrayBuffer();
+
+    if (romBuffer.byteLength < 1024) {
+      throw new Error(
+        "ROM GB/GBC inválida."
+      );
+    }
+
+    let extRam =
+      new Uint8Array();
+
+    const storedExtRam =
+      localStorage.getItem(
+        "gb-ext-rams"
+      );
+
+    if (storedExtRam) {
+      try {
+        extRam =
+          new Uint8Array(
+            JSON.parse(
+              storedExtRam
+            )
+          );
+      } catch (error) {
+        console.warn(
+          "No se pudo recuperar la RAM GB/GBC."
+        );
+      }
+    }
+
+    Emulator.start(
+      await binjgbPromise,
+      romBuffer,
+      extRam
+    );
+
+    emulator.setBuiltinPalette(
+      vm.palIdx
+    );
+
+    return emulator;
+  },
+
+  stop() {
+    Emulator.stop();
+  },
+
+  keyDown(keyName) {
+    if (!emulator) {
+      return;
+    }
+
+    switch (keyName) {
+      case "UP":
+        emulator.setJoypUp(true);
+        break;
+
+      case "DOWN":
+        emulator.setJoypDown(true);
+        break;
+
+      case "LEFT":
+        emulator.setJoypLeft(true);
+        break;
+
+      case "RIGHT":
+        emulator.setJoypRight(true);
+        break;
+
+      case "A":
+        emulator.setJoypA(true);
+        break;
+
+      case "B":
+        emulator.setJoypB(true);
+        break;
+
+      case "START":
+        emulator.setJoypStart(true);
+        break;
+
+      case "SELECT":
+        emulator.setJoypSelect(true);
+        break;
+    }
+  },
+
+  keyUp(keyName) {
+    if (!emulator) {
+      return;
+    }
+
+    switch (keyName) {
+      case "UP":
+        emulator.setJoypUp(false);
+        break;
+
+      case "DOWN":
+        emulator.setJoypDown(false);
+        break;
+
+      case "LEFT":
+        emulator.setJoypLeft(false);
+        break;
+
+      case "RIGHT":
+        emulator.setJoypRight(false);
+        break;
+
+      case "A":
+        emulator.setJoypA(false);
+        break;
+
+      case "B":
+        emulator.setJoypB(false);
+        break;
+
+      case "START":
+        emulator.setJoypStart(false);
+        break;
+
+      case "SELECT":
+        emulator.setJoypSelect(false);
+        break;
+    }
+  },
+
+  isRunning() {
+    return emulator !== null;
+  }
+};

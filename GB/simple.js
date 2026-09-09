@@ -962,7 +962,16 @@ window.gbaGB = {
 
     return emulator;
   },
+  
+  setVolume(volume) {
+    volume = Math.min(
+      Math.max(Number(volume), 0),
+      1
+    );
 
+    vm.volume = volume;
+  },
+  
   stop() {
     Emulator.stop();
   },

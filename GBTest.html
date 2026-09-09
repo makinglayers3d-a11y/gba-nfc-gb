@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
 
@@ -8,7 +9,7 @@
     content="width=device-width, initial-scale=1"
   >
 
-  <title>Prueba Game Boy / Game Boy Color</title>
+  <title>Prueba GB / GBC</title>
 
   <style>
     html,
@@ -18,17 +19,16 @@
       background: #111;
       color: #fff;
       font-family: sans-serif;
+      min-height: 100%;
     }
 
     body {
-      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       gap: 16px;
-      box-sizing: border-box;
       padding: 20px;
+      box-sizing: border-box;
     }
 
     #game {
@@ -36,18 +36,17 @@
     }
 
     #mainCanvas {
+      display: block;
       width: 100%;
       height: auto;
-      display: block;
       background: #000;
 
       image-rendering: pixelated;
       image-rendering: crisp-edges;
     }
 
-    #status {
-      opacity: 0.75;
-      text-align: center;
+    #controller {
+      display: none;
     }
   </style>
 </head>
@@ -57,6 +56,7 @@
   <h1>Prueba GB / GBC</h1>
 
   <div id="game">
+
     <canvas
       id="mainCanvas"
       width="160"
@@ -64,6 +64,38 @@
     >
       No Canvas Support
     </canvas>
+
+  </div>
+
+  <!--
+    Elementos que espera simple.js.
+    Los ocultamos de momento.
+  -->
+  <div id="controller">
+
+    <div id="controller_dpad">
+      <div id="controller_left"></div>
+      <div id="controller_right"></div>
+      <div id="controller_up"></div>
+      <div id="controller_down"></div>
+    </div>
+
+    <div id="controller_select">
+      Select
+    </div>
+
+    <div id="controller_start">
+      Start
+    </div>
+
+    <div id="controller_b">
+      B
+    </div>
+
+    <div id="controller_a">
+      A
+    </div>
+
   </div>
 
   <div id="status">
@@ -73,10 +105,6 @@
   <script src="GB/binjgb.js"></script>
   <script src="GB/simple.js"></script>
 
-  <script>
-    document.getElementById("status").textContent =
-      "Núcleo GB/GBC cargado.";
-  </script>
-
 </body>
+
 </html>

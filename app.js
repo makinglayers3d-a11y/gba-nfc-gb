@@ -207,25 +207,15 @@ function loadGameType(name, callback) {
   };
 
   function pressKey(keyName) {
-  if (window.gbaGB) {
-    const gbKeys = {
-      A: "setJoypA",
-      B: "setJoypB",
-      START: "setJoypStart",
-      SELECT: "setJoypSelect",
-      RIGHT: "setJoypRight",
-      LEFT: "setJoypLeft",
-      UP: "setJoypUp",
-      DOWN: "setJoypDown"
-    };
+  const isGBFamily =
+    /\.(gb|gbc)$/i.test(selected.rom);
 
-    const methodName = gbKeys[keyName];
-
+  if (isGBFamily) {
     if (
-      methodName &&
-      typeof window.gbaGB[methodName] === "function"
+      window.gbaGB &&
+      typeof window.gbaGB.keyDown === "function"
     ) {
-      window.gbaGB[methodName](true);
+      window.gbaGB.keyDown(keyName);
     }
 
     return;
@@ -240,26 +230,16 @@ function loadGameType(name, callback) {
   emulator.keyDown(value);
 }
 
-  function releaseKey(keyName) {
-  if (window.gbaGB) {
-    const gbKeys = {
-      A: "setJoypA",
-      B: "setJoypB",
-      START: "setJoypStart",
-      SELECT: "setJoypSelect",
-      RIGHT: "setJoypRight",
-      LEFT: "setJoypLeft",
-      UP: "setJoypUp",
-      DOWN: "setJoypDown"
-    };
+ function releaseKey(keyName) {
+  const isGBFamily =
+    /\.(gb|gbc)$/i.test(selected.rom);
 
-    const methodName = gbKeys[keyName];
-
+  if (isGBFamily) {
     if (
-      methodName &&
-      typeof window.gbaGB[methodName] === "function"
+      window.gbaGB &&
+      typeof window.gbaGB.keyUp === "function"
     ) {
-      window.gbaGB[methodName](false);
+      window.gbaGB.keyUp(keyName);
     }
 
     return;
@@ -272,7 +252,7 @@ function loadGameType(name, callback) {
   if (value === undefined) return;
 
   emulator.keyUp(value);
-}
+} 
   
   function updateVolumeUI() {
   const percentage = Math.round(audioVolume * 100);

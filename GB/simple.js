@@ -125,6 +125,7 @@ class VM {
     localStorage.setItem('extram', JSON.stringify(Array.from(extram)));
   }
 };
+const vm = new VM();
 
 if (!LIBRARY_MODE) {
   (async function go() {

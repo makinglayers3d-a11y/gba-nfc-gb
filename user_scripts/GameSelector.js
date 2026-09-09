@@ -325,7 +325,7 @@ function closeFilterSelector() {
 
   renderList();
   updateCoverBackground();
-} 
+}
   function findCurrentGame() {
     const currentRom =
       params.get("rom");
@@ -1867,6 +1867,31 @@ function renderList() {
     true
   );
 
+  window.addEventListener(
+  "keyup",
+  (event) => {
+    if (!menuOpen || !filterOpen) {
+      return;
+    }
+
+    if (
+      event.code === "KeyX" ||
+      event.code === "Enter" ||
+      event.code === "KeyZ" ||
+      event.code === "Escape" ||
+      event.code === "ShiftLeft" ||
+      event.code === "ShiftRight" ||
+      event.code === "ArrowUp" ||
+      event.code === "ArrowDown"
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+    }
+  },
+  true
+);
+  
   /*
    * Los controles físicos siguen funcionando
    * cuando el selector está abierto.

@@ -1818,7 +1818,7 @@ function renderList() {
       return;
     }
 
-    if (
+   if (
       key === "A" ||
       key === "START"
     ) {
@@ -1829,6 +1829,16 @@ function renderList() {
       return;
     }
 
+    if (
+      key === "B"
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      closeScreenSelector();
+      return;
+    }
+  }
   if (selectGameButton) {
     selectGameButton.addEventListener(
       "click",

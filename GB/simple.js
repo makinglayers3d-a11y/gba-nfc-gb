@@ -946,9 +946,9 @@ window.gbaGB = {
       extRam
     );
 
-    emulator.setBuiltinPalette(
-      vm.palIdx
-    );
+    emulator.setBuiltinPalette(0);
+     
+   
 
     return emulator;
   },

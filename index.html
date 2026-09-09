@@ -287,6 +287,19 @@
 <script src="user_scripts/AudioGlueCode.js"></script>
 
 <script src="user_scripts/GfxGlueCode.js"></script>
+
+<!--
+  Activamos binjgb en modo biblioteca.
+  En este modo no arranca ninguna ROM por sí solo
+  y tampoco crea sus propios controles.
+-->
+<script>
+  window.GBA_GB_LIBRARY_MODE = true;
+</script>
+
+<script src="GB/binjgb.js"></script>
+<script src="GB/simple.js"></script>
+
 <script src="user_scripts/BootIntro.js"></script>
 <script src="user_scripts/GameSelector.js"></script>
 <script src="app.js"></script>

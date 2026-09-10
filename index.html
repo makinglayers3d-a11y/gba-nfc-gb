@@ -214,28 +214,25 @@
   Reiniciar juego
 </button>
 
-<a
+<button
   id="social-link"
   class="social-link"
-  href="#"
-  aria-label="makinglayers3d"
+  type="button"
+  aria-label="Makinglayers3d"
 >
   <span class="social-label">
     <img
-      src="assets/ml3d-logo.png"
-      alt=""
+      src="assets/makinglayers3d-label.png"
+      alt="MAKINGLAYERS3D"
+      class="social-label-image"
     >
-
-    <span class="social-name">
-      MAKINGLAYERS3D
-    </span>
   </span>
 
   <span
     class="social-reflection"
     aria-hidden="true"
   ></span>
-</a>
+</button>
 <style>
   .social-link {
     position: relative;
@@ -245,13 +242,41 @@
     justify-content: center;
 
     width: 100%;
-    height: 52px;
-
     margin-top: 18px;
+    padding: 0;
 
     overflow: hidden;
 
-    text-decoration: none;
+    border: 0;
+    background: #090b10;
+
+    clip-path: polygon(
+      5% 0,
+      95% 0,
+      100% 18%,
+      100% 82%,
+      95% 100%,
+      5% 100%,
+      0 82%,
+      0 18%
+    );
+
+    box-shadow:
+      0 0 0 1px #000,
+      0 5px 12px #0008;
+
+    cursor: pointer;
+    isolation: isolate;
+    transform-origin: center;
+
+    animation: socialPulse 4s linear infinite;
+  }
+
+  .social-link::before {
+    content: "";
+
+    position: absolute;
+    inset: 0;
 
     background:
       linear-gradient(
@@ -263,176 +288,74 @@
         #5dffb0 100%
       );
 
-    padding: 2px;
-
-    clip-path: polygon(
-      5% 0,
-      95% 0,
-      100% 18%,
-      100% 82%,
-      95% 100%,
-      5% 100%,
-      0 82%,
-      0 18%
-    );
-
-    color: #ffffff;
-
-    box-shadow:
-      0 0 0 1px #000,
-      0 5px 12px #0008;
-
-    animation: socialPulse 4s linear infinite;
-  }
-
-  .social-link::before {
-    content: "";
-
-    position: absolute;
-    inset: 2px;
-
-    background: #111111;
-
-    clip-path: polygon(
-      5% 0,
-      95% 0,
-      100% 18%,
-      100% 82%,
-      95% 100%,
-      5% 100%,
-      0 82%,
-      0 18%
-    );
-
+    opacity: 0.16;
     z-index: 0;
+    pointer-events: none;
+
+    animation: socialGlow 4s linear infinite;
   }
 
   .social-label {
     position: relative;
-    z-index: 2;
+    z-index: 1;
 
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    gap: 9px;
-
-    width: calc(100% - 10px);
-    height: calc(100% - 8px);
-
-    border: 1px solid #ffffff28;
-
-    clip-path: polygon(
-      6% 0,
-      94% 0,
-      100% 20%,
-      100% 80%,
-      94% 100%,
-      6% 100%,
-      0 80%,
-      0 20%
-    );
-
-    background:
-      linear-gradient(
-        135deg,
-        #0b0d12 0%,
-        #151515 50%,
-        #090b10 100%
-      );
-
-    box-shadow:
-      inset 0 0 0 1px #000,
-      inset 0 0 14px #ffffff08;
+    display: block;
+    width: 100%;
+    line-height: 0;
   }
 
-  .social-label::before,
-  .social-label::after {
-    content: "";
+  .social-label-image {
+    display: block;
 
-    position: absolute;
-
-    width: 34px;
-    height: 4px;
-
-    background:
-      linear-gradient(
-        90deg,
-        #58eaff,
-        #b05cff,
-        #ff609d,
-        #ffd85a
-      );
-
-    opacity: 0.9;
-  }
-
-  .social-label::before {
-    top: 5px;
-    right: 18px;
-  }
-
-  .social-label::after {
-    bottom: 5px;
-    left: 18px;
-  }
-
-  .social-label img {
-    width: 25px;
-    height: 25px;
+    width: 100%;
+    height: auto;
 
     object-fit: contain;
 
-    image-rendering: pixelated;
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
 
     filter:
-      drop-shadow(0 0 4px #ffffff28);
-  }
-
-  .social-name {
-    font-family:
-      "Courier New",
-      monospace;
-
-    font-size: 0.82rem;
-    font-weight: 900;
-
-    letter-spacing: 0.1em;
-
-    color: #ffffff;
+      drop-shadow(0 3px 7px #0008)
+      drop-shadow(0 0 4px #ffffff18);
   }
 
   .social-reflection {
     position: absolute;
 
-    top: -40%;
+    top: -45%;
     left: -45%;
 
     width: 22%;
-    height: 180%;
+    height: 190%;
 
     background:
       linear-gradient(
         90deg,
         transparent,
-        #ffffff28,
+        #ffffff18,
         #ffffff70,
-        #ffffff28,
+        #ffffff18,
         transparent
       );
 
     transform: skewX(-18deg);
 
-    z-index: 3;
+    z-index: 2;
 
     pointer-events: none;
 
-    animation:
-      socialReflection 2.8s linear infinite;
+    animation: socialReflection 2.8s linear infinite;
   }
 
   .social-link:active {
-    filter: brightness(1.15);
+    animation-play-state: paused;
+  }
+
+  .social-link:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 3px;
   }
 
   @keyframes socialReflection {
@@ -482,6 +405,31 @@
     96% {
       transform: scale(1);
       filter: brightness(1);
+    }
+  }
+
+  @keyframes socialGlow {
+    0%,
+    88%,
+    100% {
+      opacity: 0.16;
+    }
+
+    90%,
+    94% {
+      opacity: 0.32;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .social-link,
+    .social-link::before,
+    .social-reflection {
+      animation: none;
+    }
+
+    .social-reflection {
+      display: none;
     }
   }
 </style>

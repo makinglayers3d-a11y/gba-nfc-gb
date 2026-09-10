@@ -1621,6 +1621,65 @@ item.textContent =
     }
   }
 
+  async function closeMenuIntoScreen() {
+    if (!menu || !menu.open) {
+      return;
+    }
+
+    const card = menu.querySelector(".menu-card");
+    const source = card.getBoundingClientRect();
+    const target = screenFrame.getBoundingClientRect();
+
+    const sourceCenterX = source.left + source.width / 2;
+    const sourceCenterY = source.top + source.height / 2;
+    const targetCenterX = target.left + target.width / 2;
+    const targetCenterY = target.top + target.height / 2;
+
+    menu.style.setProperty(
+      "--menu-screen-x",
+      `${targetCenterX - sourceCenterX}px`
+    );
+    menu.style.setProperty(
+      "--menu-screen-y",
+      `${targetCenterY - sourceCenterY}px`
+    );
+    menu.style.setProperty(
+      "--menu-screen-scale-x",
+      String(target.width / source.width)
+    );
+    menu.style.setProperty(
+      "--menu-screen-scale-y",
+      String(target.height / source.height)
+    );
+
+    menu.classList.add("menu-closing-to-screen");
+
+    await new Promise((resolve) => {
+      let finished = false;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        card.removeEventListener("animationend", onAnimationEnd);
+        resolve();
+      };
+      const onAnimationEnd = (event) => {
+        if (event.target === card && event.animationName === "menuToScreen") {
+          finish();
+        }
+      };
+
+      card.addEventListener("animationend", onAnimationEnd);
+      window.setTimeout(finish, 560);
+    });
+
+    menu.close();
+    menu.classList.remove("menu-closing-to-screen");
+    menu.style.removeProperty("--menu-screen-x");
+    menu.style.removeProperty("--menu-screen-y");
+    menu.style.removeProperty("--menu-screen-scale-x");
+    menu.style.removeProperty("--menu-screen-scale-y");
+  }
+
   async function openScreenSelector() {
     if (
       opening ||
@@ -1631,14 +1690,7 @@ item.textContent =
 
     opening = true;
 
-    /*
-     * Cerrar el menú HTML normal.
-     */
-    if (menu) {
-      try {
-        menu.close();
-      } catch (error) {}
-    }
+    await closeMenuIntoScreen();
 
     await loadGameList();
 

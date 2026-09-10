@@ -963,31 +963,20 @@ if (filename.endsWith(".gbc")) {
   system = "GB";
 }
 
-item.innerHTML = "";
-
 const gameName =
-  document.createElement("span");
-
-gameName.textContent =
   friendlyName(
     game.filename
   );
 
-const systemBadge =
-  document.createElement("span");
+const system =
+  filename.endsWith(".gbc")
+    ? "gbc"
+    : filename.endsWith(".gb")
+      ? "gb"
+      : "gba";
 
-systemBadge.textContent =
-  "(" + system.toLowerCase() + ")";
-
-systemBadge.style.color =
-  "#c4c4c4";
-
-item.appendChild(gameName);
-item.appendChild(systemBadge);
-
-item.style.display = "flex";
-item.style.justifyContent = "space-between";
-item.style.alignItems = "center";
+item.textContent =
+  gameName + " (" + system + ")";
       
       /*
        * Tamaños según distancia.

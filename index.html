@@ -157,7 +157,10 @@
   <h3>Sonido</h3>
 
   <div class="volume-row">
-    <label for="volume-slider">Volumen</label>
+    <div class="volume-label-row">
+      <label for="volume-slider">Volumen</label>
+      <span id="volume-value">100%</span>
+    </div>
 
     <div class="volume-controls">
       <input
@@ -176,8 +179,6 @@
         Silenciar
       </button>
     </div>
-
-    <span id="volume-value">100%</span>
   </div>
 </section>
         
@@ -265,7 +266,7 @@
     isolation: isolate;
     transform-origin: center;
 
-    animation: socialDoubleClick 2s ease-in-out infinite;
+    animation: socialDoubleClick 4s ease-in-out infinite;
   }
 
   .menu-card > button#social-link::before {

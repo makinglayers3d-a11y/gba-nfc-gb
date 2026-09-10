@@ -975,8 +975,11 @@ const system =
       ? "gb"
       : "gba";
 
-item.textContent =
-  gameName + " (" + system + ")";
+item.innerHTML =
+  gameName +
+  ' <span style="font-size:0.65em;">(' +
+  system +
+  ")</span>";
       
       /*
        * Tamaños según distancia.

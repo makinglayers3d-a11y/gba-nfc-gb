@@ -213,6 +213,76 @@
 <button id="reload-game" type="button">
   Reiniciar juego
 </button>
+
+<a
+  href="#"
+  aria-label="makinglayers3d"
+  style="
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    height: 46px;
+    margin-top: 18px;
+    padding: 0 16px;
+    overflow: hidden;
+    border: 2px solid #6a3030;
+    border-radius: 8px;
+    background: #17130f;
+    color: #ffffff;
+    text-decoration: none;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    box-shadow:
+      inset 0 0 0 2px #0008,
+      0 5px 0 #0008;
+  "
+>
+  <img
+    src="assets/ml3d-logo.png"
+    alt=""
+    style="
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      flex: 0 0 auto;
+    "
+  >
+
+  <span>makinglayers3d</span>
+
+  <span
+    aria-hidden="true"
+    style="
+      position: absolute;
+      top: 0;
+      left: -40%;
+      width: 30%;
+      height: 100%;
+      background: #ffffff18;
+      transform: skewX(-18deg);
+      animation: socialSweep 2.5s linear infinite;
+    "
+  ></span>
+</a>
+
+<style>
+  @keyframes socialSweep {
+    0% {
+      left: -40%;
+    }
+
+    100% {
+      left: 120%;
+    }
+  }
+</style>        
        
       </div>
     </dialog>

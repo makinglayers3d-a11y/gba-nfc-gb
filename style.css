@@ -395,6 +395,7 @@ dialog::backdrop {
 .menu-card > button#save-game {
   background: var(--button);
   border: 1px solid #ffffff12;
+  color: var(--text);
 }
 
 .menu-card > button#save-game:active {

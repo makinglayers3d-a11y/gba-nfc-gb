@@ -966,7 +966,7 @@ if (filename.endsWith(".gbc")) {
 item.textContent =
   friendlyName(
     game.filename
-  ) + "  [" + system + "]";
+ ) + " (" + system.toLowerCase() + ")";
 
       /*
        * Tamaños según distancia.

@@ -1097,7 +1097,13 @@ line-height: 1;
   gap: 8px;
 }
 
-.volume-row > label {
+.volume-label-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.volume-label-row > label {
   font-size: .78rem;
   font-weight: 700;
   color: var(--muted);

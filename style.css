@@ -1680,3 +1680,35 @@ line-height: 1;
   position: absolute;
   inset: 0;
 }
+
+#menu[open] .menu-card {
+  transform-origin: top center;
+  animation: menuOpen 280ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+#menu[open]::backdrop {
+  animation: menuBackdropOpen 220ms ease-out both;
+}
+
+@keyframes menuOpen {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes menuBackdropOpen {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #menu[open] .menu-card,
+  #menu[open]::backdrop {
+    animation: none;
+  }
+}

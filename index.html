@@ -239,25 +239,20 @@
 <style>
   .menu-card > button.social-link {
     position: relative;
-
     display: block;
     width: 100%;
     height: auto;
-
     margin-top: 18px;
     padding: 0;
-
     overflow: visible;
-
     border: 0;
     border-radius: 0;
     background: transparent;
     box-shadow: none;
-
     cursor: pointer;
     isolation: isolate;
     transform-origin: center;
-
+    line-height: 0;
     animation: socialPulse 4s linear infinite;
   }
 
@@ -268,7 +263,6 @@
   .social-label {
     position: relative;
     z-index: 1;
-
     display: block;
     width: 100%;
     line-height: 0;
@@ -277,19 +271,15 @@
 
   .social-label-image {
     display: block;
-
     width: 100%;
+    max-width: none;
     height: auto;
-
     object-fit: contain;
-
-    transform: scale(1.5);
+    transform: scale(1.16);
     transform-origin: center;
-
     user-select: none;
     -webkit-user-drag: none;
     pointer-events: none;
-
     filter:
       drop-shadow(0 3px 7px #0008)
       drop-shadow(0 0 4px #ffffff18);
@@ -297,12 +287,9 @@
 
   .social-reflection {
     position: absolute;
-
     inset: 0;
-
     z-index: 2;
     pointer-events: none;
-
     background:
       linear-gradient(
         108deg,
@@ -314,20 +301,16 @@
         transparent 61%,
         transparent 100%
       );
-
     background-size: 220% 100%;
     background-position: 130% 0;
-
     -webkit-mask-image: url("assets/makinglayers3d-label.png");
     mask-image: url("assets/makinglayers3d-label.png");
     -webkit-mask-size: 100% 100%;
     mask-size: 100% 100%;
     -webkit-mask-repeat: no-repeat;
     mask-repeat: no-repeat;
-
-    transform: scale(1.5);
+    transform: scale(1.16);
     transform-origin: center;
-
     animation: socialReflection 2.8s linear infinite;
   }
 
@@ -343,38 +326,27 @@
   }
 
   @keyframes socialReflection {
-    0% {
-      background-position: 130% 0;
-    }
-
-    100% {
-      background-position: -120% 0;
-    }
+    0% { background-position: 130% 0; }
+    100% { background-position: -120% 0; }
   }
 
   @keyframes socialPulse {
-    0%,
-    88%,
-    100% {
+    0%, 88%, 100% {
       transform: scale(1);
       filter: brightness(1);
     }
-
     90% {
       transform: scale(1.025);
       filter: brightness(1.12);
     }
-
     92% {
       transform: scale(1);
       filter: brightness(1);
     }
-
     94% {
       transform: scale(1.025);
       filter: brightness(1.12);
     }
-
     96% {
       transform: scale(1);
       filter: brightness(1);
@@ -386,7 +358,6 @@
     .social-reflection {
       animation: none;
     }
-
     .social-reflection {
       display: none;
     }

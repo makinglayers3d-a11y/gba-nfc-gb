@@ -707,8 +707,34 @@ if (window.gbaGB) {
 }
 
 updateVolumeUI();
-  closeMenu.addEventListener("click", () => {
+  closeMenu.addEventListener("click", async () => {
+    if (!menu.open || menu.classList.contains("menu-closing-comic")) {
+      return;
+    }
+
+    const card = menu.querySelector(".menu-card");
+    menu.classList.add("menu-closing-comic");
+
+    await new Promise((resolve) => {
+      let finished = false;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        card.removeEventListener("animationend", onAnimationEnd);
+        resolve();
+      };
+      const onAnimationEnd = (event) => {
+        if (event.target === card && event.animationName === "menuComicClose") {
+          finish();
+        }
+      };
+
+      card.addEventListener("animationend", onAnimationEnd);
+      window.setTimeout(finish, 620);
+    });
+
     menu.close();
+    menu.classList.remove("menu-closing-comic");
   });
 
   if (saveGameButton) {

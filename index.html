@@ -237,49 +237,56 @@
   ></span>
 </button>
 <style>
-  .menu-card > button.social-link {
+  .social-link {
     position: relative;
-    display: block;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
     width: 100%;
-    height: auto;
-    margin-top: 10px;
+    margin-top: 18px;
     padding: 0;
-    overflow: visible;
+
+    overflow: hidden;
+
     border: 0;
-    border-radius: 0;
     background: transparent;
+
     box-shadow: none;
+
     cursor: pointer;
     isolation: isolate;
     transform-origin: center;
-    line-height: 0;
+
     animation: socialPulse 4s linear infinite;
   }
 
-  .menu-card > button.social-link::before {
+  .social-link::before {
     content: none;
   }
 
   .social-label {
     position: relative;
     z-index: 1;
+
     display: block;
     width: 100%;
     line-height: 0;
-    overflow: visible;
   }
 
   .social-label-image {
     display: block;
+
     width: 100%;
-    max-width: none;
     height: auto;
+
     object-fit: contain;
-    transform: scale(1.28);
-    transform-origin: center;
+
     user-select: none;
     -webkit-user-drag: none;
     pointer-events: none;
+
     filter:
       drop-shadow(0 3px 7px #0008)
       drop-shadow(0 0 4px #ffffff18);
@@ -287,47 +294,49 @@
 
   .social-reflection {
     position: absolute;
-    inset: 0;
-    z-index: 2;
-    pointer-events: none;
+
+    top: -45%;
+    left: -45%;
+
+    width: 22%;
+    height: 190%;
+
     background:
       linear-gradient(
-        108deg,
-        transparent 0%,
-        transparent 39%,
-        #ffffff18 44%,
-        #ffffff75 50%,
-        #ffffff18 56%,
-        transparent 61%,
-        transparent 100%
+        90deg,
+        transparent,
+        #ffffff18,
+        #ffffff70,
+        #ffffff18,
+        transparent
       );
-    background-size: 220% 100%;
-    background-position: 130% 0;
-    -webkit-mask-image: url("assets/makinglayers3d-label.png?v=48e4632d");
-    mask-image: url("assets/makinglayers3d-label.png?v=48e4632d");
-    -webkit-mask-size: 100% 100%;
-    mask-size: 100% 100%;
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    transform: scale(1.28);
-    transform-origin: center;
+
+    transform: skewX(-18deg);
+
+    z-index: 2;
+
+    pointer-events: none;
+
     animation: socialReflection 2.8s linear infinite;
   }
 
-  .menu-card > button.social-link:active {
-    background: transparent;
-    border: 0;
-    transform: scale(0.985);
+  .social-link:active {
+    animation-play-state: paused;
   }
 
-  .menu-card > button.social-link:focus-visible {
+  .social-link:focus-visible {
     outline: 2px solid #ffffff;
     outline-offset: 3px;
   }
 
   @keyframes socialReflection {
-    0% { background-position: 130% 0; }
-    100% { background-position: -120% 0; }
+    0% {
+      left: -45%;
+    }
+
+    100% {
+      left: 125%;
+    }
   }
 
   @keyframes socialPulse {
@@ -354,7 +363,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .menu-card > button.social-link,
+    .social-link,
     .social-reflection {
       animation: none;
     }

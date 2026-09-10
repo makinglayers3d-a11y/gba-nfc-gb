@@ -124,6 +124,10 @@
     return gbEmulator;
   };
 
+  window.gbaGB.save = function () {
+  saveCurrent();
+};
+
   window.addEventListener(
     "pagehide",
     saveCurrent

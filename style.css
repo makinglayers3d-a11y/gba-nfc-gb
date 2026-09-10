@@ -1587,7 +1587,7 @@ line-height: 1;
   max-width: 100%;
   min-height: 100%;
   padding:
-    max(18px, env(safe-area-inset-top))
+    max(28px, env(safe-area-inset-top))
     max(20px, env(safe-area-inset-right))
     max(14px, env(safe-area-inset-bottom))
     max(20px, env(safe-area-inset-left));

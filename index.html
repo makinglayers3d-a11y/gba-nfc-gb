@@ -134,7 +134,7 @@
         <button id="close-menu" type="button">×</button>
         <h2 style="display:flex;align-items:center;gap:8px;color:#fff;font-weight:900;">
           <img src="assets/ml3d-logo.png" alt="" style="width:28px;height:28px;object-fit:contain;">
-          <span>ML3d</span>
+          <span>ML3D</span>
         </h2>
         <button id="select-game-button" type="button">
   Seleccionar juego
@@ -237,22 +237,21 @@
   ></span>
 </button>
 <style>
-  .social-link {
+  .menu-card > button.social-link {
     position: relative;
 
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
+    display: block;
     width: 100%;
+    height: auto;
+
     margin-top: 18px;
     padding: 0;
 
     overflow: hidden;
 
     border: 0;
+    border-radius: 0;
     background: transparent;
-
     box-shadow: none;
 
     cursor: pointer;
@@ -262,7 +261,7 @@
     animation: socialPulse 4s linear infinite;
   }
 
-  .social-link::before {
+  .menu-card > button.social-link::before {
     content: none;
   }
 
@@ -295,47 +294,54 @@
   .social-reflection {
     position: absolute;
 
-    top: -45%;
-    left: -45%;
+    inset: 0;
 
-    width: 22%;
-    height: 190%;
+    z-index: 2;
+    pointer-events: none;
 
     background:
       linear-gradient(
-        90deg,
-        transparent,
-        #ffffff18,
-        #ffffff70,
-        #ffffff18,
-        transparent
+        108deg,
+        transparent 0%,
+        transparent 39%,
+        #ffffff18 44%,
+        #ffffff75 50%,
+        #ffffff18 56%,
+        transparent 61%,
+        transparent 100%
       );
 
-    transform: skewX(-18deg);
+    background-size: 220% 100%;
+    background-position: 130% 0;
 
-    z-index: 2;
-
-    pointer-events: none;
+    -webkit-mask-image: url("assets/makinglayers3d-label.png");
+    mask-image: url("assets/makinglayers3d-label.png");
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
 
     animation: socialReflection 2.8s linear infinite;
   }
 
-  .social-link:active {
-    animation-play-state: paused;
+  .menu-card > button.social-link:active {
+    background: transparent;
+    border: 0;
+    transform: scale(0.985);
   }
 
-  .social-link:focus-visible {
+  .menu-card > button.social-link:focus-visible {
     outline: 2px solid #ffffff;
     outline-offset: 3px;
   }
 
   @keyframes socialReflection {
     0% {
-      left: -45%;
+      background-position: 130% 0;
     }
 
     100% {
-      left: 125%;
+      background-position: -120% 0;
     }
   }
 
@@ -369,7 +375,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .social-link,
+    .menu-card > button.social-link,
     .social-reflection {
       animation: none;
     }

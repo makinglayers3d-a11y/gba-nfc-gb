@@ -386,6 +386,15 @@ dialog::backdrop {
   padding: 0 14px;
 }
 
+#save-game {
+  background: var(--button);
+  border: 1px solid #ffffff12;
+}
+
+#save-game:active {
+  background: var(--button-active);
+}
+
 .menu-card > button:not(#close-menu):active {
   background: #ffffff18;
 }

@@ -952,10 +952,21 @@ function renderList() {
       const visible =
         distance <= VISIBLE_SIDE;
 
-      item.textContent =
-        friendlyName(
-          game.filename
-        );
+      const filename =
+  game.filename.toLowerCase();
+
+let system = "GBA";
+
+if (filename.endsWith(".gbc")) {
+  system = "GBC";
+} else if (filename.endsWith(".gb")) {
+  system = "GB";
+}
+
+item.textContent =
+  friendlyName(
+    game.filename
+  ) + "  [" + system + "]";
 
       /*
        * Tamaños según distancia.

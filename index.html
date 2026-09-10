@@ -243,7 +243,7 @@
     display: block;
 
     width: 100%;
-    height: 48px;
+    height: auto;
     margin-top: 42px;
     padding: 0;
 
@@ -272,7 +272,6 @@
 
     display: block;
     width: 100%;
-    height: 100%;
     line-height: 0;
     overflow: visible;
   }
@@ -280,12 +279,13 @@
   .social-label-image {
     display: block;
 
-    width: 100%;
+    width: 136%;
     max-width: none;
-    height: 100%;
+    height: auto;
+    margin-left: -18%;
 
-    object-fit: fill;
-    transform: scale(1.5);
+    object-fit: contain;
+    transform: none;
     transform-origin: center;
 
     user-select: none;
@@ -319,12 +319,14 @@
 
     -webkit-mask-image: url("assets/makinglayers3d-label.png?v=48e4632d");
     mask-image: url("assets/makinglayers3d-label.png?v=48e4632d");
-    -webkit-mask-size: 100% 100%;
-    mask-size: 100% 100%;
+    -webkit-mask-size: 136% auto;
+    mask-size: 136% auto;
+    -webkit-mask-position: center;
+    mask-position: center;
     -webkit-mask-repeat: no-repeat;
     mask-repeat: no-repeat;
 
-    transform: scale(1.5);
+    transform: none;
     transform-origin: center;
 
     z-index: 2;

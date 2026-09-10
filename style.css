@@ -382,18 +382,23 @@ dialog::backdrop {
   background: #ffffff0b;
   border: 1px solid #ffffff0a;
 
-  text-align: center;
   padding: 0 14px;
 
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  text-align: center;
+
+  font-size: 1rem;
   font-weight: 800;
+  line-height: 1;
 }
 
 .menu-card > button#save-game {
   background: var(--button);
   border: 1px solid #ffffff12;
   color: var(--text);
-  font-weight: 800;
-  text-align: center;
 }
 
 .menu-card > button#save-game:active {
@@ -413,15 +418,19 @@ dialog::backdrop {
   background: var(--button);
   color: var(--text);
 
-  padding: 0;
-  display: grid;
-  place-items: center;
+padding: 0;
 
-  box-shadow: 0 5px 12px #0005;
+display: flex;
+justify-content: center;
+align-items: center;
 
-  font-size: 1.4rem;
-  font-weight: 900;
-  line-height: 1;
+color: var(--text);
+
+box-shadow: 0 5px 12px #0005;
+
+font-size: 1.4rem;
+font-weight: 900;
+line-height: 1;  
 }
 
 

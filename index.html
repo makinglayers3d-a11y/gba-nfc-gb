@@ -247,7 +247,7 @@
     margin-top: 18px;
     padding: 0;
 
-    overflow: hidden;
+    overflow: visible;
 
     border: 0;
     border-radius: 0;
@@ -272,6 +272,7 @@
     display: block;
     width: 100%;
     line-height: 0;
+    overflow: visible;
   }
 
   .social-label-image {
@@ -281,6 +282,9 @@
     height: auto;
 
     object-fit: contain;
+
+    transform: scale(1.5);
+    transform-origin: center;
 
     user-select: none;
     -webkit-user-drag: none;
@@ -320,6 +324,9 @@
     mask-size: 100% 100%;
     -webkit-mask-repeat: no-repeat;
     mask-repeat: no-repeat;
+
+    transform: scale(1.5);
+    transform-origin: center;
 
     animation: socialReflection 2.8s linear infinite;
   }

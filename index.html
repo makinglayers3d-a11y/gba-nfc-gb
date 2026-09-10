@@ -265,7 +265,7 @@
     isolation: isolate;
     transform-origin: center;
 
-    animation: socialPulse 4s linear infinite;
+    animation: socialDoubleClick 2s ease-in-out infinite;
   }
 
   .menu-card > button#social-link::before {
@@ -302,7 +302,34 @@
   }
 
   .social-reflection {
-    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background:
+      linear-gradient(
+        108deg,
+        transparent 0%,
+        transparent 39%,
+        #ffffff18 44%,
+        #ffffff75 50%,
+        #ffffff18 56%,
+        transparent 61%,
+        transparent 100%
+      );
+    background-size: 220% 100%;
+    background-position: 130% 0;
+    -webkit-mask-image: url("assets/makinglayers3d-label.png?v=48e4632d");
+    mask-image: url("assets/makinglayers3d-label.png?v=48e4632d");
+    -webkit-mask-size: 136% auto;
+    mask-size: 136% auto;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    transform: translateY(-12px);
+    transform-origin: center;
+    animation: socialReflection 2.8s linear infinite;
   }
 
   .menu-card > button#social-link:active {
@@ -325,24 +352,14 @@
     }
   }
 
-  @keyframes socialPulse {
-    0%, 88%, 100% {
+  @keyframes socialDoubleClick {
+    0%, 70%, 76%, 82%, 88%, 100% {
       transform: scale(1);
       filter: brightness(1);
     }
-    90% {
+    73%, 85% {
+      transform: scale(0.975);
       filter: brightness(1.12);
-    }
-    92% {
-      transform: scale(1);
-      filter: brightness(1);
-    }
-    94% {
-      filter: brightness(1.12);
-    }
-    96% {
-      transform: scale(1);
-      filter: brightness(1);
     }
   }
 

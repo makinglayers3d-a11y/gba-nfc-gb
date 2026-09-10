@@ -1612,6 +1612,10 @@ line-height: 1;
   margin-top: 8px !important;
 }
 
+#menu #save-game {
+  margin-top: 18px !important;
+}
+
 #menu #select-game-button {
   margin-bottom: 14px !important;
 }
@@ -1682,8 +1686,8 @@ line-height: 1;
 }
 
 #menu[open] .menu-card {
-  transform-origin: top center;
-  animation: menuOpen 280ms cubic-bezier(.2, .8, .2, 1) both;
+  transform-origin: calc(100% - 24px) 0;
+  animation: menuOpen 380ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
 #menu[open]::backdrop {
@@ -1691,13 +1695,17 @@ line-height: 1;
 }
 
 @keyframes menuOpen {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(16px) scale(.98);
+    transform: scale(.06);
   }
-  to {
+  72% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: scale(1.025);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 

@@ -963,11 +963,32 @@ if (filename.endsWith(".gbc")) {
   system = "GB";
 }
 
-item.textContent =
+item.innerHTML = "";
+
+const gameName =
+  document.createElement("span");
+
+gameName.textContent =
   friendlyName(
     game.filename
- ) + " (" + system.toLowerCase() + ")";
+  );
 
+const systemBadge =
+  document.createElement("span");
+
+systemBadge.textContent =
+  "(" + system.toLowerCase() + ")";
+
+systemBadge.style.color =
+  "#c4c4c4";
+
+item.appendChild(gameName);
+item.appendChild(systemBadge);
+
+item.style.display = "flex";
+item.style.justifyContent = "space-between";
+item.style.alignItems = "center";
+      
       /*
        * Tamaños según distancia.
        */

@@ -1740,9 +1740,9 @@ line-height: 1;
 }
 
 #menu.menu-closing-comic .menu-card {
-  transform-origin: center;
+  transform-origin: calc(100% - 31px) 31px;
   pointer-events: none;
-  animation: menuComicClose 560ms cubic-bezier(.4, 0, .8, .2) both !important;
+  animation: menuComicClose 480ms cubic-bezier(.7, 0, 1, .45) both !important;
 }
 
 #menu.menu-closing-comic::backdrop {
@@ -1752,21 +1752,23 @@ line-height: 1;
 @keyframes menuComicClose {
   0% {
     opacity: 1;
-    transform: translateY(0) rotate(0) scale(1);
+    transform: scale(1);
+    filter: blur(0);
   }
-  22% {
-    transform: translateY(-8px) rotate(-3deg) scale(1.04);
-  }
-  48% {
-    transform: translateY(5px) rotate(5deg) scale(.86);
-  }
-  72% {
+  24% {
     opacity: 1;
-    transform: translateY(-12px) rotate(-8deg) scale(.62);
+    transform: scale(1.015);
+    filter: blur(0);
+  }
+  68% {
+    opacity: .82;
+    transform: scale(.38) rotate(3deg);
+    filter: blur(1px);
   }
   100% {
     opacity: 0;
-    transform: translateY(90px) rotate(24deg) scale(.04);
+    transform: scale(.025) rotate(8deg);
+    filter: blur(4px);
   }
 }
 

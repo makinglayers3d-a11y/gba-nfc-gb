@@ -968,18 +968,8 @@ const gameName =
     game.filename
   );
 
-const system =
-  filename.endsWith(".gbc")
-    ? "gbc"
-    : filename.endsWith(".gb")
-      ? "gb"
-      : "gba";
-
-item.innerHTML =
-  gameName +
-  ' <span style="font-size:0.65em;">(' +
-  system +
-  ")</span>";
+item.textContent =
+  gameName + " (" + system.toLowerCase() + ")";
       
       /*
        * Tamaños según distancia.

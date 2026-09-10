@@ -237,20 +237,20 @@
   ></span>
 </button>
 <style>
-  .social-link {
+  .menu-card > button.social-link {
     position: relative;
 
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: block;
 
     width: 100%;
-    margin-top: 18px;
+    height: auto;
+    margin-top: 28px;
     padding: 0;
 
-    overflow: hidden;
+    overflow: visible;
 
     border: 0;
+    border-radius: 0;
     background: transparent;
 
     box-shadow: none;
@@ -262,7 +262,7 @@
     animation: socialPulse 4s linear infinite;
   }
 
-  .social-link::before {
+  .menu-card > button.social-link::before {
     content: none;
   }
 
@@ -273,15 +273,19 @@
     display: block;
     width: 100%;
     line-height: 0;
+    overflow: visible;
   }
 
   .social-label-image {
     display: block;
 
     width: 100%;
+    max-width: none;
     height: auto;
 
     object-fit: contain;
+    transform: scale(1.28);
+    transform-origin: center;
 
     user-select: none;
     -webkit-user-drag: none;
@@ -295,23 +299,32 @@
   .social-reflection {
     position: absolute;
 
-    top: -45%;
-    left: -45%;
-
-    width: 22%;
-    height: 190%;
+    inset: 0;
 
     background:
       linear-gradient(
-        90deg,
-        transparent,
-        #ffffff18,
-        #ffffff70,
-        #ffffff18,
-        transparent
+        108deg,
+        transparent 0%,
+        transparent 39%,
+        #ffffff18 44%,
+        #ffffff75 50%,
+        #ffffff18 56%,
+        transparent 61%,
+        transparent 100%
       );
 
-    transform: skewX(-18deg);
+    background-size: 220% 100%;
+    background-position: 130% 0;
+
+    -webkit-mask-image: url("assets/makinglayers3d-label.png?v=48e4632d");
+    mask-image: url("assets/makinglayers3d-label.png?v=48e4632d");
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+
+    transform: scale(1.28);
+    transform-origin: center;
 
     z-index: 2;
 
@@ -320,22 +333,23 @@
     animation: socialReflection 2.8s linear infinite;
   }
 
-  .social-link:active {
-    animation-play-state: paused;
+  .menu-card > button.social-link:active {
+    background: transparent;
+    border: 0;
   }
 
-  .social-link:focus-visible {
+  .menu-card > button.social-link:focus-visible {
     outline: 2px solid #ffffff;
     outline-offset: 3px;
   }
 
   @keyframes socialReflection {
     0% {
-      left: -45%;
+      background-position: 130% 0;
     }
 
     100% {
-      left: 125%;
+      background-position: -120% 0;
     }
   }
 
@@ -345,7 +359,6 @@
       filter: brightness(1);
     }
     90% {
-      transform: scale(1.025);
       filter: brightness(1.12);
     }
     92% {
@@ -353,7 +366,6 @@
       filter: brightness(1);
     }
     94% {
-      transform: scale(1.025);
       filter: brightness(1.12);
     }
     96% {
@@ -363,7 +375,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .social-link,
+    .menu-card > button.social-link,
     .social-reflection {
       animation: none;
     }

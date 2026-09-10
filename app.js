@@ -14,6 +14,7 @@ const game = (params.get("game") || "pokemon").toLowerCase();
   const closeMenu = document.getElementById("close-menu");
   
   const reloadButton = document.getElementById("reload-game");
+  const saveGameButton = document.getElementById("save-game");
   const speedSelect = document.getElementById("speed-select");
   const canvas = document.getElementById("screen");
 
@@ -709,6 +710,34 @@ updateVolumeUI();
   closeMenu.addEventListener("click", () => {
     menu.close();
   });
+
+  if (saveGameButton) {
+  saveGameButton.addEventListener("click", () => {
+    const isGBFamily =
+      /\.(gb|gbc)$/i.test(selected.rom);
+
+    try {
+      if (isGBFamily) {
+        if (
+          window.gbaGB &&
+          typeof window.gbaGB.save === "function"
+        ) {
+          window.gbaGB.save();
+          console.log("Partida GB/GBC guardada.");
+        }
+      } else if (emulator) {
+        emulator.exportSave();
+        console.log("Partida GBA guardada.");
+      }
+    } catch (error) {
+      console.error(
+        "Error guardando la partida:",
+        error
+      );
+    }
+  });
+}
+  
 if (reloadButton) {
   reloadButton.addEventListener("click", () => {
     try {

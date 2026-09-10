@@ -237,14 +237,14 @@
   ></span>
 </button>
 <style>
-  .menu-card > button.social-link {
+  .menu-card > button#social-link {
     position: relative;
 
     display: block;
 
     width: 100%;
-    height: auto;
-    margin-top: 28px;
+    height: 48px;
+    margin-top: 42px;
     padding: 0;
 
     overflow: visible;
@@ -262,7 +262,7 @@
     animation: socialPulse 4s linear infinite;
   }
 
-  .menu-card > button.social-link::before {
+  .menu-card > button#social-link::before {
     content: none;
   }
 
@@ -272,6 +272,7 @@
 
     display: block;
     width: 100%;
+    height: 100%;
     line-height: 0;
     overflow: visible;
   }
@@ -281,10 +282,10 @@
 
     width: 100%;
     max-width: none;
-    height: auto;
+    height: 100%;
 
-    object-fit: contain;
-    transform: scale(1.28);
+    object-fit: fill;
+    transform: scale(1.5);
     transform-origin: center;
 
     user-select: none;
@@ -323,7 +324,7 @@
     -webkit-mask-repeat: no-repeat;
     mask-repeat: no-repeat;
 
-    transform: scale(1.28);
+    transform: scale(1.5);
     transform-origin: center;
 
     z-index: 2;
@@ -333,12 +334,12 @@
     animation: socialReflection 2.8s linear infinite;
   }
 
-  .menu-card > button.social-link:active {
+  .menu-card > button#social-link:active {
     background: transparent;
     border: 0;
   }
 
-  .menu-card > button.social-link:focus-visible {
+  .menu-card > button#social-link:focus-visible {
     outline: 2px solid #ffffff;
     outline-offset: 3px;
   }
@@ -375,7 +376,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .menu-card > button.social-link,
+    .menu-card > button#social-link,
     .social-reflection {
       animation: none;
     }

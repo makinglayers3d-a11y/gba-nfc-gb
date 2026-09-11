@@ -7,6 +7,8 @@
   const hapticButton = document.getElementById("haptic-button");
   const speedSelect = document.getElementById("speed-select");
   const canvas = document.getElementById("screen");
+  const settingsMenu = document.getElementById("menu");
+  const closeMenuButton = document.getElementById("close-menu");
   const params = new URLSearchParams(location.search);
   const activeId = params.get("rom") || params.get("game") || "pokemon";
   const statsKey = `ml3d-game-stats:${activeId}`;
@@ -209,13 +211,70 @@
     ensureSaveDialog().showModal();
   }
 
-  window.ml3dOpenSaveManager = openSaveManager;
+  function saveWithCapture() {
+    const thumbnail = captureThumbnail();
+    const title =
+      document.getElementById("game-title")?.textContent?.trim() ||
+      activeId.replace(/\.(gba|gbc|gb)$/i, "");
+    const lowerId = activeId.toLowerCase();
+    const system =
+      lowerId.endsWith(".gbc")
+        ? "GAME BOY COLOR"
+        : lowerId.endsWith(".gb")
+          ? "GAME BOY"
+          : "GAME BOY ADVANCE";
+    const date = new Date().toLocaleString("es-ES", {
+      dateStyle: "short",
+      timeStyle: "short"
+    });
+
+    saveCurrentGame();
+    vibrate([18, 28, 36]);
+
+    const showCapture = () => {
+      const target = menuButton.getBoundingClientRect();
+      const targetX = target.left + target.width / 2;
+      const targetY = target.top + target.height / 2;
+      const capture = document.createElement("div");
+      capture.className = "ml3d-save-capture";
+      capture.style.setProperty(
+        "--capture-x",
+        `${targetX - window.innerWidth / 2}px`
+      );
+      capture.style.setProperty(
+        "--capture-y",
+        `${targetY - window.innerHeight / 2}px`
+      );
+      capture.innerHTML = `
+        <div class="ml3d-save-capture-screen">
+          ${thumbnail ? `<img src="${thumbnail}" alt="">` : "<b>ML3D</b>"}
+          <i></i>
+        </div>
+        <strong>${title}</strong>
+        <span>${system}</span>
+        <small>Guardado · ${date}</small>`;
+      document.body.appendChild(capture);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => capture.classList.add("fly"));
+      });
+      window.setTimeout(() => capture.remove(), 1250);
+    };
+
+    if (settingsMenu && settingsMenu.open && closeMenuButton) {
+      closeMenuButton.click();
+      window.setTimeout(showCapture, 410);
+    } else {
+      showCapture();
+    }
+  }
+
+  window.ml3dSaveWithCapture = saveWithCapture;
 
   document.addEventListener("click", (event) => {
     if (event.target.closest("#save-game")) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      openSaveManager();
+      saveWithCapture();
     }
   }, true);
 
@@ -227,7 +286,7 @@
 
   function radialAction(action) {
     closeRadial();
-    if (action === "save") openSaveManager();
+    if (action === "save") saveWithCapture();
     if (action === "sound" && muteButton) muteButton.click();
     if (action === "haptic" && hapticButton) hapticButton.click();
     if (action === "games" && typeof window.gbaOpenGameSelector === "function") window.gbaOpenGameSelector();
@@ -272,7 +331,15 @@
       menuButton.addEventListener(type, () => clearTimeout(longPressTimer));
     });
     menuButton.addEventListener("click", (event) => {
-      if (longPressTriggered || radialOpen) {
+      if (radialOpen) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        closeRadial();
+        longPressTriggered = false;
+        return;
+      }
+
+      if (longPressTriggered) {
         event.preventDefault();
         event.stopImmediatePropagation();
         longPressTriggered = false;

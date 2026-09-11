@@ -115,16 +115,108 @@
   100% { transform:translate(-50%,41%) rotate(0) scale(.9); }
 }
 
-.ml3d-game-info { position:absolute; right:10px; bottom:34px; z-index:5; width:116px; color:#fff; pointer-events:none; }
+.ml3d-game-info { position:absolute; left:50%; top:calc(50% + 44px); right:auto; bottom:auto; z-index:2; width:140px; transform:translateX(-50%); color:#fff; pointer-events:none; }
 .ml3d-live-preview { --tilt-x:0deg; --tilt-y:0deg; position:relative; aspect-ratio:3/2; display:grid; place-items:center; overflow:hidden; border:1px solid #ffffff42; border-radius:9px; background:#05070a; transform:perspective(350px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)); transition:transform 180ms ease; box-shadow:0 7px 20px #0009; }
 .ml3d-live-preview img { width:100%; height:100%; object-fit:cover; animation:ml3dPreviewAlive 5s ease-in-out infinite alternate; }
 .ml3d-live-preview b { opacity:.4; font:900 15px system-ui; }
 .ml3d-live-preview span { position:absolute; inset:-80%; background:linear-gradient(115deg,transparent 42%,#ffffff6b 50%,transparent 58%); animation:ml3dHoloSweep 3.2s linear infinite; }
-.ml3d-game-info small,.ml3d-game-info em { display:block; margin-top:5px; text-align:right; font:700 8px/1.25 system-ui; text-shadow:0 2px 4px #000; }
+.ml3d-game-info small,.ml3d-game-info em { display:block; margin-top:5px; text-align:center; font:700 8px/1.25 system-ui; text-shadow:0 2px 4px #000; }
 .ml3d-game-info em { color:#bec7d4; font-style:normal; }
 @keyframes ml3dPreviewAlive { from{transform:scale(1)} to{transform:scale(1.08)} }
 @keyframes ml3dHoloSweep { from{transform:translateX(-65%) rotate(8deg)} to{transform:translateX(65%) rotate(8deg)} }
 
 @media (prefers-reduced-motion:reduce) {
   #ml3d-radial-menu,.ml3d-cartridge,.ml3d-live-preview img,.ml3d-live-preview span { animation:none; }
+}
+
+
+/* Confirmación visual del guardado directo. */
+.ml3d-save-capture {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 8500;
+  width: min(70vw, 270px);
+  padding: 12px;
+  border: 1px solid #ffffff28;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #182331, #080d14);
+  color: #fff;
+  box-shadow: 0 20px 55px #000c, inset 0 0 22px #66a8ff10;
+  transform: translate(-50%, -50%) scale(.72);
+  opacity: 0;
+  font-family: system-ui, sans-serif;
+  pointer-events: none;
+  animation: ml3dCaptureAppear 260ms cubic-bezier(.2,1.25,.3,1) forwards;
+}
+
+.ml3d-save-capture.fly {
+  animation: ml3dCaptureToMenu 820ms 280ms cubic-bezier(.55,.05,.8,.45) forwards;
+}
+
+.ml3d-save-capture-screen {
+  position: relative;
+  aspect-ratio: 3 / 2;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #000;
+}
+
+.ml3d-save-capture-screen img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ml3d-save-capture-screen b {
+  color: #ffffff66;
+  font-size: 22px;
+}
+
+.ml3d-save-capture-screen i {
+  position: absolute;
+  inset: -80%;
+  background: linear-gradient(110deg, transparent 42%, #ffffffaa 50%, transparent 58%);
+  transform: translateX(-55%);
+  animation: ml3dCaptureFlash 620ms ease-out forwards;
+}
+
+.ml3d-save-capture strong,
+.ml3d-save-capture span,
+.ml3d-save-capture small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ml3d-save-capture strong { margin-top: 9px; font-size: 14px; }
+.ml3d-save-capture span { margin-top: 3px; color: #aeb8c7; font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+.ml3d-save-capture small { margin-top: 5px; color: #dfe5ee; font-size: 9px; }
+
+@keyframes ml3dCaptureAppear {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(.72) rotate(-3deg); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); }
+}
+
+@keyframes ml3dCaptureToMenu {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  22% { transform: translate(-50%, -50%) scale(1.06); }
+  100% {
+    opacity: 0;
+    transform:
+      translate(
+        calc(-50% + var(--capture-x)),
+        calc(-50% + var(--capture-y))
+      )
+      scale(.08)
+      rotate(14deg);
+  }
+}
+
+@keyframes ml3dCaptureFlash {
+  from { transform: translateX(-58%) rotate(8deg); }
+  to { transform: translateX(58%) rotate(8deg); }
 }

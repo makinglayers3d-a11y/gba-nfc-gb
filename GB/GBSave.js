@@ -51,28 +51,17 @@
       const bytes =
         new Uint8Array(JSON.parse(encoded));
 
-      if (
-        typeof gbEmulator.loadExtRam ===
-        "function"
-      ) {
+      if (typeof gbEmulator.loadExtRam === "function") {
         gbEmulator.loadExtRam(bytes);
-
-        console.log(
-          "Partida GB/GBC restaurada:",
-          romPath
-        );
+        console.log("Partida GB/GBC restaurada:", romPath);
       }
     } catch (error) {
-      console.error(
-        "No se pudo restaurar la partida GB/GBC:",
-        error
-      );
+      console.error("No se pudo restaurar la partida GB/GBC:", error);
     }
   }
 
   function startSaveTimer() {
     clearInterval(saveTimer);
-
     saveTimer = window.setInterval(() => {
       saveCurrent();
     }, 5000);
@@ -85,19 +74,14 @@
     }
   }
 
-  const originalStart =
-    window.gbaGB &&
-    window.gbaGB.start;
+  const originalStart = window.gbaGB && window.gbaGB.start;
 
   if (!originalStart) {
-    console.error(
-      "GBSave: no se encontró window.gbaGB.start"
-    );
+    console.error("GBSave: no se encontró window.gbaGB.start");
   } else {
     window.gbaGB.start = async function (romPath) {
       stopSaveTimer();
       saveCurrent();
-
       const gbEmulator = await originalStart.call(this, romPath);
       currentKey = saveKey(romPath);
       currentEmulator = gbEmulator;
@@ -114,11 +98,9 @@
     window.addEventListener("beforeunload", saveCurrent);
   }
 
-  // Load the hidden developer tools from an already-loaded, small entry point.
-  // This avoids changing the main menu markup in index.html.
   if (!document.querySelector('script[data-ml3d-developer-tools]')) {
     const script = document.createElement('script');
-    script.src = 'developer-tools.js?v=3';
+    script.src = 'developer-tools.js?v=4';
     script.dataset.ml3dDeveloperTools = 'true';
     document.head.appendChild(script);
   }

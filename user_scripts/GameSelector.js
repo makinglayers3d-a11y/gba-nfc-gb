@@ -1669,7 +1669,7 @@ item.textContent =
       };
 
       card.addEventListener("animationend", onAnimationEnd);
-      window.setTimeout(finish, 560);
+      window.setTimeout(finish, 980);
     });
 
     menu.close();
@@ -1690,14 +1690,14 @@ item.textContent =
 
     opening = true;
 
-    await closeMenuIntoScreen();
-
     await loadGameList();
 
     if (!games.length) {
       opening = false;
       return;
     }
+
+    await closeMenuIntoScreen();
 
     buildOverlay();
 

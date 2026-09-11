@@ -841,12 +841,22 @@ if (reloadButton) {
     }
   }
 
-  function resumeEmulatorFromBackground() {
-    if (!backgroundSuspended || document.hidden) return;
+  function resumeEmulatorFromBackground(force = false) {
+    if (document.hidden) return;
+
+    if (!backgroundSuspended && !force) return;
 
     backgroundSuspended = false;
 
-    if (resumeGbaAfterBackground && emulator) {
+    const gbaNeedsRecovery =
+      emulator &&
+      (
+        resumeGbaAfterBackground ||
+        timer === null ||
+        emulator.emulatorStatus >= 0x10
+      );
+
+    if (gbaNeedsRecovery) {
       try {
         emulator.play();
         startGbaTimers();
@@ -856,11 +866,18 @@ if (reloadButton) {
       }
     }
 
-    if (
-      resumeGbAfterBackground &&
+    const gbNeedsRecovery =
       window.gbaGB &&
-      typeof window.gbaGB.resume === "function"
-    ) {
+      typeof window.gbaGB.resume === "function" &&
+      (
+        resumeGbAfterBackground ||
+        (
+          typeof window.gbaGB.isPaused === "function" &&
+          window.gbaGB.isPaused()
+        )
+      );
+
+    if (gbNeedsRecovery) {
       try {
         window.gbaGB.resume();
       } catch (error) {
@@ -870,6 +887,16 @@ if (reloadButton) {
 
     resumeGbaAfterBackground = false;
     resumeGbAfterBackground = false;
+  }
+
+  function scheduleEmulatorRecovery() {
+    resumeEmulatorFromBackground(true);
+
+    [100, 400, 1000].forEach((delay) => {
+      window.setTimeout(() => {
+        resumeEmulatorFromBackground(true);
+      }, delay);
+    });
   }
 
   function shutdownEmulator() {
@@ -891,12 +918,14 @@ if (reloadButton) {
     if (document.hidden) {
       suspendEmulatorForBackground();
     } else {
-      resumeEmulatorFromBackground();
+      scheduleEmulatorRecovery();
     }
   });
 
   window.addEventListener("pagehide", suspendEmulatorForBackground);
-  window.addEventListener("pageshow", resumeEmulatorFromBackground);
+  window.addEventListener("pageshow", scheduleEmulatorRecovery);
+  window.addEventListener("focus", scheduleEmulatorRecovery);
+  window.addEventListener("resume", scheduleEmulatorRecovery);
   window.addEventListener("beforeunload", shutdownEmulator);
 
 

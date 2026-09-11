@@ -1784,7 +1784,7 @@ item.textContent =
      */
   }
 
-  async function selectCurrentGame() {
+  function selectCurrentGame() {
     if (!games.length) {
       return;
     }
@@ -1842,21 +1842,6 @@ item.textContent =
       );
     }
 
-    const lowerFilename = selectedGame.filename.toLowerCase();
-    const system =
-      lowerFilename.endsWith(".gbc")
-        ? "GAME BOY COLOR"
-        : lowerFilename.endsWith(".gb")
-          ? "GAME BOY"
-          : "GAME BOY ADVANCE";
-
-    if (typeof window.ml3dPlayCartridgeInsert === "function") {
-      await window.ml3dPlayCartridgeInsert({
-        filename: selectedGame.filename,
-        name: friendlyName(selectedGame.filename),
-        system
-      });
-    }
 
     closeScreenSelector(false);
 

@@ -63,10 +63,11 @@
         <div class="ml3d-cartridge-slot"></div>
         <div class="ml3d-cartridge">
           <div class="ml3d-cartridge-ridge"></div>
+          <div class="ml3d-cartridge-title">GAME BOY ADVANCE</div>
           <div class="ml3d-cartridge-label">
             <img src="assets/makinglayers3d-label.png?v=1f853638" alt="ML3D">
           </div>
-          <span>${(game && game.system) || "GAME BOY ADVANCE"}</span>
+          <div class="ml3d-cartridge-arrow" aria-hidden="true">▼</div>
         </div>
         <div class="ml3d-cartridge-message">CARTUCHO RECONOCIDO</div>`;
       document.body.appendChild(scene);
@@ -400,4 +401,44 @@
     preview.style.setProperty("--tilt-x", `${-y}deg`);
     preview.style.setProperty("--tilt-y", `${x}deg`);
   });
+
+  function playInitialCartridge() {
+    if (params.get("skipintro") === "1") {
+      return;
+    }
+
+    const lowerId = activeId.toLowerCase();
+    const system =
+      lowerId.endsWith(".gbc")
+        ? "GAME BOY COLOR"
+        : lowerId.endsWith(".gb")
+          ? "GAME BOY"
+          : "GAME BOY ADVANCE";
+
+    window.ml3dPlayCartridgeInsert({
+      filename: activeId,
+      name: activeId.replace(/\.(gba|gbc|gb)$/i, ""),
+      system
+    });
+  }
+
+  const bootScreen = document.getElementById("boot-screen");
+
+  if (!bootScreen || bootScreen.classList.contains("boot-finished")) {
+    window.setTimeout(playInitialCartridge, 180);
+  } else {
+    const bootObserver = new MutationObserver(() => {
+      if (!bootScreen.classList.contains("boot-finished")) {
+        return;
+      }
+
+      bootObserver.disconnect();
+      window.setTimeout(playInitialCartridge, 180);
+    });
+
+    bootObserver.observe(bootScreen, {
+      attributes: true,
+      attributeFilter: ["class"]
+    });
+  }
 })();

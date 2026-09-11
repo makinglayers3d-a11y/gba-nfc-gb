@@ -80,6 +80,9 @@ let audioInput = null;
 let audioVolume = 1;
 let audioMuted = false;
 let previousVolume = 1;
+let gameMenuAudioDucked = false;
+
+const GAME_MENU_VOLUME_FACTOR = 0.18;
 
 const savedVolume = Number(
   localStorage.getItem("gba-volume") || "1"
@@ -274,6 +277,24 @@ function loadGameType(name, callback) {
   }
 }
 
+function updateEmulatorAudioOutput() {
+  const effectiveVolume =
+    audioMuted
+      ? 0
+      : audioVolume *
+        (gameMenuAudioDucked
+          ? GAME_MENU_VOLUME_FACTOR
+          : 1);
+
+  if (audioInput) {
+    audioInput.setVolume(effectiveVolume);
+  }
+
+  if (window.gbaGB) {
+    window.gbaGB.setVolume(effectiveVolume);
+  }
+}
+
 function applyVolume(volume) {
   volume = Math.min(
     Math.max(Number(volume), 0),
@@ -282,17 +303,7 @@ function applyVolume(volume) {
 
   audioVolume = volume;
 
-  if (audioInput) {
-    audioInput.setVolume(
-      audioMuted ? 0 : audioVolume
-    );
-  }
-
-  if (window.gbaGB) {
-    window.gbaGB.setVolume(
-      audioMuted ? 0 : audioVolume
-    );
-  }
+  updateEmulatorAudioOutput();
 
   localStorage.setItem(
     "gba-volume",
@@ -301,6 +312,11 @@ function applyVolume(volume) {
 
   updateVolumeUI();
 }
+
+window.gbaSetGameMenuAudioDucked = function (ducked) {
+  gameMenuAudioDucked = Boolean(ducked);
+  updateEmulatorAudioOutput();
+};
   
 
 

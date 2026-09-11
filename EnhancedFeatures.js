@@ -24,12 +24,13 @@
     }
   }
 
-  function playCartridgeSound() {
+  function playCartridgeSound(delay = 0) {
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (!AudioContext) return;
       const context = new AudioContext();
-      const now = context.currentTime;
+      context.resume().catch(() => {});
+      const now = context.currentTime + delay;
       const gain = context.createGain();
       const osc = context.createOscillator();
       const click = context.createOscillator();
@@ -48,7 +49,7 @@
       click.start(now);
       click.stop(now + .055);
       osc.stop(now + .3);
-      window.setTimeout(() => context.close().catch(() => {}), 500);
+      window.setTimeout(() => context.close().catch(() => {}), (delay * 1000) + 500);
     } catch (_) {}
   }
 
@@ -67,9 +68,9 @@
         </div>
         <div class="ml3d-cartridge-message">CARTUCHO RECONOCIDO</div>`;
       document.body.appendChild(scene);
+      playCartridgeSound(.7);
       window.setTimeout(() => {
         scene.classList.add("recognized");
-        playCartridgeSound();
         vibrate([28, 34, 58]);
       }, 700);
       window.setTimeout(() => scene.classList.add("leaving"), 1320);

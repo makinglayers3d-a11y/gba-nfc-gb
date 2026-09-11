@@ -15,7 +15,11 @@
 
       this.started = true;
 
-      return new Promise((resolve) => {
+      return Promise.resolve(
+        window.ml3dInitialCartridgePromise
+      )
+        .catch(() => {})
+        .then(() => new Promise((resolve) => {
         const bootScreen =
           document.getElementById("boot-screen");
 
@@ -43,7 +47,7 @@
         window.setTimeout(() => {
           resolve();
         }, LOGO_TIME + WARNING_TIME + FADE_TIME);
-      });
+      }));
     }
   };
 })();

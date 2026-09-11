@@ -190,11 +190,13 @@
   100% { transform:translate(-50%,41%) rotate(0) scale(.9); }
 }
 
-.ml3d-game-info { position:absolute; right:10px; bottom:34px; z-index:2; width:116px; color:#fff; pointer-events:none; }
+.ml3d-game-info { position:absolute; right:10px; bottom:34px; z-index:1; width:116px; color:#fff; pointer-events:none; }
 .ml3d-live-preview { --tilt-x:0deg; --tilt-y:0deg; position:relative; aspect-ratio:3/2; display:grid; place-items:center; overflow:hidden; border:1px solid #ffffff42; border-radius:9px; background:#05070a; transform:perspective(350px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)); transition:transform 180ms ease; box-shadow:0 7px 20px #0009; }
 .ml3d-live-preview img { width:100%; height:100%; object-fit:cover; animation:ml3dPreviewAlive 5s ease-in-out infinite alternate; }
+.ml3d-live-preview video { position:absolute; inset:0; z-index:1; width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity 240ms ease; }
+.ml3d-live-preview video.ready { opacity:1; }
 .ml3d-live-preview b { opacity:.4; font:900 15px system-ui; }
-.ml3d-live-preview span { position:absolute; inset:-80%; background:linear-gradient(115deg,transparent 42%,#ffffff6b 50%,transparent 58%); animation:ml3dHoloSweep 3.2s linear infinite; }
+.ml3d-live-preview span { position:absolute; inset:-80%; z-index:2; background:linear-gradient(115deg,transparent 42%,#ffffff6b 50%,transparent 58%); animation:ml3dHoloSweep 3.2s linear infinite; }
 .ml3d-game-info small,.ml3d-game-info em { display:block; margin-top:5px; text-align:right; font:700 8px/1.25 system-ui; text-shadow:0 2px 4px #000; }
 .ml3d-game-info em { color:#bec7d4; font-style:normal; }
 @keyframes ml3dPreviewAlive { from{transform:scale(1)} to{transform:scale(1.08)} }
@@ -226,7 +228,7 @@
 }
 
 .ml3d-save-capture.fly {
-  animation: ml3dCaptureToMenu 820ms 280ms cubic-bezier(.55,.05,.8,.45) forwards;
+  animation: ml3dCaptureToMenu 900ms 1200ms cubic-bezier(.55,.05,.8,.45) forwards;
 }
 
 .ml3d-save-capture-screen {
@@ -294,4 +296,29 @@
 @keyframes ml3dCaptureFlash {
   from { transform: translateX(-58%) rotate(8deg); }
   to { transform: translateX(58%) rotate(8deg); }
+}
+
+
+/* Sustitución automática por una fotografía PNG real del cartucho. */
+.ml3d-cartridge-png {
+  display: none;
+}
+
+.ml3d-cartridge.has-png {
+  padding: 0;
+  border: 0;
+  clip-path: none;
+  background: transparent;
+  box-shadow: 0 25px 50px #000b;
+}
+
+.ml3d-cartridge.has-png > *:not(.ml3d-cartridge-png) {
+  display: none;
+}
+
+.ml3d-cartridge.has-png .ml3d-cartridge-png {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }

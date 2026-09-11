@@ -62,6 +62,7 @@
       scene.innerHTML = `
         <div class="ml3d-cartridge-slot"></div>
         <div class="ml3d-cartridge">
+          <img class="ml3d-cartridge-png" src="assets/gba-cartridge.png" alt="">
           <div class="ml3d-cartridge-ridge"></div>
           <div class="ml3d-cartridge-title">GAME BOY ADVANCE</div>
           <div class="ml3d-cartridge-label">
@@ -71,6 +72,18 @@
         </div>
         <div class="ml3d-cartridge-message">CARTUCHO RECONOCIDO</div>`;
       document.body.appendChild(scene);
+
+      const cartridge = scene.querySelector(".ml3d-cartridge");
+      const cartridgePng = scene.querySelector(".ml3d-cartridge-png");
+
+      cartridgePng.addEventListener("load", () => {
+        cartridge.classList.add("has-png");
+      });
+
+      cartridgePng.addEventListener("error", () => {
+        cartridgePng.remove();
+      });
+
       playCartridgeSound(.7);
       window.setTimeout(() => {
         scene.classList.add("recognized");
@@ -258,7 +271,7 @@
       requestAnimationFrame(() => {
         requestAnimationFrame(() => capture.classList.add("fly"));
       });
-      window.setTimeout(() => capture.remove(), 1250);
+      window.setTimeout(() => capture.remove(), 2350);
     };
 
     if (settingsMenu && settingsMenu.open && closeMenuButton) {
@@ -382,13 +395,30 @@
     }
     const id = detail.id || detail.filename || detail.name;
     const stats = readStats(id);
-    const saved = [1,2,3].map((slot) => {
-      try { return JSON.parse(localStorage.getItem(`ml3d-visual-save:${id}:${slot}`) || "null"); } catch (_) { return null; }
-    }).find(Boolean);
+    const baseName = (detail.filename || detail.name || "")
+      .replace(/\.(gba|gbc|gb)$/i, "");
+    const previewUrl =
+      "previews/" + encodeURIComponent(baseName + ".mp4");
+
     info.innerHTML = `
-      <div class="ml3d-live-preview">${saved && saved.thumbnail ? `<img src="${saved.thumbnail}" alt="Última partida">` : "<b>ML3D</b>"}<span></span></div>
+      <div class="ml3d-live-preview">
+        <b>ML3D</b>
+        <video muted loop playsinline preload="metadata" src="${previewUrl}"></video>
+        <span></span>
+      </div>
       <small>${detail.system} · ${formatDuration(stats.seconds || 0)}</small>
       <em>${stats.lastPlayed ? "Última partida: " + new Date(stats.lastPlayed).toLocaleDateString("es-ES") : "Sin partidas registradas"}</em>`;
+
+    const video = info.querySelector("video");
+
+    video.addEventListener("canplay", () => {
+      video.classList.add("ready");
+      video.play().catch(() => {});
+    });
+
+    video.addEventListener("error", () => {
+      video.remove();
+    });
   }
 
   window.addEventListener("ml3d-game-selection-changed", (event) => updateGameInfo(event.detail));
@@ -404,7 +434,7 @@
 
   function playInitialCartridge() {
     if (params.get("skipintro") === "1") {
-      return;
+      return Promise.resolve();
     }
 
     const lowerId = activeId.toLowerCase();
@@ -415,30 +445,13 @@
           ? "GAME BOY"
           : "GAME BOY ADVANCE";
 
-    window.ml3dPlayCartridgeInsert({
+    return window.ml3dPlayCartridgeInsert({
       filename: activeId,
       name: activeId.replace(/\.(gba|gbc|gb)$/i, ""),
       system
     });
   }
 
-  const bootScreen = document.getElementById("boot-screen");
-
-  if (!bootScreen || bootScreen.classList.contains("boot-finished")) {
-    window.setTimeout(playInitialCartridge, 180);
-  } else {
-    const bootObserver = new MutationObserver(() => {
-      if (!bootScreen.classList.contains("boot-finished")) {
-        return;
-      }
-
-      bootObserver.disconnect();
-      window.setTimeout(playInitialCartridge, 180);
-    });
-
-    bootObserver.observe(bootScreen, {
-      attributes: true,
-      attributeFilter: ["class"]
-    });
-  }
+  window.ml3dInitialCartridgePromise =
+    playInitialCartridge();
 })();

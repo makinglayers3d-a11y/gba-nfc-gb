@@ -166,138 +166,163 @@ function renderFilterSelector() {
     return null;
   }
 
-  listTrack.innerHTML = "";
+  let panel = listTrack.querySelector(".gba-filter-panel");
 
-  listTrack._gameItems =
-    new Map(); 
+  if (!panel) {
+    listTrack.innerHTML = "";
+    listTrack._gameItems = new Map();
+    listTrack._filterItems = new Map();
 
-  const panel =
-    document.createElement("div");
- 
-  panel.className =
-  "gba-filter-panel";
+    panel = document.createElement("div");
+    panel.className = "gba-filter-panel";
 
-  Object.assign(
-    panel.style,
-    {
+    Object.assign(panel.style, {
       position: "absolute",
-      left: "0",
-      top: "0",
-      width: "84%",
+      inset: "0",
+      width: "100%",
       height: "100%",
-
-      display: "flex",
-      flexDirection: "column",
-      justifyContent: "center",
-
-      padding: "12% 0 8%",
-
       background: "transparent",
-
       border: "0",
-
       boxSizing: "border-box",
-
       zIndex: "10"
+    });
+
+    listTrack.appendChild(panel);
+  }
+
+  if (!listTrack._filterItems) {
+    listTrack._filterItems = new Map();
+  }
+
+  const itemMap = listTrack._filterItems;
+  const count = FILTERS.length;
+
+  function getRelative(index) {
+    let relative = index - filterIndex;
+
+    if (relative > count / 2) {
+      relative -= count;
     }
-  );
 
-  const filterTitle =
-    document.createElement("div");
-
-  filterTitle.textContent =
-    "FILTER";
-
-  Object.assign(
-    filterTitle.style,
-    {
-      fontSize:
-        "clamp(13px, 3.8vw, 22px)",
-
-      fontWeight: "900",
-
-      letterSpacing:
-        "0.12em",
-
-      textAlign: "center",
-
-      marginBottom:
-        "8%"
+    if (relative < -count / 2) {
+      relative += count;
     }
-  );
 
-  panel.appendChild(
-    filterTitle
-  );
+    return relative;
+  }
 
-  FILTERS.forEach(
-    (filter, index) => {
-      const item =
-        document.createElement("div");
+  FILTERS.forEach((filter, index) => {
+    let item = itemMap.get(filter.id);
 
-      const selected =
-        index === filterIndex;
-
-      item.textContent =
-        (selected ? "▶ " : "  ") +
-        filter.name;
-
-      Object.assign(
-        item.style,
-        {
-          fontSize:
-            "clamp(10px, 2.8vw, 16px)",
-
-          fontWeight:
-            selected
-              ? "900"
-              : "700",
-
-          lineHeight:
-            "1.8",
-
-          letterSpacing:
-            "0.04em",
-
-          opacity:
-            selected
-              ? "1"
-              : "0.55",
-
-          textAlign:
-            "left",
-
-          padding:
-            selected
-              ? "8px 14px"
-              : "5px 14px",
-
-          background:
-            selected
-              ? "rgba(105,105,105,0.50)"
-              : "transparent",
-
-          border:
-            selected
-              ? "1px solid rgba(255,255,255,0.16)"
-              : "1px solid transparent",
-
-          borderRadius: "14px",
-
-          boxShadow:
-            selected
-              ? "0 7px 18px rgba(0,0,0,0.32)"
-              : "none"
-        }
-      );
-
+    if (!item) {
+      item = document.createElement("div");
+      itemMap.set(filter.id, item);
       panel.appendChild(item);
     }
-  );
 
-  listTrack.appendChild(
-    panel
-  );
+    const relative = getRelative(index);
+    const distance = Math.abs(relative);
+    const selected = relative === 0;
+
+    item.textContent = filter.name;
+
+    Object.assign(item.style, {
+      position: "absolute",
+      left: "0",
+      width: "84%",
+      height: selected
+        ? "56px"
+        : distance === 1
+          ? "30px"
+          : distance === 2
+            ? "22px"
+            : "18px",
+      display: "flex",
+      alignItems: "center",
+      boxSizing: "border-box",
+      padding: selected
+        ? "8px 14px"
+        : distance === 1
+          ? "2px 8px"
+          : "1px 8px",
+      background: selected
+        ? "rgba(105,105,105,0.50)"
+        : "transparent",
+      border: selected
+        ? "1px solid rgba(255,255,255,0.16)"
+        : "1px solid transparent",
+      borderRadius: selected ? "14px" : "8px",
+      boxShadow: selected
+        ? "0 7px 18px rgba(0,0,0,0.32)"
+        : "none",
+      color: "#ffffff",
+      fontSize: selected
+        ? "clamp(17px, 4.6vw, 26px)"
+        : distance === 1
+          ? "clamp(13px, 3.3vw, 19px)"
+          : distance === 2
+            ? "clamp(10px, 2.5vw, 14px)"
+            : "clamp(8px, 1.9vw, 11px)",
+      fontWeight: selected ? "900" : distance === 1 ? "800" : "700",
+      lineHeight: "1.08",
+      textAlign: "left",
+      opacity: selected ? "1" : distance === 1 ? ".78" : distance === 2 ? ".48" : ".30",
+      zIndex: selected ? "3" : "2",
+      overflow: "hidden",
+      transition: [
+        "top 430ms cubic-bezier(0.22,0.61,0.36,1)",
+        "font-size 380ms cubic-bezier(0.22,0.61,0.36,1)",
+        "opacity 320ms ease",
+        "height 380ms cubic-bezier(0.22,0.61,0.36,1)",
+        "padding 380ms ease",
+        "background 300ms ease",
+        "box-shadow 300ms ease"
+      ].join(", ")
+    });
+
+    item.dataset.relative = String(relative);
+    item.dataset.distance = String(distance);
+  });
+
+  const centerY = panel.clientHeight / 2;
+  const selectedHalf = 28;
+  const above = [];
+  const below = [];
+
+  itemMap.forEach((item) => {
+    const relative = Number(item.dataset.relative);
+    const distance = Number(item.dataset.distance);
+
+    if (relative === 0) {
+      item.style.top = `${centerY}px`;
+      item.style.transform = "translateY(-50%)";
+    } else if (relative < 0) {
+      above.push({ item, distance });
+    } else {
+      below.push({ item, distance });
+    }
+  });
+
+  above.sort((a, b) => a.distance - b.distance);
+  below.sort((a, b) => a.distance - b.distance);
+
+  let previousTop = centerY - selectedHalf;
+  above.forEach(({ item, distance }) => {
+    const height = distance === 1 ? 30 : distance === 2 ? 22 : 18;
+    const gap = distance === 1 ? 4 : distance === 2 ? 12 : 3;
+    item.style.top = `${previousTop - gap - height}px`;
+    item.style.transform = "none";
+    previousTop -= gap + height;
+  });
+
+  let previousBottom = centerY + selectedHalf;
+  below.forEach(({ item, distance }) => {
+    const height = distance === 1 ? 30 : distance === 2 ? 22 : 18;
+    const gap = distance === 1 ? 4 : distance === 2 ? 12 : 3;
+    item.style.top = `${previousBottom + gap}px`;
+    item.style.transform = "none";
+    previousBottom += gap + height;
+  });
 
   return panel;
 }

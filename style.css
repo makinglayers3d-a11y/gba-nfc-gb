@@ -1,3 +1,38 @@
 /* Main stylesheet loader. Base snapshot + current SP alignment overrides. */
 @import url("base-style.css?v=sp-skin-4");
 @import url("sp-controls-fix.css?v=1");
+
+/* SP: decorative labels must behave like part of the shell, never selectable. */
+body.sp-skin-test .sp-top-labels,
+body.sp-skin-test .sp-top-labels * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+/* Keep the hidden developer gesture available only on the coded centre brand. */
+body.sp-skin-test .sp-code-brand {
+  pointer-events: auto !important;
+  touch-action: none;
+}
+
+/* In the SP skin the quick radial menu opens centred just above the small middle button. */
+@media (orientation: portrait) {
+  body.sp-skin-test #ml3d-radial-menu {
+    left: 50% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: calc(39.25dvh + 22px) !important;
+    transform-origin: 50% 100%;
+    margin-left: -110px;
+  }
+
+  body.sp-skin-test #ml3d-radial-menu {
+    animation-name: ml3dRadialInSP;
+  }
+}
+
+@keyframes ml3dRadialInSP {
+  from { opacity: 0; transform: translateY(54px) scale(.08) rotate(-35deg); }
+  to { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+}

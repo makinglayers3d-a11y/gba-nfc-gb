@@ -72,6 +72,9 @@ if (savedButtonColor) {
 let timer = null;
 let saveTimer = null;
 let startTime = 0;
+let backgroundSuspended = false;
+let resumeGbaAfterBackground = false;
+let resumeGbAfterBackground = false;
 
 let audioInput = null;
 let audioVolume = 1;
@@ -322,7 +325,7 @@ function initializeAudio(audioUnlockElement = null) {
   }
 }
   
-  function unlockAudio() {
+function unlockAudio() {
   try {
     const context = XAudioJSWebAudioContextHandle;
 
@@ -332,6 +335,42 @@ function initializeAudio(audioUnlockElement = null) {
   } catch (error) {
     console.log("No se pudo desbloquear el audio:", error);
   }
+}
+
+function stopGbaTimers() {
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
+
+  if (saveTimer) {
+    clearInterval(saveTimer);
+    saveTimer = null;
+  }
+}
+
+function startGbaTimers() {
+  if (!emulator) return;
+
+  stopGbaTimers();
+  startTime = Date.now();
+
+  timer = window.setInterval(() => {
+    if (!emulator) return;
+
+    const elapsed = (Date.now() - startTime) >>> 0;
+    emulator.timerCallback(elapsed);
+  }, 8);
+
+  saveTimer = window.setInterval(() => {
+    if (!emulator) return;
+
+    try {
+      emulator.exportSave();
+    } catch (error) {
+      console.error("Guardado automático:", error);
+    }
+  }, 10000);
 }
   
 document.querySelectorAll("[data-key]").forEach((button) => {
@@ -617,25 +656,7 @@ window.__gba = emulator;
        * IodineGBA espera el tiempo transcurrido,
        * no performance.now() absoluto.
        */
-      startTime = Date.now();
-
-      timer = window.setInterval(() => {
-        if (!emulator) return;
-
-        const elapsed = (Date.now() - startTime) >>> 0;
-
-        emulator.timerCallback(elapsed);
-      }, 8);
-
-      saveTimer = window.setInterval(() => {
-  if (!emulator) return;
-
-  try {
-    emulator.exportSave();
-  } catch (error) {
-    console.error("Guardado automático:", error);
-  }
-}, 10000);
+      startGbaTimers();
       
       status.hidden = true;
       status.style.display = "none";
@@ -788,15 +809,72 @@ if (reloadButton) {
 }
  
 
-   function shutdownEmulator() {
-    if (timer) {
-      clearInterval(timer);
-      timer = null;
+  function suspendEmulatorForBackground() {
+    if (backgroundSuspended) return;
+
+    backgroundSuspended = true;
+
+    if (emulator) {
+      resumeGbaAfterBackground = emulator.emulatorStatus < 0x10;
+
+      if (resumeGbaAfterBackground) {
+        try {
+          emulator.pause();
+        } catch (error) {
+          console.error("Pausa en segundo plano GBA:", error);
+        }
+      }
+
+      stopGbaTimers();
     }
-if (saveTimer) {
-  clearInterval(saveTimer);
-  saveTimer = null;
-}
+
+    if (
+      window.gbaGB &&
+      typeof window.gbaGB.isPaused === "function" &&
+      typeof window.gbaGB.pause === "function"
+    ) {
+      resumeGbAfterBackground = !window.gbaGB.isPaused();
+
+      if (resumeGbAfterBackground) {
+        window.gbaGB.pause();
+      }
+    }
+  }
+
+  function resumeEmulatorFromBackground() {
+    if (!backgroundSuspended || document.hidden) return;
+
+    backgroundSuspended = false;
+
+    if (resumeGbaAfterBackground && emulator) {
+      try {
+        emulator.play();
+        startGbaTimers();
+        unlockAudio();
+      } catch (error) {
+        console.error("Reanudación GBA:", error);
+      }
+    }
+
+    if (
+      resumeGbAfterBackground &&
+      window.gbaGB &&
+      typeof window.gbaGB.resume === "function"
+    ) {
+      try {
+        window.gbaGB.resume();
+      } catch (error) {
+        console.error("Reanudación GB/GBC:", error);
+      }
+    }
+
+    resumeGbaAfterBackground = false;
+    resumeGbAfterBackground = false;
+  }
+
+  function shutdownEmulator() {
+    stopGbaTimers();
+
     if (emulator) {
       try {
         /*
@@ -809,7 +887,16 @@ if (saveTimer) {
     }
   }
 
-  window.addEventListener("pagehide", shutdownEmulator);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      suspendEmulatorForBackground();
+    } else {
+      resumeEmulatorFromBackground();
+    }
+  });
+
+  window.addEventListener("pagehide", suspendEmulatorForBackground);
+  window.addEventListener("pageshow", resumeEmulatorFromBackground);
   window.addEventListener("beforeunload", shutdownEmulator);
 
 

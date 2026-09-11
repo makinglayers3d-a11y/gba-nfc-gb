@@ -976,6 +976,22 @@ window.gbaGB = {
     Emulator.stop();
   },
 
+  isPaused() {
+    return !emulator || emulator.isPaused;
+  },
+
+  pause() {
+    if (emulator && !emulator.isPaused) {
+      emulator.pause();
+    }
+  },
+
+  resume() {
+    if (emulator && emulator.isPaused) {
+      emulator.resume();
+    }
+  },
+
   keyDown(keyName) {
     if (!emulator) {
       return;

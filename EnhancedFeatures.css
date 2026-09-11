@@ -228,7 +228,7 @@
 }
 
 .ml3d-save-capture.fly {
-  animation: ml3dCaptureToMenu 900ms 1200ms cubic-bezier(.55,.05,.8,.45) forwards;
+  animation: ml3dCaptureToMenu 900ms 3000ms cubic-bezier(.55,.05,.8,.45) forwards;
 }
 
 .ml3d-save-capture-screen {

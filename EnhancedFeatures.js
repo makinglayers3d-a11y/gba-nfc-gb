@@ -271,7 +271,7 @@
       requestAnimationFrame(() => {
         requestAnimationFrame(() => capture.classList.add("fly"));
       });
-      window.setTimeout(() => capture.remove(), 2350);
+      window.setTimeout(() => capture.remove(), 4050);
     };
 
     if (settingsMenu && settingsMenu.open && closeMenuButton) {
@@ -421,16 +421,7 @@
     });
   }
 
-  window.addEventListener("ml3d-game-selection-changed", (event) => updateGameInfo(event.detail));
-
-  window.addEventListener("deviceorientation", (event) => {
-    const preview = document.querySelector(".ml3d-live-preview");
-    if (!preview) return;
-    const x = Math.max(-9, Math.min(9, (event.gamma || 0) / 5));
-    const y = Math.max(-7, Math.min(7, (event.beta || 0) / 10));
-    preview.style.setProperty("--tilt-x", `${-y}deg`);
-    preview.style.setProperty("--tilt-y", `${x}deg`);
-  });
+  /* La vista previa queda desactivada temporalmente. */
 
   function playInitialCartridge() {
     if (params.get("skipintro") === "1") {

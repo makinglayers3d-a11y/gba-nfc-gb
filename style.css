@@ -1717,11 +1717,11 @@ line-height: 1;
 #menu.menu-closing-to-screen .menu-card {
   transform-origin: center;
   pointer-events: none;
-  animation: menuToScreen 500ms cubic-bezier(.55, 0, .25, 1) both !important;
+  animation: menuToScreen 900ms cubic-bezier(.45, 0, .2, 1) both !important;
 }
 
 #menu.menu-closing-to-screen::backdrop {
-  animation: menuBackdropClose 500ms ease-in both !important;
+  animation: menuBackdropClose 900ms ease-in both !important;
 }
 
 @keyframes menuToScreen {
@@ -1730,8 +1730,11 @@ line-height: 1;
     transform: translate(0, 0) scale(1, 1);
     border-radius: 22px;
   }
+  82% {
+    opacity: 1;
+  }
   100% {
-    opacity: .18;
+    opacity: 0;
     transform:
       translate(var(--menu-screen-x), var(--menu-screen-y))
       scale(var(--menu-screen-scale-x), var(--menu-screen-scale-y));
@@ -1740,9 +1743,9 @@ line-height: 1;
 }
 
 #menu.menu-closing-comic .menu-card {
-  transform-origin: calc(100% - 31px) 31px;
+  transform-origin: calc(100% - 24px) 0;
   pointer-events: none;
-  animation: menuComicClose 480ms cubic-bezier(.7, 0, 1, .45) both !important;
+  animation: menuComicClose 380ms cubic-bezier(.8, .2, .8, 1) both !important;
 }
 
 #menu.menu-closing-comic::backdrop {
@@ -1753,22 +1756,14 @@ line-height: 1;
   0% {
     opacity: 1;
     transform: scale(1);
-    filter: blur(0);
   }
-  24% {
+  28% {
     opacity: 1;
-    transform: scale(1.015);
-    filter: blur(0);
-  }
-  68% {
-    opacity: .82;
-    transform: scale(.38) rotate(3deg);
-    filter: blur(1px);
+    transform: scale(1.025);
   }
   100% {
     opacity: 0;
-    transform: scale(.025) rotate(8deg);
-    filter: blur(4px);
+    transform: scale(.06);
   }
 }
 

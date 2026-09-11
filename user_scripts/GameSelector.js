@@ -53,6 +53,7 @@ let selectedIndex = 0;
 let currentFilter = "all";
 let filterOpen = false;
 let filterIndex = 0;
+let filterTransitioning = false;
 
 const FILTERS = [
   {
@@ -129,10 +130,14 @@ function applyGameFilter() {
 
   selectedIndex = 0;
 }
- function openFilterSelector() {
-  if (!menuOpen || filterOpen) {
+ async function openFilterSelector() {
+  if (!menuOpen || filterOpen || filterTransitioning) {
     return;
   }
+
+  filterTransitioning = true;
+
+  await collapseGamesIntoSelected();
 
   filterOpen = true;
 
@@ -147,12 +152,18 @@ function applyGameFilter() {
       ? currentIndex
       : 0;
 
-  renderFilterSelector();
+  const panel = renderFilterSelector();
+
+  if (panel) {
+    await playFilterExpansion(panel);
+  }
+
+  filterTransitioning = false;
 }
 
 function renderFilterSelector() {
   if (!listTrack) {
-    return;
+    return null;
   }
 
   listTrack.innerHTML = "";
@@ -170,22 +181,20 @@ function renderFilterSelector() {
     panel.style,
     {
       position: "absolute",
-      left: "8%",
-      right: "5%",
-      top: "16%",
-      bottom: "16%",
+      left: "0",
+      top: "0",
+      width: "84%",
+      height: "100%",
 
       display: "flex",
       flexDirection: "column",
       justifyContent: "center",
 
-      padding: "8% 7%",
+      padding: "12% 0 8%",
 
-      background:
-        "rgba(5, 8, 12, 0.94)",
+      background: "transparent",
 
-      border:
-        "1px solid rgba(255,255,255,0.18)",
+      border: "0",
 
       boxSizing: "border-box",
 
@@ -259,7 +268,26 @@ function renderFilterSelector() {
             "left",
 
           padding:
-            "2% 0"
+            selected
+              ? "8px 14px"
+              : "5px 14px",
+
+          background:
+            selected
+              ? "rgba(105,105,105,0.50)"
+              : "transparent",
+
+          border:
+            selected
+              ? "1px solid rgba(255,255,255,0.16)"
+              : "1px solid transparent",
+
+          borderRadius: "14px",
+
+          boxShadow:
+            selected
+              ? "0 7px 18px rgba(0,0,0,0.32)"
+              : "none"
         }
       );
 
@@ -270,10 +298,169 @@ function renderFilterSelector() {
   listTrack.appendChild(
     panel
   );
+
+  return panel;
+}
+
+function waitForAnimation(animation) {
+  return animation.finished.catch(() => undefined);
+}
+
+async function collapseGamesIntoSelected() {
+  if (!listTrack || !listTrack._gameItems || !games.length) {
+    return;
+  }
+
+  const selectedGame = games[selectedIndex];
+  const selectedItem = selectedGame
+    ? listTrack._gameItems.get(selectedGame.filename)
+    : null;
+
+  if (!selectedItem) {
+    return;
+  }
+
+  const selectedRect = selectedItem.getBoundingClientRect();
+  const centerY = selectedRect.top + selectedRect.height / 2;
+  const animations = [];
+
+  listTrack._gameItems.forEach((item) => {
+    if (item.style.display === "none") {
+      return;
+    }
+
+    const rect = item.getBoundingClientRect();
+    const offsetY = centerY - (rect.top + rect.height / 2);
+    const isSelected = item === selectedItem;
+
+    const animation = item.animate(
+      isSelected
+        ? [
+            { transform: "translateY(-50%) scale(1)", filter: "brightness(1)" },
+            { transform: "translateY(-50%) scale(1.045)", filter: "brightness(1.16)" }
+          ]
+        : [
+            { translate: "0 0", opacity: getComputedStyle(item).opacity },
+            { translate: `0 ${offsetY}px`, opacity: 0 }
+          ],
+      {
+        duration: 420,
+        easing: "cubic-bezier(.45, 0, .2, 1)",
+        fill: "forwards"
+      }
+    );
+
+    animations.push(waitForAnimation(animation));
+  });
+
+  await Promise.all(animations);
+}
+
+function playFilterExpansion(panel) {
+  return waitForAnimation(
+    panel.animate(
+      [
+        {
+          opacity: 0,
+          clipPath: "inset(50% 4% 50% 4% round 14px)",
+          transform: "scaleX(.82)"
+        },
+        {
+          opacity: 1,
+          clipPath: "inset(0 0 0 0 round 16px)",
+          transform: "scaleX(1)"
+        }
+      ],
+      {
+        duration: 440,
+        easing: "cubic-bezier(.2, .8, .2, 1)",
+        fill: "both"
+      }
+    )
+  );
+}
+
+function playFilterCollapse(panel) {
+  return waitForAnimation(
+    panel.animate(
+      [
+        {
+          opacity: 1,
+          clipPath: "inset(0 0 0 0 round 16px)",
+          transform: "scaleX(1)"
+        },
+        {
+          opacity: 0,
+          clipPath: "inset(50% 4% 50% 4% round 14px)",
+          transform: "scaleX(.82)"
+        }
+      ],
+      {
+        duration: 380,
+        easing: "cubic-bezier(.45, 0, .8, .2)",
+        fill: "forwards"
+      }
+    )
+  );
+}
+
+async function expandGamesFromSelected() {
+  if (!listTrack || !listTrack._gameItems || !games.length) {
+    return;
+  }
+
+  const selectedGame = games[selectedIndex];
+  const selectedItem = selectedGame
+    ? listTrack._gameItems.get(selectedGame.filename)
+    : null;
+
+  if (!selectedItem) {
+    return;
+  }
+
+  const selectedRect = selectedItem.getBoundingClientRect();
+  const centerY = selectedRect.top + selectedRect.height / 2;
+  const animations = [];
+
+  listTrack._gameItems.forEach((item) => {
+    if (item.style.display === "none") {
+      return;
+    }
+
+    const rect = item.getBoundingClientRect();
+    const offsetY = centerY - (rect.top + rect.height / 2);
+    const distance = Math.abs(offsetY);
+    const finalOpacity = getComputedStyle(item).opacity;
+
+    const animation = item.animate(
+      [
+        {
+          translate: `0 ${offsetY}px`,
+          opacity: 0,
+          scale: ".72"
+        },
+        {
+          translate: "0 0",
+          opacity: finalOpacity,
+          scale: "1"
+        }
+      ],
+      {
+        duration: 480,
+        delay: Math.min(120, distance * .45),
+        easing: "cubic-bezier(.2, .8, .2, 1)",
+        fill: "both"
+      }
+    );
+
+    animations.push(waitForAnimation(animation));
+  });
+
+  await Promise.all(animations);
 }
 
 function moveFilterSelection(delta) {
-  if (!filterOpen) {
+  if (!filterOpen || filterTransitioning) {
     return;
   }
 
@@ -296,8 +483,8 @@ function moveFilterSelection(delta) {
   renderFilterSelector();
 }
 
-function selectCurrentFilter() {
-  if (!filterOpen) {
+async function selectCurrentFilter() {
+  if (!filterOpen || filterTransitioning) {
     return;
   }
 
@@ -306,6 +493,16 @@ function selectCurrentFilter() {
 
   if (!filter) {
     return;
+  }
+
+  filterTransitioning = true;
+
+  const panel = listTrack
+    ? listTrack.querySelector(".gba-filter-panel")
+    : null;
+
+  if (panel) {
+    await playFilterCollapse(panel);
   }
 
   currentFilter =
@@ -317,6 +514,10 @@ function selectCurrentFilter() {
 
   renderList();
   updateCoverBackground();
+
+  await expandGamesFromSelected();
+
+  filterTransitioning = false;
 }
 
 function closeFilterSelector() {

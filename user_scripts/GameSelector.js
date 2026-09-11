@@ -83,6 +83,38 @@ let opening = false;
 
 let menuAudioContext = null;
 
+function hasRunningGame() {
+  return Boolean(
+    window.__gba ||
+    (
+      window.gbaGB &&
+      typeof window.gbaGB.isRunning === "function" &&
+      window.gbaGB.isRunning()
+    )
+  );
+}
+
+function setGameAudioDucked(ducked) {
+  if (
+    typeof window.gbaSetGameMenuAudioDucked === "function"
+  ) {
+    window.gbaSetGameMenuAudioDucked(
+      Boolean(ducked) && hasRunningGame()
+    );
+  }
+}
+
+function setFilterViewportMode(active) {
+  if (!listViewport) return;
+
+  const mask = active
+    ? "none"
+    : "linear-gradient(to bottom, transparent 0%, #000 8%, #000 92%, transparent 100%)";
+
+  listViewport.style.maskImage = mask;
+  listViewport.style.webkitMaskImage = mask;
+}
+
  function friendlyName(filename) {
   return (
     knownNames[filename] ||
@@ -140,6 +172,7 @@ function applyGameFilter() {
   await collapseGamesIntoSelected();
 
   filterOpen = true;
+  setFilterViewportMode(true);
 
   const currentIndex =
     FILTERS.findIndex(
@@ -181,11 +214,42 @@ function renderFilterSelector() {
       inset: "0",
       width: "100%",
       height: "100%",
-      background: "transparent",
+      background: "#020204",
       border: "0",
       boxSizing: "border-box",
+      overflow: "hidden",
       zIndex: "10"
     });
+
+    const scene = document.createElement("div");
+    scene.className = "gba-filter-logo-scene";
+
+    const logoWrap = document.createElement("div");
+    logoWrap.className = "gba-filter-logo-wrap";
+
+    const logo = document.createElement("img");
+    logo.className = "gba-filter-logo";
+    logo.src = "assets/ml3d-logo.png";
+    logo.alt = "";
+    logo.setAttribute("aria-hidden", "true");
+
+    const smoke = document.createElement("div");
+    smoke.className = "gba-filter-brake-smoke";
+    smoke.setAttribute("aria-hidden", "true");
+
+    for (let index = 0; index < 7; index += 1) {
+      const puff = document.createElement("span");
+      puff.style.setProperty("--puff-index", String(index));
+      puff.style.setProperty("--puff-drift", `${(index - 3) * 12}px`);
+      puff.style.left = `${8 + index * 13}%`;
+      puff.style.width = `${14 + index}px`;
+      smoke.appendChild(puff);
+    }
+
+    logoWrap.appendChild(logo);
+    logoWrap.appendChild(smoke);
+    scene.appendChild(logoWrap);
+    panel.appendChild(scene);
 
     listTrack.appendChild(panel);
   }
@@ -267,7 +331,7 @@ function renderFilterSelector() {
       lineHeight: "1.08",
       textAlign: "left",
       opacity: selected ? "1" : distance === 1 ? ".78" : distance === 2 ? ".48" : ".30",
-      zIndex: selected ? "3" : "2",
+      zIndex: selected ? "5" : "4",
       overflow: "hidden",
       transition: [
         "top 430ms cubic-bezier(0.22,0.61,0.36,1)",
@@ -536,6 +600,7 @@ async function selectCurrentFilter() {
   applyGameFilter();
 
   filterOpen = false;
+  setFilterViewportMode(false);
 
   renderList();
   updateCoverBackground();
@@ -551,6 +616,7 @@ function closeFilterSelector() {
   }
 
   filterOpen = false;
+  setFilterViewportMode(false);
 
   renderList();
   updateCoverBackground();
@@ -1678,8 +1744,12 @@ item.textContent =
     playMenuMoveSound();
   }
 
-  function closeScreenSelector() {
+  function closeScreenSelector(restoreAudio = true) {
     menuOpen = false;
+
+    if (restoreAudio) {
+      setGameAudioDucked(false);
+    }
 
     if (overlay) {
       overlay.remove();
@@ -1754,7 +1824,7 @@ item.textContent =
       );
     }
 
-    closeScreenSelector();
+    closeScreenSelector(false);
 
     window.setTimeout(
       () => {
@@ -1915,11 +1985,13 @@ item.textContent =
     }
 
     opening = true;
+    setGameAudioDucked(true);
 
     await loadGameList();
 
     if (!games.length) {
       opening = false;
+      setGameAudioDucked(false);
       return;
     }
 

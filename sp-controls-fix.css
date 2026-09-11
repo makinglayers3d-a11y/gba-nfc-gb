@@ -1,0 +1,9 @@
+/* SP portrait touch-target alignment override. */
+@media (orientation: portrait) {
+  body.sp-skin-test .dpad { left:11.2%!important; top:66.1%!important; width:29.5%!important; height:17.7%!important; }
+  body.sp-skin-test .dpad button { width:38%!important; height:38%!important; }
+  body.sp-skin-test .dpad button[data-key="UP"] { left:31%!important; top:0!important; }
+  body.sp-skin-test .dpad button[data-key="DOWN"] { left:31%!important; top:62%!important; bottom:auto!important; }
+  body.sp-skin-test .dpad button[data-key="LEFT"] { left:0!important; top:31%!important; }
+  body.sp-skin-test .dpad button[data-key="RIGHT"] { left:62%!important; right:auto!important; top:31%!important; }
+}

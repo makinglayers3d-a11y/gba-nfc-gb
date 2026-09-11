@@ -16,6 +16,7 @@ const game = (params.get("game") || "pokemon").toLowerCase();
   const reloadButton = document.getElementById("reload-game");
   const saveGameButton = document.getElementById("save-game");
   const speedSelect = document.getElementById("speed-select");
+  const hapticButton = document.getElementById("haptic-button");
   const canvas = document.getElementById("screen");
 
   const volumeSlider = document.getElementById("volume-slider");
@@ -78,9 +79,11 @@ let resumeGbAfterBackground = false;
 
 let audioInput = null;
 let audioVolume = 1;
-let audioMuted = false;
+let audioMuted = localStorage.getItem("gba-muted") === "true";
 let previousVolume = 1;
 let gameMenuAudioDucked = false;
+let hapticEnabled =
+  localStorage.getItem("gba-vibration-enabled") === "true";
 
 const GAME_MENU_VOLUME_FACTOR = 0.18;
 
@@ -274,7 +277,29 @@ function loadGameType(name, callback) {
 
   if (muteButton) {
     muteButton.textContent = audioMuted ? "Activar sonido" : "Silenciar";
+    muteButton.setAttribute("aria-pressed", String(audioMuted));
   }
+}
+
+function updateHapticUI() {
+  if (!hapticButton) return;
+
+  hapticButton.classList.toggle("enabled", hapticEnabled);
+  hapticButton.setAttribute("aria-pressed", String(hapticEnabled));
+  hapticButton.setAttribute(
+    "aria-label",
+    hapticEnabled
+      ? "Desactivar vibración de los controles"
+      : "Activar vibración de los controles"
+  );
+}
+
+function triggerHapticFeedback() {
+  if (!hapticEnabled || typeof navigator.vibrate !== "function") {
+    return;
+  }
+
+  navigator.vibrate(18);
 }
 
 function updateEmulatorAudioOutput() {
@@ -401,6 +426,7 @@ document.querySelectorAll("[data-key]").forEach((button) => {
 
     initializeAudio();
     unlockAudio();
+    triggerHapticFeedback();
 
     pressKey(keyName);
   }
@@ -717,6 +743,7 @@ if (volumeSlider) {
     const volume = Number(volumeSlider.value) / 100;
 
     audioMuted = false;
+    localStorage.setItem("gba-muted", "false");
     applyVolume(volume);
   });
 }
@@ -726,24 +753,33 @@ if (muteButton) {
     if (!audioMuted) {
       previousVolume = audioVolume;
       audioMuted = true;
-
-     if (audioInput) {
-  audioInput.setVolume(0);
-}
-
-if (window.gbaGB) {
-  window.gbaGB.setVolume(0);
-} 
-
-      updateVolumeUI();
     } else {
       audioMuted = false;
-      applyVolume(previousVolume > 0 ? previousVolume : 1);
+    }
+
+    localStorage.setItem("gba-muted", String(audioMuted));
+    updateEmulatorAudioOutput();
+    updateVolumeUI();
+  });
+}
+
+if (hapticButton) {
+  hapticButton.addEventListener("click", () => {
+    hapticEnabled = !hapticEnabled;
+    localStorage.setItem(
+      "gba-vibration-enabled",
+      String(hapticEnabled)
+    );
+    updateHapticUI();
+
+    if (hapticEnabled) {
+      triggerHapticFeedback();
     }
   });
 }
 
 updateVolumeUI();
+updateHapticUI();
   closeMenu.addEventListener("click", async () => {
     if (!menu.open || menu.classList.contains("menu-closing-comic")) {
       return;

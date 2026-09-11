@@ -14,7 +14,7 @@
   if(!originalStart){console.error("GBSave: no se encontró window.gbaGB.start");}else{window.gbaGB.start=async function(romPath){stopSaveTimer();saveCurrent();const gbEmulator=await originalStart.call(this,romPath);currentKey=saveKey(romPath);currentEmulator=gbEmulator;loadFor(romPath,gbEmulator);startSaveTimer();return gbEmulator;};window.gbaGB.save=saveCurrent;window.addEventListener("pagehide",saveCurrent);window.addEventListener("beforeunload",saveCurrent);}
   if(!document.querySelector('script[data-ml3d-developer-tools]')){
     const script=document.createElement('script');script.src='developer-tools.js?v=5';script.dataset.ml3dDeveloperTools='true';
-    script.onload=()=>{const ui=document.createElement('script');ui.src='developer-tools-ui.js?v=1';ui.dataset.ml3dDeveloperUi='true';document.head.appendChild(ui)};
+    script.onload=()=>{const ui=document.createElement('script');ui.src='developer-tools-ui.js?v=2';ui.dataset.ml3dDeveloperUi='true';document.head.appendChild(ui)};
     document.head.appendChild(script);
   }
 })();

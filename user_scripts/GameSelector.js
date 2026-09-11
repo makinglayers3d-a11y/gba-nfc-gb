@@ -1707,6 +1707,24 @@ item.textContent =
   );
 
   updateCoverBackground();
+
+  const selectedFilename = selectedGame.filename;
+  const selectedLower = selectedFilename.toLowerCase();
+  window.dispatchEvent(
+    new CustomEvent("ml3d-game-selection-changed", {
+      detail: {
+        id: slugFromFilename(selectedFilename),
+        filename: selectedFilename,
+        name: friendlyName(selectedFilename),
+        system:
+          selectedLower.endsWith(".gbc")
+            ? "GBC"
+            : selectedLower.endsWith(".gb")
+              ? "GB"
+              : "GBA"
+      }
+    })
+  );
 }
   
   function moveSelection(delta) {
@@ -1766,7 +1784,7 @@ item.textContent =
      */
   }
 
-  function selectCurrentGame() {
+  async function selectCurrentGame() {
     if (!games.length) {
       return;
     }
@@ -1824,6 +1842,22 @@ item.textContent =
       );
     }
 
+    const lowerFilename = selectedGame.filename.toLowerCase();
+    const system =
+      lowerFilename.endsWith(".gbc")
+        ? "GAME BOY COLOR"
+        : lowerFilename.endsWith(".gb")
+          ? "GAME BOY"
+          : "GAME BOY ADVANCE";
+
+    if (typeof window.ml3dPlayCartridgeInsert === "function") {
+      await window.ml3dPlayCartridgeInsert({
+        filename: selectedGame.filename,
+        name: friendlyName(selectedGame.filename),
+        system
+      });
+    }
+
     closeScreenSelector(false);
 
     window.setTimeout(
@@ -1831,7 +1865,7 @@ item.textContent =
         window.location.href =
           url.toString();
       },
-      90
+      50
     );
   }
 

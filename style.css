@@ -1932,3 +1932,39 @@ line-height: 1;
 #menu #haptic-button:active {
   transform: scale(.96);
 }
+
+/* Prueba reversible: carcasa Game Boy Advance SP en vertical. */
+@media (orientation: portrait) {
+  body.sp-skin-test { min-height:100dvh; overflow:hidden; background:#080a0d; }
+  body.sp-skin-test .app { position:relative; width:100vw; height:100dvh; min-height:0; padding:0; overflow:hidden; background:#080a0d; }
+  body.sp-skin-test .app::before { content:""; position:absolute; inset:0; z-index:2; pointer-events:none; background:url("assets/gba-sp-silver.jpg?v=1") center/100% 100% no-repeat; }
+  body.sp-skin-test .topbar,
+  body.sp-skin-test .console,
+  body.sp-skin-test .controls { position:absolute; inset:0; width:100%; height:100%; max-width:none; min-height:0; margin:0; padding:0; }
+  body.sp-skin-test .topbar { z-index:6; pointer-events:none; }
+  body.sp-skin-test .brand { display:none; }
+  body.sp-skin-test #menu-button { position:absolute; left:50%; top:60.75%; width:9.2vw; height:9.2vw; min-width:34px; min-height:34px; max-width:54px; max-height:54px; padding:0; transform:translate(-50%,-50%); opacity:.001; pointer-events:auto; }
+  body.sp-skin-test .console { z-index:1; display:block; }
+  body.sp-skin-test .screen-frame { position:absolute; left:11.48%; top:7.94%; z-index:3; width:77.04%; height:32.82%; aspect-ratio:auto; margin:0; border-radius:2.1vw; box-shadow:none; overflow:hidden; }
+  body.sp-skin-test #screen { width:100%; height:100%; object-fit:fill; }
+  body.sp-skin-test .controls { z-index:7; display:block; pointer-events:none; }
+  body.sp-skin-test .controls button { position:absolute!important; margin:0!important; padding:0!important; border:0!important; background:transparent!important; box-shadow:none!important; color:transparent!important; opacity:.001; pointer-events:auto; }
+  body.sp-skin-test .shoulder { top:49.9%!important; width:17.5%!important; height:7.2%!important; border-radius:0!important; }
+  body.sp-skin-test .shoulder.left { left:0!important; }
+  body.sp-skin-test .shoulder.right { right:0!important; }
+  body.sp-skin-test .dpad { position:absolute; left:10.3%; top:64.3%; width:34%; height:22%; margin:0; pointer-events:none; }
+  body.sp-skin-test .dpad button { width:36%!important; height:36%!important; }
+  body.sp-skin-test .dpad button[data-key="UP"] { left:32%!important; top:0!important; }
+  body.sp-skin-test .dpad button[data-key="DOWN"] { left:32%!important; bottom:0!important; }
+  body.sp-skin-test .dpad button[data-key="LEFT"] { left:0!important; top:32%!important; }
+  body.sp-skin-test .dpad button[data-key="RIGHT"] { right:0!important; top:32%!important; }
+  body.sp-skin-test .face-buttons { position:absolute; inset:0; width:100%; height:100%; margin:0; pointer-events:none; }
+  body.sp-skin-test .face { width:14.5vw!important; height:14.5vw!important; max-width:76px; max-height:76px; border-radius:50%!important; }
+  body.sp-skin-test .face.a { right:10.4%!important; top:65.7%!important; }
+  body.sp-skin-test .face.b { left:56.1%!important; top:69.1%!important; }
+  body.sp-skin-test .start-select { position:absolute; inset:0; display:block; width:100%; height:100%; margin:0; transform:none; pointer-events:none; }
+  body.sp-skin-test .start-select button { top:89.4%!important; width:11vw!important; height:6vw!important; min-width:0!important; border-radius:50%!important; }
+  body.sp-skin-test .start-select button[data-key="SELECT"] { left:34.5%!important; }
+  body.sp-skin-test .start-select button[data-key="START"] { left:54.1%!important; }
+  body.sp-skin-test .bottom-brand { display:none; }
+}

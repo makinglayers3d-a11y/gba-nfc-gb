@@ -1507,6 +1507,126 @@ line-height: 1;
   text-align: center;
   opacity: 0.8;
 }
+
+/* Escena animada del selector de filtros. */
+.gba-filter-logo-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.gba-filter-logo-wrap {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(40%, 150px);
+  aspect-ratio: 1179 / 1334;
+  transform-origin: 50% 82%;
+  animation: filterLogoBrakeIn 1250ms cubic-bezier(.18, .76, .22, 1) both;
+}
+
+.gba-filter-logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: .27;
+  filter: blur(3.5px) saturate(1.25) brightness(1.12);
+  animation: filterLogoIdle 4.2s 1250ms ease-in-out infinite;
+}
+
+.gba-filter-brake-smoke {
+  position: absolute;
+  left: 50%;
+  bottom: -4%;
+  width: 120%;
+  height: 30%;
+  transform: translateX(-50%);
+}
+
+.gba-filter-brake-smoke span {
+  --puff-index: 0;
+  position: absolute;
+  left: 8%;
+  bottom: 0;
+  width: 14px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(220, 226, 235, .48);
+  filter: blur(3px);
+  opacity: 0;
+  animation: filterBrakeSmoke 1250ms ease-out both;
+  animation-delay: calc(var(--puff-index) * 24ms);
+}
+
+@keyframes filterLogoBrakeIn {
+  0% {
+    opacity: 0;
+    transform: translate(-235%, -50%) rotate(-12deg) scale(.62);
+  }
+  34% {
+    opacity: 1;
+  }
+  56% {
+    transform: translate(-23%, -50%) rotate(6deg) scale(1.08, .94);
+  }
+  69% {
+    transform: translate(-62%, -50%) rotate(-3deg) scale(.97, 1.04);
+  }
+  82% {
+    transform: translate(-45%, -50%) rotate(1.5deg) scale(1.015, .99);
+  }
+  92% {
+    transform: translate(-52%, -50%) rotate(-.6deg) scale(.995, 1.005);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(0) scale(1);
+  }
+}
+
+@keyframes filterBrakeSmoke {
+  0%, 43% {
+    opacity: 0;
+    transform: translate(0, 4px) scale(.3);
+  }
+  55% {
+    opacity: .62;
+  }
+  78% {
+    opacity: .20;
+    transform: translate(var(--puff-drift), -24px) scale(1.35);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--puff-drift), -38px) scale(1.8);
+  }
+}
+
+@keyframes filterLogoIdle {
+  0%, 100% {
+    transform: translateY(0) rotate(-1deg) scale(1);
+    opacity: .24;
+  }
+  50% {
+    transform: translateY(-4px) rotate(1deg) scale(1.035);
+    opacity: .32;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gba-filter-logo-wrap,
+  .gba-filter-logo,
+  .gba-filter-brake-smoke span {
+    animation: none;
+  }
+
+  .gba-filter-logo-wrap {
+    transform: translate(-50%, -50%);
+  }
+}
 /* Ajustes del menú */
 
 #select-game-button,

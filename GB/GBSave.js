@@ -93,48 +93,33 @@
     console.error(
       "GBSave: no se encontró window.gbaGB.start"
     );
+  } else {
+    window.gbaGB.start = async function (romPath) {
+      stopSaveTimer();
+      saveCurrent();
 
-    return;
+      const gbEmulator = await originalStart.call(this, romPath);
+      currentKey = saveKey(romPath);
+      currentEmulator = gbEmulator;
+      loadFor(romPath, gbEmulator);
+      startSaveTimer();
+      return gbEmulator;
+    };
+
+    window.gbaGB.save = function () {
+      saveCurrent();
+    };
+
+    window.addEventListener("pagehide", saveCurrent);
+    window.addEventListener("beforeunload", saveCurrent);
   }
 
-  window.gbaGB.start = async function (romPath) {
-    stopSaveTimer();
-
-    saveCurrent();
-
-    const gbEmulator =
-      await originalStart.call(
-        this,
-        romPath
-      );
-
-    currentKey =
-      saveKey(romPath);
-
-    currentEmulator =
-      gbEmulator;
-
-    loadFor(
-      romPath,
-      gbEmulator
-    );
-
-    startSaveTimer();
-
-    return gbEmulator;
-  };
-
-  window.gbaGB.save = function () {
-  saveCurrent();
-};
-
-  window.addEventListener(
-    "pagehide",
-    saveCurrent
-  );
-
-  window.addEventListener(
-    "beforeunload",
-    saveCurrent
-  );
+  // Load the hidden developer tools from an already-loaded, small entry point.
+  // This avoids changing the main menu markup in index.html.
+  if (!document.querySelector('script[data-ml3d-developer-tools]')) {
+    const script = document.createElement('script');
+    script.src = 'developer-tools.js?v=3';
+    script.dataset.ml3dDeveloperTools = 'true';
+    document.head.appendChild(script);
+  }
 })();

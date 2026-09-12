@@ -2,7 +2,7 @@
   "use strict";
   const FAMILY_KEY = "ml3d-appearance-family";
   const SP_STYLE_KEY = "ml3d-sp-style";
-  const SP_STYLES = ["silver", "gray-red", "cream-burgundy"];
+  const SP_STYLES = ["silver", "gray-red", "cream-burgundy", "gold-zelda"];
 
   function build() {
     const section = document.querySelector("#menu .appearance-control");
@@ -22,6 +22,7 @@
           <button type="button" data-sp="silver" style="--swatch:#c8c9c9" aria-label="SP plateada" title="Plateada"></button>
           <button type="button" data-sp="gray-red" style="--swatch:linear-gradient(135deg,#c4c4c4 0 62%,#a31521 63%)" aria-label="SP gris con botones rojos" title="Gris y roja"></button>
           <button type="button" data-sp="cream-burgundy" style="--swatch:linear-gradient(135deg,#f3e4cd 0 62%,#741326 63%)" aria-label="SP crema con botones burdeos" title="Crema y burdeos"></button>
+          <button type="button" data-sp="gold-zelda" style="--swatch:linear-gradient(135deg,#d8b64b 0 62%,#171717 63%)" aria-label="SP dorada Zelda" title="Dorada Zelda"></button>
         </div>
       </div>`;
     section.insertBefore(selector, section.children[1] || null);

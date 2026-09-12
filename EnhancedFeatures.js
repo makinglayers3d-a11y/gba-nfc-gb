@@ -30,7 +30,8 @@
     blue: "#24569a",
     red: "#8e2732",
     purple: "#603b86",
-    green: "#326448"
+    green: "#326448",
+    gold: "#b58a2a"
   });
 
   /*
@@ -42,6 +43,16 @@
     ml3d: Object.freeze({
       src: "assets/cartridges/gba-fallback.png",
       crop: Object.freeze([185, 280, 1168, 490]),
+      destination: Object.freeze([185, 235, 1168, 490])
+    }),
+    gold: Object.freeze({
+      src: "assets/cartridges/labels/ml3d-gold.png",
+      crop: Object.freeze([0, 0, 1536, 604]),
+      destination: Object.freeze([185, 235, 1168, 490])
+    }),
+    blue: Object.freeze({
+      src: "assets/cartridges/labels/ml3d-blue.png",
+      crop: Object.freeze([0, 0, 1536, 604]),
       destination: Object.freeze([185, 235, 1168, 490])
     })
   });

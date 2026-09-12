@@ -141,16 +141,17 @@
           { transform: "rotateX(0deg)", opacity: 1, offset: 0 },
           { transform: "rotateX(0deg)", opacity: 1, offset: .34 },
           { transform: "rotateX(18deg)", opacity: 1, offset: .43 },
-          { transform: "rotateX(58deg)", opacity: .9, offset: .57 },
-          { transform: "rotateX(89deg)", opacity: .12, offset: .66 },
-          { transform: "rotateX(90deg)", opacity: 0, offset: .69 },
+          { transform: "rotateX(58deg)", opacity: 1, offset: .57 },
+          { transform: "rotateX(90deg)", opacity: 1, offset: .625 },
+          { transform: "rotateX(90deg)", opacity: 0, offset: .626 },
           { transform: "rotateX(90deg)", opacity: 0, offset: 1 }
         ];
         const topIn = [
           { transform: "rotateX(-90deg)", opacity: 0, offset: 0 },
-          { transform: "rotateX(-90deg)", opacity: 0, offset: .63 },
-          { transform: "rotateX(-89deg)", opacity: .12, offset: .66 },
-          { transform: "rotateX(-58deg)", opacity: .9, offset: .76 },
+          { transform: "rotateX(-90deg)", opacity: 0, offset: .625 },
+          { transform: "rotateX(-90deg)", opacity: 1, offset: .626 },
+          { transform: "rotateX(-80deg)", opacity: 1, offset: .68 },
+          { transform: "rotateX(-58deg)", opacity: 1, offset: .76 },
           { transform: "rotateX(-18deg)", opacity: 1, offset: .91 },
           { transform: "rotateX(0deg)", opacity: 1, offset: 1 }
         ];

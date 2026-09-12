@@ -2,15 +2,7 @@
   "use strict";
   const FAMILY_KEY = "ml3d-appearance-family";
   const SP_STYLE_KEY = "ml3d-sp-style";
-  const SP_SHELL_COLOR_KEY = "ml3d-sp-shell-color";
-  const SP_BUTTON_COLOR_KEY = "ml3d-sp-button-color";
-  const SP_STYLES = ["silver", "gray-red", "cream-burgundy", "gold-zelda", "yellow-character", "custom-color"];
-  const CUSTOM_SP_ASSETS = Object.freeze({
-    shell: "assets/gba-sp-custom-shell-user.png?v=3",
-    buttons: "assets/gba-sp-custom-buttons-user.png?v=3"
-  });
-  let customRenderToken = 0;
-  let customRenderTimer = 0;
+  const SP_STYLES = ["silver", "gray-red", "cream-burgundy", "gold-zelda", "yellow-character"];
 
   function build() {
     const section = document.querySelector("#menu .appearance-control");
@@ -32,14 +24,6 @@
           <button type="button" data-sp="cream-burgundy" style="--swatch:linear-gradient(135deg,#f3e4cd 0 62%,#741326 63%)" aria-label="SP crema con botones burdeos" title="Crema y burdeos"></button>
           <button type="button" data-sp="gold-zelda" style="--swatch:linear-gradient(135deg,#d8b64b 0 62%,#171717 63%)" aria-label="SP dorada Zelda" title="Dorada Zelda"></button>
           <button type="button" data-sp="yellow-character" style="--swatch:linear-gradient(135deg,#ffd70a 0 62%,#965d46 63%)" aria-label="SP amarilla" title="Amarilla"></button>
-          <button type="button" data-sp="custom-color" class="ml3d-color-wheel" aria-label="Personalizar colores de la SP" title="Personalizar colores"></button>
-        </div>
-        <div class="ml3d-sp-color-popover" hidden>
-          <button type="button" class="ml3d-color-close" aria-label="Cerrar y guardar personalización">×</button>
-          <strong>Personalizar SP</strong>
-          <label>Carcasa <input type="color" data-custom-color="shell" value="#bfc2c5"></label>
-          <label>Teclas <input type="color" data-custom-color="buttons" value="#4b4547"></label>
-          <small>Los colores se guardan automáticamente.</small>
         </div>
       </div>`;
     section.insertBefore(selector, section.children[1] || null);
@@ -49,23 +33,7 @@
       const familyButton = event.target.closest("[data-family]");
       if (familyButton) return setFamily(familyButton.dataset.family);
       const spButton = event.target.closest("[data-sp]");
-      if (spButton) {
-        if (spButton.dataset.sp === "custom-color" && document.body.dataset.spStyle === "custom-color") {
-          toggleColorPopover();
-          return;
-        }
-        setSP(spButton.dataset.sp);
-        if (spButton.dataset.sp === "custom-color") toggleColorPopover(true);
-      }
-      if (event.target.closest(".ml3d-color-close")) toggleColorPopover(false);
-    });
-    selector.querySelectorAll("[data-custom-color]").forEach((input) => {
-      const key = input.dataset.customColor === "shell" ? SP_SHELL_COLOR_KEY : SP_BUTTON_COLOR_KEY;
-      input.value = localStorage.getItem(key) || input.value;
-      input.addEventListener("input", () => {
-        localStorage.setItem(key, input.value);
-        queueCustomSPRender();
-      });
+      if (spButton) setSP(spButton.dataset.sp);
     });
     setFamily(localStorage.getItem(FAMILY_KEY) || "sp", false);
     setSP(localStorage.getItem(SP_STYLE_KEY) || "silver", false);
@@ -99,64 +67,7 @@
       button.classList.toggle("active", active);
       button.setAttribute("aria-pressed", String(active));
     });
-    if (style === "custom-color") queueCustomSPRender(true);
     window.dispatchEvent(new CustomEvent("ml3d-sp-style-changed", { detail: { style } }));
-  }
-
-  function toggleColorPopover(force) {
-    const popover = document.querySelector(".ml3d-sp-color-popover");
-    if (!popover) return;
-    const shouldOpen = typeof force === "boolean" ? force : popover.hidden;
-    popover.hidden = !shouldOpen;
-    document.querySelector('[data-sp="custom-color"]')?.setAttribute("aria-expanded", String(shouldOpen));
-  }
-
-  function loadCustomImage(src) {
-    return new Promise((resolve, reject) => {
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.onerror = reject;
-      image.src = src;
-    });
-  }
-
-  function drawTintedLayer(context, image, color) {
-    const layer = document.createElement("canvas");
-    layer.width = image.naturalWidth;
-    layer.height = image.naturalHeight;
-    const layerContext = layer.getContext("2d");
-    layerContext.drawImage(image, 0, 0);
-    layerContext.globalCompositeOperation = "color";
-    layerContext.fillStyle = color;
-    layerContext.fillRect(0, 0, layer.width, layer.height);
-    layerContext.globalCompositeOperation = "destination-in";
-    layerContext.drawImage(image, 0, 0);
-    context.drawImage(layer, 0, 0);
-  }
-
-  async function renderCustomSP() {
-    const token = ++customRenderToken;
-    try {
-      const [shell, buttons] = await Promise.all([
-        loadCustomImage(CUSTOM_SP_ASSETS.shell),
-        loadCustomImage(CUSTOM_SP_ASSETS.buttons)
-      ]);
-      if (token !== customRenderToken) return;
-      const canvas = document.createElement("canvas");
-      canvas.width = shell.naturalWidth;
-      canvas.height = shell.naturalHeight;
-      const context = canvas.getContext("2d");
-      drawTintedLayer(context, shell, localStorage.getItem(SP_SHELL_COLOR_KEY) || "#bfc2c5");
-      drawTintedLayer(context, buttons, localStorage.getItem(SP_BUTTON_COLOR_KEY) || "#4b4547");
-      document.documentElement.style.setProperty("--ml3d-custom-sp-shell", `url("${canvas.toDataURL("image/png")}")`);
-    } catch (_) {
-      document.documentElement.style.removeProperty("--ml3d-custom-sp-shell");
-    }
-  }
-
-  function queueCustomSPRender(immediate = false) {
-    window.clearTimeout(customRenderTimer);
-    customRenderTimer = window.setTimeout(renderCustomSP, immediate ? 0 : 70);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", build);

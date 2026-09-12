@@ -22,6 +22,22 @@
     return `${secs} s`;
   }
 
+  function pulseMenuOnArrival(capture) {
+    const menuButton = document.getElementById("menu-button");
+    if (!menuButton) return;
+
+    window.setTimeout(() => {
+      if (!capture.isConnected) return;
+      menuButton.classList.remove("ml3d-save-absorb");
+      void menuButton.offsetWidth;
+      menuButton.classList.add("ml3d-save-absorb");
+
+      window.setTimeout(() => {
+        menuButton.classList.remove("ml3d-save-absorb");
+      }, 620);
+    }, 3430);
+  }
+
   function enhanceCapture(capture) {
     if (!capture || capture.dataset.saveCaptureV2 === "1") return;
     capture.dataset.saveCaptureV2 = "1";
@@ -56,6 +72,7 @@
 
     meta.append(played, savedAt);
     capture.appendChild(meta);
+    pulseMenuOnArrival(capture);
   }
 
   const observer = new MutationObserver((records) => {

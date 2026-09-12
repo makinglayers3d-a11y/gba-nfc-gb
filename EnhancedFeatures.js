@@ -152,7 +152,7 @@
     } catch (_) {}
   }
 
-  window.ml3dPlayCartridgeInsert = function (game) {
+  window.ml3dPlayCartridgeInsert = function (game, onLeaving) {
     return new Promise((resolve) => {
       const scene = document.createElement("div");
       scene.className = "ml3d-cartridge-scene";
@@ -179,9 +179,18 @@
             scene.classList.add("recognized");
             vibrate([28, 34, 58]);
           }, 1450);
-          window.setTimeout(() => scene.classList.add("leaving"), 3000);
+          window.setTimeout(() => {
+            if (typeof onLeaving === "function") {
+              document.body.classList.add("ml3d-cartridge-handoff");
+            }
+            scene.classList.add("leaving");
+            if (typeof onLeaving === "function") onLeaving();
+          }, 3000);
           window.setTimeout(() => {
             scene.remove();
+            if (typeof onLeaving === "function") {
+              document.body.classList.remove("ml3d-cartridge-handoff");
+            }
             resolve();
           }, 3350);
         });
@@ -514,8 +523,9 @@
 
   /* La vista previa queda desactivada temporalmente. */
 
-  function playInitialCartridge() {
+  function playInitialCartridge(onLeaving) {
     if (params.get("skipintro") === "1") {
+      onLeaving();
       return Promise.resolve();
     }
 
@@ -531,9 +541,13 @@
       filename: activeId,
       name: activeId.replace(/\.(gba|gbc|gb)$/i, ""),
       system
-    });
+    }, onLeaving);
   }
 
+  let releaseInitialHandoff;
+  window.ml3dInitialCartridgeHandoffPromise = new Promise((resolve) => {
+    releaseInitialHandoff = resolve;
+  });
   window.ml3dInitialCartridgePromise =
-    playInitialCartridge();
+    playInitialCartridge(releaseInitialHandoff);
 })();

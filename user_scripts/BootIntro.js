@@ -72,6 +72,7 @@
       }
 
       return Promise.resolve(
+        window.ml3dInitialCartridgeHandoffPromise ||
         window.ml3dInitialCartridgePromise
       )
         .catch(() => {})

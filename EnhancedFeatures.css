@@ -84,6 +84,11 @@
   opacity:1;
   transition:opacity 300ms ease;
 }
+
+/* During startup, the closed console is prepared underneath the departing cartridge. */
+body.ml3d-cartridge-handoff .ml3d-console-transition-overlay {
+  z-index: 8990;
+}
 .ml3d-cartridge {
   position:absolute;
   left:50%;

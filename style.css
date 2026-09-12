@@ -21,7 +21,7 @@ body.sp-skin-test[data-sp-style="gray-red"]{--ml3d-sp-shell:url("assets/gba-sp-g
 body.sp-skin-test[data-sp-style="cream-burgundy"]{--ml3d-sp-shell:url("assets/gba-sp-cream-burgundy.png?v=2")}
 body.sp-skin-test[data-sp-style="gold-zelda"]{--ml3d-sp-shell:url("assets/gba-sp-gold-zelda.png?v=1")}
 body.sp-skin-test[data-sp-style="yellow-character"]{--ml3d-sp-shell:url("assets/gba-sp-yellow-character.jpg?v=1")}
-body.sp-skin-test[data-sp-style="custom-color"]{--ml3d-sp-shell:var(--ml3d-custom-sp-shell,url("assets/gba-sp-custom-base.jpg?v=2"))}
+body.sp-skin-test[data-sp-style="custom-color"]{--ml3d-sp-shell:var(--ml3d-custom-sp-shell,url("assets/gba-sp-custom-shell-user.png?v=3"))}
 body.sp-skin-test .app::before{background-image:var(--ml3d-sp-shell)!important}
 
 /* Chromatic-wheel SP editor. */

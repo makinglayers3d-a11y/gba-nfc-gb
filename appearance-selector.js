@@ -6,9 +6,8 @@
   const SP_BUTTON_COLOR_KEY = "ml3d-sp-button-color";
   const SP_STYLES = ["silver", "gray-red", "cream-burgundy", "gold-zelda", "yellow-character", "custom-color"];
   const CUSTOM_SP_ASSETS = Object.freeze({
-    base: "assets/gba-sp-custom-base.jpg?v=2",
-    shell: "assets/gba-sp-custom-shell.png?v=2",
-    buttons: "assets/gba-sp-custom-buttons.png?v=2"
+    shell: "assets/gba-sp-custom-shell-user.png?v=3",
+    buttons: "assets/gba-sp-custom-buttons-user.png?v=3"
   });
   let customRenderToken = 0;
   let customRenderTimer = 0;
@@ -138,20 +137,18 @@
   async function renderCustomSP() {
     const token = ++customRenderToken;
     try {
-      const [base, shell, buttons] = await Promise.all([
-        loadCustomImage(CUSTOM_SP_ASSETS.base),
+      const [shell, buttons] = await Promise.all([
         loadCustomImage(CUSTOM_SP_ASSETS.shell),
         loadCustomImage(CUSTOM_SP_ASSETS.buttons)
       ]);
       if (token !== customRenderToken) return;
       const canvas = document.createElement("canvas");
-      canvas.width = base.naturalWidth;
-      canvas.height = base.naturalHeight;
+      canvas.width = shell.naturalWidth;
+      canvas.height = shell.naturalHeight;
       const context = canvas.getContext("2d");
-      context.drawImage(base, 0, 0);
       drawTintedLayer(context, shell, localStorage.getItem(SP_SHELL_COLOR_KEY) || "#bfc2c5");
       drawTintedLayer(context, buttons, localStorage.getItem(SP_BUTTON_COLOR_KEY) || "#4b4547");
-      document.documentElement.style.setProperty("--ml3d-custom-sp-shell", `url("${canvas.toDataURL("image/jpeg", .92)}")`);
+      document.documentElement.style.setProperty("--ml3d-custom-sp-shell", `url("${canvas.toDataURL("image/png")}")`);
     } catch (_) {
       document.documentElement.style.removeProperty("--ml3d-custom-sp-shell");
     }

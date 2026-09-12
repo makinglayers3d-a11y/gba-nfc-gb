@@ -1,21 +1,40 @@
 (()=>{
 'use strict';
 
-const CUSTOM_DEFAULT={
-  L:{x:0.046875,y:0.4838864985654536,w:0.3125,h:0.06060606060606061},
-  R:{x:0.640625,y:0.4838864985654536,w:0.3125,h:0.06060606060606061},
-  UP:{x:0.17447916666666666,y:0.5798460945250496,w:0.13541666666666666,h:0.07503607503607504},
-  LEFT:{x:0.046875,y:0.6505531652321203,w:0.13541666666666666,h:0.07503607503607504},
-  RIGHT:{x:0.3020833333333333,y:0.6505531652321203,w:0.13541666666666666,h:0.07503607503607504},
-  DOWN:{x:0.17447916666666666,y:0.721260235939191,w:0.13541666666666666,h:0.07503607503607504},
-  B:{x:0.5625,y:0.6981722128511679,w:0.17708333333333334,h:0.09812409812409813},
-  A:{x:0.7760416666666666,y:0.5798460945250496,w:0.17708333333333334,h:0.09812409812409813},
-  SELECT:{x:0.24479166666666666,y:0.8345358932517135,w:0.23958333333333334,h:0.05483405483405483},
-  START:{x:0.515625,y:0.8345358932517135,w:0.23958333333333334,h:0.05483405483405483},
-  MENU:{x:0.84375,y:0.024531024531024532,w:0.11979166666666667,h:0.06637806637806638}
+const TOUCH_DEFAULTS={
+  custom:{
+    L:{x:0.046875,y:0.4838864985654536,w:0.3125,h:0.06060606060606061},
+    R:{x:0.640625,y:0.4838864985654536,w:0.3125,h:0.06060606060606061},
+    UP:{x:0.17447916666666666,y:0.5798460945250496,w:0.13541666666666666,h:0.07503607503607504},
+    LEFT:{x:0.046875,y:0.6505531652321203,w:0.13541666666666666,h:0.07503607503607504},
+    RIGHT:{x:0.3020833333333333,y:0.6505531652321203,w:0.13541666666666666,h:0.07503607503607504},
+    DOWN:{x:0.17447916666666666,y:0.721260235939191,w:0.13541666666666666,h:0.07503607503607504},
+    B:{x:0.5625,y:0.6981722128511679,w:0.17708333333333334,h:0.09812409812409813},
+    A:{x:0.7760416666666666,y:0.5798460945250496,w:0.17708333333333334,h:0.09812409812409813},
+    SELECT:{x:0.24479166666666666,y:0.8345358932517135,w:0.23958333333333334,h:0.05483405483405483},
+    START:{x:0.515625,y:0.8345358932517135,w:0.23958333333333334,h:0.05483405483405483},
+    MENU:{x:0.84375,y:0.024531024531024532,w:0.11979166666666667,h:0.06637806637806638}
+  },
+  sp:{
+    L:{x:0,y:0.4992384256910624,w:0.17500001192092896,h:0.07202982386469325},
+    R:{x:0.8250000476837158,y:0.4992384256910624,w:0.17500001192092896,h:0.07202982386469325},
+    UP:{x:0.1897280216217041,y:0.6264149499317956,w:0.11197916666666667,h:0.06782106782106782},
+    LEFT:{x:0.06924190123875935,y:0.6868686868686869,w:0.11197916666666667,h:0.06782106782106782},
+    RIGHT:{x:0.2970196803410848,y:0.6851050526892812,w:0.11197916666666667,h:0.06782106782106782},
+    DOWN:{x:0.18483797709147134,y:0.7491101902112645,w:0.11197916666666667,h:0.06782106782106782},
+    B:{x:0.5768373807271322,y:0.681633799279063,w:0.14583333333333334,h:0.08080808080808081},
+    A:{x:0.7700376510620117,y:0.6543610808137176,w:0.14583333333333334,h:0.08080808080808081},
+    SELECT:{x:0.3449942270914714,y:0.8944284678537608,w:0.10999711354573567,h:0.03324514997297895},
+    START:{x:0.540986696879069,y:0.8944284678537608,w:0.10999711354573567,h:0.03324514997297895},
+    MENU:{x:0.4539930820465088,y:0.5822992145929158,w:0.09199942151705424,h:0.05097803443369239}
+  }
 };
-const CUSTOM_KEY='ml3d-dev-touch-positions:custom';
-if(!localStorage.getItem(CUSTOM_KEY))localStorage.setItem(CUSTOM_KEY,JSON.stringify(CUSTOM_DEFAULT));
+
+const TOUCH_PREFIX='ml3d-dev-touch-positions:';
+Object.entries(TOUCH_DEFAULTS).forEach(([name,positions])=>{
+  const key=TOUCH_PREFIX+name;
+  if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify(positions));
+});
 
 const family=()=>document.body.classList.contains('ml3d-custom-skin')?'custom':'sp';
 const prefsKey=()=>`ml3d-dev-bottom-panels:${family()}`;
@@ -33,14 +52,19 @@ style.textContent=`
 .ml3d-user-panel-hidden{display:none!important}
 #ml3d-panel-toggle{flex:0 0 auto!important;border:1px solid #527084;border-radius:5px;background:#173044;color:#fff;padding:4px 7px;font:800 9px system-ui;touch-action:manipulation}
 #ml3d-panel-toggle.on{background:#075fc8;border-color:#1597ff}
+body.sp-skin-test .dev-zone-info{left:max(8px,env(safe-area-inset-left));right:auto;top:auto;bottom:calc(48px + env(safe-area-inset-bottom))}
+body.sp-skin-test .dev-legend{left:auto;right:max(8px,env(safe-area-inset-right));top:auto;bottom:calc(48px + env(safe-area-inset-bottom))}
+body.ml3d-custom-skin .dev-zone-info{left:max(10px,env(safe-area-inset-left));right:auto;top:auto;bottom:calc(54px + env(safe-area-inset-bottom))}
+body.ml3d-custom-skin .dev-legend{left:auto;right:max(10px,env(safe-area-inset-right));top:auto;bottom:calc(54px + env(safe-area-inset-bottom))}
 `;
 document.head.appendChild(style);
 
 function install(){
+  const panel=document.getElementById('dev-panel');
   const info=document.querySelector('.dev-zone-info');
   const legend=document.querySelector('.dev-legend');
   const bar=document.querySelector('.dev-editbar');
-  if(!info||!legend||!bar||bar.dataset.ml3dPanelsInstalled)return false;
+  if(!panel||!info||!legend||!bar||bar.dataset.ml3dPanelsInstalled)return false;
   bar.dataset.ml3dPanelsInstalled='true';
 
   let prefs=loadPrefs();
@@ -49,23 +73,39 @@ function install(){
   toggle.type='button';
   bar.appendChild(toggle);
 
+  const panelOpen=()=>!panel.hidden;
+  const movementActive=()=>!bar.classList.contains('dev-hidden');
+
   function applyPosition(el,pos){
-    if(!pos)return;
+    if(!pos){
+      ['left','top','right','bottom'].forEach(prop=>el.style.removeProperty(prop));
+      return;
+    }
     const r=el.getBoundingClientRect();
     const x=Math.max(4,Math.min(innerWidth-r.width-4,pos.x*innerWidth));
     const y=Math.max(4,Math.min(innerHeight-r.height-4,pos.y*innerHeight));
     Object.assign(el.style,{left:x+'px',top:y+'px',right:'auto',bottom:'auto'});
   }
+
   function apply(){
     prefs=loadPrefs();
-    info.classList.toggle('ml3d-user-panel-hidden',!prefs.visible||!prefs.info);
-    legend.classList.toggle('ml3d-user-panel-hidden',!prefs.visible||!prefs.legend);
-    toggle.classList.toggle('on',prefs.visible&&(prefs.info||prefs.legend));
-    toggle.textContent=prefs.visible&&(prefs.info||prefs.legend)?'Paneles ON':'Paneles OFF';
+    const editing=panelOpen()&&movementActive();
+    const enabled=prefs.visible&&(prefs.info||prefs.legend);
+    info.classList.toggle('ml3d-user-panel-hidden',!editing||!prefs.visible||!prefs.info);
+    legend.classList.toggle('ml3d-user-panel-hidden',!editing||!prefs.visible||!prefs.legend);
+    toggle.classList.toggle('on',enabled);
+    toggle.textContent=enabled?'Paneles ON':'Paneles OFF';
     applyPosition(info,prefs.infoPos);
     applyPosition(legend,prefs.legendPos);
   }
-  function setBoth(v){prefs.visible=v;if(v){prefs.info=true;prefs.legend=true}savePrefs(prefs);apply()}
+
+  function setBoth(v){
+    prefs=loadPrefs();
+    prefs.visible=v;
+    if(v){prefs.info=true;prefs.legend=true}
+    savePrefs(prefs);
+    apply();
+  }
   toggle.onclick=e=>{e.stopPropagation();setBoth(!(prefs.visible&&(prefs.info||prefs.legend)))};
 
   function decorate(el,kind){
@@ -75,11 +115,17 @@ function install(){
     const close=document.createElement('button');close.className='ml3d-panel-close';close.type='button';close.textContent='×';close.setAttribute('aria-label','Ocultar panel');
     h.append(mark,close);
     close.addEventListener('pointerdown',e=>e.stopPropagation());
-    close.onclick=e=>{e.stopPropagation();prefs[kind]=false;savePrefs(prefs);apply()};
+    close.onclick=e=>{
+      e.stopPropagation();
+      prefs=loadPrefs();
+      prefs[kind]=false;
+      savePrefs(prefs);
+      apply();
+    };
 
     let pid=null,dx=0,dy=0;
     h.addEventListener('pointerdown',e=>{
-      if(e.target.closest('.ml3d-panel-close'))return;
+      if(e.target.closest('.ml3d-panel-close')||!panelOpen()||!movementActive())return;
       e.preventDefault();e.stopPropagation();
       const r=el.getBoundingClientRect();pid=e.pointerId;dx=e.clientX-r.left;dy=e.clientY-r.top;
       Object.assign(el.style,{left:r.left+'px',top:r.top+'px',right:'auto',bottom:'auto'});
@@ -96,27 +142,41 @@ function install(){
     const end=e=>{
       if(pid===null||(e&&e.pointerId!==pid))return;
       const r=el.getBoundingClientRect();pid=null;
-      prefs[kind+'Pos']={x:r.left/innerWidth,y:r.top/innerHeight};savePrefs(prefs);
+      prefs=loadPrefs();
+      prefs[kind+'Pos']={x:r.left/innerWidth,y:r.top/innerHeight};
+      savePrefs(prefs);
     };
     h.addEventListener('pointerup',end);h.addEventListener('pointercancel',end);h.addEventListener('lostpointercapture',end);
   }
   decorate(info,'info');decorate(legend,'legend');
 
-  const observer=new MutationObserver(()=>{
-    if(!info.classList.contains('dev-hidden')||!legend.classList.contains('dev-hidden'))apply();
+  const classObserver=new MutationObserver(()=>apply());
+  classObserver.observe(info,{attributes:true,attributeFilter:['class']});
+  classObserver.observe(legend,{attributes:true,attributeFilter:['class']});
+  classObserver.observe(bar,{attributes:true,attributeFilter:['class']});
+
+  const panelObserver=new MutationObserver(()=>{
+    if(panel.hidden){
+      const edit=document.querySelector('#dev-edit');
+      if(edit?.classList.contains('on'))document.querySelector('#dev-lock')?.click();
+      info.classList.add('dev-hidden');
+      legend.classList.add('dev-hidden');
+      bar.classList.add('dev-hidden');
+    }
+    apply();
   });
-  observer.observe(info,{attributes:true,attributeFilter:['class']});
-  observer.observe(legend,{attributes:true,attributeFilter:['class']});
+  panelObserver.observe(panel,{attributes:true,attributeFilter:['hidden']});
+
+  new MutationObserver(()=>apply()).observe(document.body,{attributes:true,attributeFilter:['class']});
   addEventListener('resize',apply);
   addEventListener('orientationchange',()=>setTimeout(apply,180));
   apply();
 
-  // Keep the repository custom defaults available after a reset.
   ['#dev-reset','#extra-reset'].forEach(sel=>{
     const btn=document.querySelector(sel);if(!btn)return;
     btn.addEventListener('click',()=>{
-      if(family()!=='custom')return;
-      setTimeout(()=>localStorage.setItem(CUSTOM_KEY,JSON.stringify(CUSTOM_DEFAULT)),0);
+      const name=family();
+      setTimeout(()=>localStorage.setItem(TOUCH_PREFIX+name,JSON.stringify(TOUCH_DEFAULTS[name])),0);
     });
   });
   return true;

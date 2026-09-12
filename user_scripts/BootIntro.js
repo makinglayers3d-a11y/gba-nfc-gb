@@ -76,12 +76,21 @@
       )
         .catch(() => {})
         .then(() => new Promise((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(resolve));
+        }))
+        .then(async () => {
+          if (window.ML3DConsoleTransitions) {
+            await window.ML3DConsoleTransitions.playInitialIntro();
+          }
+        })
+        .catch(() => {})
+        .then(() => new Promise((resolve) => {
           if (!bootScreen) {
             resolve();
             return;
           }
 
-          /* El arranque visual empieza exactamente al terminar el cartucho. */
+          /* El logo empieza únicamente cuando el cartucho y la apertura han terminado. */
           bootScreen.classList.remove("cartridge-wait");
           bootScreen.classList.add("boot-active");
 

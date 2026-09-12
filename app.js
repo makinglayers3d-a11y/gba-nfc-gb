@@ -1058,10 +1058,6 @@ async function startApplication() {
       bootScreen.style.pointerEvents = "none";
     }
 
-    if (window.ML3DConsoleTransitions) {
-      await window.ML3DConsoleTransitions.playInitialIntro();
-    }
-
     if (window.gbaOpenGameSelector) {
       await window.gbaOpenGameSelector();
     }
@@ -1095,10 +1091,6 @@ async function startApplication() {
    */
   if (window.gbaBootIntro) {
     await window.gbaBootIntro.start();
-  }
-
-  if (window.ML3DConsoleTransitions) {
-    await window.ML3DConsoleTransitions.playInitialIntro();
   }
 
   await loadGame();

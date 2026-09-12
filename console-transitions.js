@@ -159,7 +159,10 @@
           { transform: "rotateX(0deg)", opacity: 1, offset: 1 }
         ];
         const hingeIn = [
-          { opacity: 1, offset: 0 }, { opacity: 1, offset: .9 },
+          { opacity: 1, offset: 0 },
+          { opacity: 1, offset: .57 },
+          { opacity: .35, offset: .63 },
+          { opacity: 0, offset: .68 },
           { opacity: 0, offset: 1 }
         ];
         animations.push(view.panel.animate(entering ? panelIn : reverseFrames(panelIn), { duration, easing, fill: "both" }));

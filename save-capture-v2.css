@@ -5,8 +5,8 @@
   border-radius: 18px !important;
   background: linear-gradient(150deg, #1b2736, #090e16) !important;
   box-shadow: 0 26px 70px #000d, inset 0 0 28px #7ab6ff12 !important;
-  transform: translate(-50%, -50%) scale(.76) !important;
-  opacity: 0 !important;
+  transform: translate(-50%, -50%) scale(.76);
+  opacity: 0;
   animation: none !important;
   will-change: transform, opacity, filter;
 }

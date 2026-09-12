@@ -3,10 +3,10 @@
 
   const SP_TRANSITION_ASSETS = Object.freeze({
     silver: Object.freeze({ shell: "assets/gba-sp-silver.jpg?v=4", lid: "assets/sp-lids/silver.webp?v=1" }),
-    "gray-red": Object.freeze({ shell: "assets/gba-sp-gray-red.png?v=3", lid: null }),
-    "cream-burgundy": Object.freeze({ shell: "assets/gba-sp-cream-burgundy.png?v=2", lid: null }),
-    "gold-zelda": Object.freeze({ shell: "assets/gba-sp-gold-zelda.png?v=1", lid: null }),
-    "yellow-character": Object.freeze({ shell: "assets/gba-sp-yellow-character.jpg?v=1", lid: null })
+    "gray-red": Object.freeze({ shell: "assets/gba-sp-gray-red.png?v=3", lid: "assets/sp-lids/gray-red.webp?v=1" }),
+    "cream-burgundy": Object.freeze({ shell: "assets/gba-sp-cream-burgundy.png?v=2", lid: "assets/sp-lids/cream-burgundy.webp?v=1" }),
+    "gold-zelda": Object.freeze({ shell: "assets/gba-sp-gold-zelda.png?v=1", lid: "assets/sp-lids/gold-zelda.webp?v=1" }),
+    "yellow-character": Object.freeze({ shell: "assets/gba-sp-yellow-character.jpg?v=1", lid: "assets/sp-lids/yellow-character.webp?v=1" })
   });
 
   let transitioning = false;
@@ -219,5 +219,5 @@
     get transitioning() { return transitioning; }
   });
 
-  loadImage(SP_TRANSITION_ASSETS.silver.lid);
+  Object.values(SP_TRANSITION_ASSETS).forEach((asset) => loadImage(asset.lid));
 })();

@@ -84,19 +84,16 @@
       overlay.appendChild(topShell);
       copyCanvases(source, topClone);
 
-      const hinge = document.createElement("img");
-      hinge.className = "ml3d-console-transition-lid ml3d-console-transition-hinge";
-      hinge.alt = "";
-      hinge.src = asset.lid;
-      const panel = hinge.cloneNode();
+      const panel = document.createElement("img");
       panel.className = "ml3d-console-transition-lid ml3d-console-transition-panel";
-      overlay.append(hinge, panel);
+      panel.alt = "";
+      panel.src = asset.lid;
+      overlay.appendChild(panel);
     }
     return {
       overlay,
       shell,
       topShell,
-      hinge: overlay.querySelector(".ml3d-console-transition-hinge"),
       panel: overlay.querySelector(".ml3d-console-transition-panel")
     };
   }
@@ -135,7 +132,6 @@
 
     if (reducedMotion.matches && view.panel) {
       view.panel.style.opacity = "0";
-      view.hinge.style.opacity = "0";
     }
 
     try {
@@ -158,16 +154,8 @@
           { transform: "rotateX(-18deg)", opacity: 1, offset: .91 },
           { transform: "rotateX(0deg)", opacity: 1, offset: 1 }
         ];
-        const hingeIn = [
-          { opacity: 1, offset: 0 },
-          { opacity: 1, offset: .57 },
-          { opacity: .35, offset: .63 },
-          { opacity: 0, offset: .68 },
-          { opacity: 0, offset: 1 }
-        ];
         animations.push(view.panel.animate(entering ? panelIn : reverseFrames(panelIn), { duration, easing, fill: "both" }));
         animations.push(view.topShell.animate(entering ? topIn : reverseFrames(topIn), { duration, easing, fill: "both" }));
-        animations.push(view.hinge.animate(entering ? hingeIn : reverseFrames(hingeIn), { duration, easing: "ease-in-out", fill: "both" }));
       }
       await Promise.all(animations.map((animation) => animation.finished.catch(() => {})));
     } finally {

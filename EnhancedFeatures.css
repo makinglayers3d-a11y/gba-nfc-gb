@@ -84,7 +84,6 @@
   opacity:1;
   transition:opacity 300ms ease;
 }
-.ml3d-cartridge-slot { position:absolute; left:50%; top:67%; width:min(74vw,330px); height:24px; transform:translateX(-50%); border-radius:50%; background:#020202; box-shadow:0 0 0 6px #222, 0 12px 28px #000; }
 .ml3d-cartridge {
   position:absolute;
   left:50%;

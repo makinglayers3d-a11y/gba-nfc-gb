@@ -146,7 +146,6 @@
       const scene = document.createElement("div");
       scene.className = "ml3d-cartridge-scene";
       scene.innerHTML = `
-        <div class="ml3d-cartridge-slot"></div>
         <div class="ml3d-cartridge">
           <canvas class="ml3d-cartridge-render" aria-label="Cartucho Game Boy Advance"></canvas>
         </div>
@@ -168,12 +167,12 @@
           window.setTimeout(() => {
             scene.classList.add("recognized");
             vibrate([28, 34, 58]);
-          }, 700);
-          window.setTimeout(() => scene.classList.add("leaving"), 1320);
+          }, 1450);
+          window.setTimeout(() => scene.classList.add("leaving"), 3000);
           window.setTimeout(() => {
             scene.remove();
             resolve();
-          }, 1660);
+          }, 3350);
         });
     });
   };

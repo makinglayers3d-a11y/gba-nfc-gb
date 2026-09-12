@@ -1,0 +1,151 @@
+/* Save confirmation v2: larger snapshot, play data, 2s hover, then fly to menu. */
+.ml3d-save-capture {
+  width: min(84vw, 340px) !important;
+  padding: 14px !important;
+  border-radius: 18px !important;
+  background: linear-gradient(150deg, #1b2736, #090e16) !important;
+  box-shadow: 0 26px 70px #000d, inset 0 0 28px #7ab6ff12 !important;
+  transform: translate(-50%, -50%) scale(.76) !important;
+  opacity: 0 !important;
+  animation: none !important;
+  will-change: transform, opacity, filter;
+}
+
+.ml3d-save-capture.fly {
+  animation: ml3dSaveCaptureSequence 3.25s linear forwards !important;
+}
+
+.ml3d-save-capture-screen {
+  border-radius: 12px !important;
+  box-shadow: 0 10px 30px #0009;
+}
+
+.ml3d-save-capture-screen img {
+  transform: scale(1.01);
+  animation: ml3dSaveScreenBreathe 2.15s ease-in-out .28s both;
+}
+
+.ml3d-save-title {
+  margin-top: 11px !important;
+  font-size: 16px !important;
+  font-weight: 900 !important;
+  letter-spacing: .01em;
+}
+
+.ml3d-save-system {
+  margin-top: 4px !important;
+  color: #aeb8c7 !important;
+  font-size: 9px !important;
+  font-weight: 850 !important;
+  letter-spacing: .11em !important;
+}
+
+.ml3d-save-capture-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid #ffffff18;
+}
+
+.ml3d-save-capture-meta > div {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid #ffffff12;
+  border-radius: 10px;
+  background: #ffffff08;
+}
+
+.ml3d-save-capture-meta span,
+.ml3d-save-capture-meta b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ml3d-save-capture-meta span {
+  color: #8f9bad;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .10em;
+}
+
+.ml3d-save-capture-meta b {
+  margin-top: 4px;
+  color: #f5f8fc;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+@keyframes ml3dSaveCaptureSequence {
+  0% {
+    opacity: 0;
+    filter: blur(2px);
+    transform: translate(-50%, -50%) scale(.76) rotate(-2deg);
+  }
+  8% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate(-50%, -50%) scale(1.075) rotate(0deg);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, calc(-50% - 4px)) scale(1.075) rotate(-.35deg);
+  }
+  31% {
+    transform: translate(-50%, calc(-50% + 3px)) scale(1.075) rotate(.28deg);
+  }
+  44% {
+    transform: translate(-50%, calc(-50% - 5px)) scale(1.075) rotate(-.28deg);
+  }
+  57% {
+    transform: translate(-50%, calc(-50% + 2px)) scale(1.075) rotate(.18deg);
+  }
+  69% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate(-50%, -50%) scale(1.075) rotate(0deg);
+  }
+  76% {
+    opacity: .96;
+    transform: translate(-50%, -50%) scale(1.02) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(1.2px);
+    transform:
+      translate(
+        calc(-50% + var(--capture-x)),
+        calc(-50% + var(--capture-y))
+      )
+      scale(.07)
+      rotate(12deg);
+  }
+}
+
+@keyframes ml3dSaveScreenBreathe {
+  0%, 100% { transform: scale(1.01); }
+  50% { transform: scale(1.035); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ml3d-save-capture.fly {
+    animation: ml3dSaveCaptureReduced 1.4s ease forwards !important;
+  }
+  .ml3d-save-capture-screen img { animation: none !important; }
+}
+
+@keyframes ml3dSaveCaptureReduced {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.92); }
+  15%, 78% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% {
+    opacity: 0;
+    transform:
+      translate(
+        calc(-50% + var(--capture-x)),
+        calc(-50% + var(--capture-y))
+      ) scale(.08);
+  }
+}

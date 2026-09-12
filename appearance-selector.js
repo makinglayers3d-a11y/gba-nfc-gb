@@ -5,6 +5,11 @@
   const SP_SHELL_COLOR_KEY = "ml3d-sp-shell-color";
   const SP_BUTTON_COLOR_KEY = "ml3d-sp-button-color";
   const SP_STYLES = ["silver", "gray-red", "cream-burgundy", "gold-zelda", "yellow-character", "custom-color"];
+  const CUSTOM_SP_ASSETS = Object.freeze({
+    base: "assets/gba-sp-custom-base.jpg?v=2",
+    shell: "assets/gba-sp-custom-shell.png?v=2",
+    buttons: "assets/gba-sp-custom-buttons.png?v=2"
+  });
   let customRenderToken = 0;
   let customRenderTimer = 0;
 
@@ -107,63 +112,49 @@
     document.querySelector('[data-sp="custom-color"]')?.setAttribute("aria-expanded", String(shouldOpen));
   }
 
-  function parseHex(hex) {
-    const value = parseInt(hex.slice(1), 16);
-    return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+  function loadCustomImage(src) {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = src;
+    });
   }
 
-  function tintPixel(data, index, color) {
-    const luminance = (data[index] * .2126 + data[index + 1] * .7152 + data[index + 2] * .0722) / 255;
-    const shade = .28 + luminance * .9;
-    data[index] = Math.min(255, color[0] * shade);
-    data[index + 1] = Math.min(255, color[1] * shade);
-    data[index + 2] = Math.min(255, color[2] * shade);
+  function drawTintedLayer(context, image, color) {
+    const layer = document.createElement("canvas");
+    layer.width = image.naturalWidth;
+    layer.height = image.naturalHeight;
+    const layerContext = layer.getContext("2d");
+    layerContext.drawImage(image, 0, 0);
+    layerContext.globalCompositeOperation = "color";
+    layerContext.fillStyle = color;
+    layerContext.fillRect(0, 0, layer.width, layer.height);
+    layerContext.globalCompositeOperation = "destination-in";
+    layerContext.drawImage(image, 0, 0);
+    context.drawImage(layer, 0, 0);
   }
 
-  function inEllipse(x, y, cx, cy, rx, ry) {
-    return ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
-  }
-
-  function isButtonPixel(x, y, width, height) {
-    const sx = x / width;
-    const sy = y / height;
-    return (
-      (sx > .105 && sx < .385 && sy > .645 && sy < .79) ||
-      inEllipse(sx, sy, .652, .714, .105, .073) ||
-      inEllipse(sx, sy, .843, .675, .09, .067) ||
-      inEllipse(sx, sy, .496, .611, .052, .041) ||
-      inEllipse(sx, sy, .389, .916, .052, .041) ||
-      inEllipse(sx, sy, .596, .916, .052, .041)
-    );
-  }
-
-  function renderCustomSP() {
+  async function renderCustomSP() {
     const token = ++customRenderToken;
-    const image = new Image();
-    image.onload = () => {
+    try {
+      const [base, shell, buttons] = await Promise.all([
+        loadCustomImage(CUSTOM_SP_ASSETS.base),
+        loadCustomImage(CUSTOM_SP_ASSETS.shell),
+        loadCustomImage(CUSTOM_SP_ASSETS.buttons)
+      ]);
       if (token !== customRenderToken) return;
       const canvas = document.createElement("canvas");
-      canvas.width = image.naturalWidth;
-      canvas.height = image.naturalHeight;
-      const context = canvas.getContext("2d", { willReadFrequently: true });
-      context.drawImage(image, 0, 0);
-      const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-      const shellColor = parseHex(localStorage.getItem(SP_SHELL_COLOR_KEY) || "#bfc2c5");
-      const buttonColor = parseHex(localStorage.getItem(SP_BUTTON_COLOR_KEY) || "#4b4547");
-      for (let y = 0; y < canvas.height; y += 1) {
-        for (let x = 0; x < canvas.width; x += 1) {
-          const index = (y * canvas.width + x) * 4;
-          const sx = x / canvas.width;
-          const sy = y / canvas.height;
-          const isScreen = sx > .025 && sx < .975 && sy > .025 && sy < .477;
-          if (isButtonPixel(x, y, canvas.width, canvas.height)) tintPixel(pixels.data, index, buttonColor);
-          else if (!isScreen) tintPixel(pixels.data, index, shellColor);
-        }
-      }
-      context.putImageData(pixels, 0, 0);
+      canvas.width = base.naturalWidth;
+      canvas.height = base.naturalHeight;
+      const context = canvas.getContext("2d");
+      context.drawImage(base, 0, 0);
+      drawTintedLayer(context, shell, localStorage.getItem(SP_SHELL_COLOR_KEY) || "#bfc2c5");
+      drawTintedLayer(context, buttons, localStorage.getItem(SP_BUTTON_COLOR_KEY) || "#4b4547");
       document.documentElement.style.setProperty("--ml3d-custom-sp-shell", `url("${canvas.toDataURL("image/jpeg", .92)}")`);
-    };
-    image.src = "assets/gba-sp-custom-base.jpg?v=1";
+    } catch (_) {
+      document.documentElement.style.removeProperty("--ml3d-custom-sp-shell");
+    }
   }
 
   function queueCustomSPRender(immediate = false) {

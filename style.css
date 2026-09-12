@@ -20,7 +20,12 @@ body.sp-skin-test{--ml3d-sp-shell:url("assets/gba-sp-silver.jpg?v=4")}
 body.sp-skin-test[data-sp-style="gray-red"]{--ml3d-sp-shell:url("assets/gba-sp-gray-red.png?v=3")}
 body.sp-skin-test[data-sp-style="cream-burgundy"]{--ml3d-sp-shell:url("assets/gba-sp-cream-burgundy.png?v=2")}
 body.sp-skin-test[data-sp-style="gold-zelda"]{--ml3d-sp-shell:url("assets/gba-sp-gold-zelda.png?v=1")}
+body.sp-skin-test[data-sp-style="yellow-character"]{--ml3d-sp-shell:url("assets/gba-sp-yellow-character.jpg?v=1")}
+body.sp-skin-test[data-sp-style="custom-color"]{--ml3d-sp-shell:var(--ml3d-custom-sp-shell,url("assets/gba-sp-custom-base.jpg?v=1"))}
 body.sp-skin-test .app::before{background-image:var(--ml3d-sp-shell)!important}
+
+/* Chromatic-wheel SP editor. */
+.ml3d-family-panel[data-panel="sp"]{position:relative}.ml3d-color-wheel{position:relative;background:conic-gradient(#ff3b30,#ffcc00,#34c759,#00c7be,#007aff,#af52de,#ff2d55,#ff3b30)!important}.ml3d-color-wheel::after{content:"";position:absolute;inset:9px;border-radius:50%;background:#fff;box-shadow:inset 0 0 5px #0005}.ml3d-sp-color-popover{position:relative;margin-top:13px;padding:14px;border:1px solid #8df5ff99;border-radius:12px;background:#071b25e8;box-shadow:0 8px 24px #0008;color:#effeff}.ml3d-sp-color-popover[hidden]{display:none!important}.ml3d-sp-color-popover strong{display:block;margin:0 32px 10px 0}.ml3d-sp-color-popover label{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:9px;font-weight:700}.ml3d-sp-color-popover input[type="color"]{width:58px;height:34px;padding:2px;border:1px solid #ffffff66;border-radius:8px;background:transparent}.ml3d-sp-color-popover .ml3d-color-close{position:absolute!important;top:7px!important;right:7px!important;width:30px!important;height:30px!important;min-width:30px!important;padding:0!important;border-radius:50%!important;font-size:22px;line-height:1}.ml3d-sp-color-popover small{margin-top:10px}
 
 /* Menu buttons follow the active appearance family. */
 body.sp-skin-test #menu button:not(.color-swatch):not([data-sp]):not(#social-link){

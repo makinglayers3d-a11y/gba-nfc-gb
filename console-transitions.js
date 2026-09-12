@@ -125,10 +125,10 @@
         const panelIn = [
           { transform: "perspective(1500px) rotateX(0deg) scaleY(1)", opacity: 1, offset: 0 },
           { transform: "perspective(1500px) rotateX(0deg) scaleY(1)", opacity: 1, offset: .34 },
-          { transform: "perspective(1500px) rotateX(-18deg) scaleY(.95)", opacity: 1, offset: .52 },
-          { transform: "perspective(1500px) rotateX(-58deg) scaleY(.5)", opacity: .82, offset: .72 },
-          { transform: "perspective(1500px) rotateX(-82deg) scaleY(.12)", opacity: .34, offset: .88 },
-          { transform: "perspective(1500px) rotateX(-89deg) scaleY(.02)", opacity: 0, offset: 1 }
+          { transform: "perspective(1500px) rotateX(18deg) scaleY(.95)", opacity: 1, offset: .52 },
+          { transform: "perspective(1500px) rotateX(58deg) scaleY(.5)", opacity: .82, offset: .72 },
+          { transform: "perspective(1500px) rotateX(82deg) scaleY(.12)", opacity: .34, offset: .88 },
+          { transform: "perspective(1500px) rotateX(89deg) scaleY(.02)", opacity: 0, offset: 1 }
         ];
         const hingeIn = [
           { opacity: 1, offset: 0 }, { opacity: 1, offset: .72 },

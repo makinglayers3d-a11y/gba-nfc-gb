@@ -4,18 +4,6 @@
   const SP_STYLE_KEY = "ml3d-sp-style";
   const SP_STYLES = ["silver", "gray-red", "cream-burgundy", "gold-zelda", "yellow-character"];
 
-  /*
-   * Limpieza definitiva del antiguo editor de color SP.
-   * Work retiró su interfaz, estilos y assets; aquí eliminamos también cualquier
-   * estado residual que pudiera quedar guardado en navegadores que lo usaron.
-   */
-  localStorage.removeItem("ml3d-sp-shell-color");
-  localStorage.removeItem("ml3d-sp-button-color");
-  document.documentElement.style.removeProperty("--ml3d-custom-sp-shell");
-  if (!SP_STYLES.includes(localStorage.getItem(SP_STYLE_KEY) || "silver")) {
-    localStorage.setItem(SP_STYLE_KEY, "silver");
-  }
-
   function build() {
     const section = document.querySelector("#menu .appearance-control");
     if (!section || document.getElementById("ml3d-appearance-selector")) return;
@@ -41,14 +29,31 @@
     section.insertBefore(selector, section.children[1] || null);
     const customSlot = selector.querySelector(".ml3d-custom-slot");
     colorGroups.forEach((group) => customSlot.appendChild(group));
-    selector.addEventListener("click", (event) => {
+    selector.addEventListener("click", async (event) => {
       const familyButton = event.target.closest("[data-family]");
-      if (familyButton) return setFamily(familyButton.dataset.family);
+      if (familyButton) return requestAppearance(familyButton.dataset.family, currentStyle());
       const spButton = event.target.closest("[data-sp]");
-      if (spButton) setSP(spButton.dataset.sp);
+      if (spButton) await requestAppearance("sp", spButton.dataset.sp);
     });
     setFamily(localStorage.getItem(FAMILY_KEY) || "sp", false);
     setSP(localStorage.getItem(SP_STYLE_KEY) || "silver", false);
+  }
+
+  function currentStyle() {
+    const style = document.body.dataset.spStyle || localStorage.getItem(SP_STYLE_KEY) || "silver";
+    return SP_STYLES.includes(style) ? style : "silver";
+  }
+
+  async function requestAppearance(family, style) {
+    family = family === "custom" ? "custom" : "sp";
+    if (!SP_STYLES.includes(style)) style = "silver";
+    const apply = () => {
+      setFamily(family);
+      setSP(style);
+    };
+    const transitions = window.ML3DConsoleTransitions;
+    if (transitions) await transitions.switchAppearanceAnimated(family, style, apply);
+    else apply();
   }
 
   function setFamily(family, save = true) {

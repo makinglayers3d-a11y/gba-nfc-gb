@@ -4,6 +4,14 @@
   const SP_STYLE_KEY = "ml3d-sp-style";
   const SP_STYLES = ["silver", "gray-red", "cream-burgundy", "gold-zelda", "yellow-character"];
 
+  /* Remove state left behind by the retired custom SP colour editor. */
+  localStorage.removeItem("ml3d-sp-shell-color");
+  localStorage.removeItem("ml3d-sp-button-color");
+  document.documentElement.style.removeProperty("--ml3d-custom-sp-shell");
+  if (!SP_STYLES.includes(localStorage.getItem(SP_STYLE_KEY) || "silver")) {
+    localStorage.setItem(SP_STYLE_KEY, "silver");
+  }
+
   function build() {
     const section = document.querySelector("#menu .appearance-control");
     if (!section || document.getElementById("ml3d-appearance-selector")) return;

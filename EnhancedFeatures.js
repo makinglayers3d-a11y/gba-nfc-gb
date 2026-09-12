@@ -17,6 +17,92 @@
   let longPressTriggered = false;
   let previewTimer = 0;
 
+  const CARTRIDGE_TYPES = Object.freeze({
+    gba: Object.freeze({
+      base: "assets/cartridges/gba-base-dynamic.png",
+      fallback: "assets/cartridges/gba-fallback.png"
+    })
+  });
+
+  const CARTRIDGE_COLORS = Object.freeze({
+    black: "#202226",
+    gray: "#666a70",
+    blue: "#24569a",
+    red: "#8e2732",
+    purple: "#603b86",
+    green: "#326448"
+  });
+
+  /*
+   * Catálogo cerrado: ningún valor de la URL se utiliza para construir rutas.
+   * Las próximas etiquetas solo necesitan una entrada nueva con su imagen y
+   * sus rectángulos de recorte/destino.
+   */
+  const CARTRIDGE_LABELS = Object.freeze({
+    ml3d: Object.freeze({
+      src: "assets/cartridges/gba-fallback.png",
+      crop: Object.freeze([185, 280, 1168, 490]),
+      destination: Object.freeze([185, 235, 1168, 490])
+    })
+  });
+
+  function own(catalog, key) {
+    return Object.prototype.hasOwnProperty.call(catalog, key);
+  }
+
+  function cartridgeSelection() {
+    const type = (params.get("cartType") || "").toLowerCase();
+    const color = (params.get("cartColor") || "").toLowerCase();
+    const label = (params.get("cartLabel") || "").toLowerCase();
+    const valid = own(CARTRIDGE_TYPES, type) &&
+      own(CARTRIDGE_COLORS, color) && own(CARTRIDGE_LABELS, label);
+
+    return valid ? { dynamic: true, type, color, label } : {
+      dynamic: false,
+      type: "gba"
+    };
+  }
+
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = src;
+    });
+  }
+
+  async function renderCartridge(canvas, selection) {
+    const context = canvas.getContext("2d");
+    const type = CARTRIDGE_TYPES[selection.type];
+    canvas.width = 1536;
+    canvas.height = 930;
+
+    if (!selection.dynamic) {
+      const fallback = await loadImage(type.fallback);
+      context.drawImage(fallback, 0, 70, 1536, 860, 0, 0, 1536, 930);
+      return;
+    }
+
+    const label = CARTRIDGE_LABELS[selection.label];
+    const [base, labelImage] = await Promise.all([
+      loadImage(type.base),
+      loadImage(label.src)
+    ]);
+
+    /* Recorta solo el margen negro exterior; el PNG fuente queda intacto. */
+    context.drawImage(base, 0, 120, 1536, 930, 0, 0, 1536, 930);
+
+    /* "color" conserva la luminosidad original: relieve, textura y sombras. */
+    context.save();
+    context.globalCompositeOperation = "color";
+    context.fillStyle = CARTRIDGE_COLORS[selection.color];
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.restore();
+
+    context.drawImage(labelImage, ...label.crop, ...label.destination);
+  }
+
   function vibrate(pattern) {
     if (
       localStorage.getItem("gba-vibration-enabled") === "true" &&
@@ -62,38 +148,33 @@
       scene.innerHTML = `
         <div class="ml3d-cartridge-slot"></div>
         <div class="ml3d-cartridge">
-          <img class="ml3d-cartridge-png" src="assets/gba-cartridge.png" alt="">
-          <div class="ml3d-cartridge-ridge"></div>
-          <div class="ml3d-cartridge-title">GAME BOY ADVANCE</div>
-          <div class="ml3d-cartridge-label">
-            <img src="assets/makinglayers3d-label.png?v=1f853638" alt="ML3D">
-          </div>
-          <div class="ml3d-cartridge-arrow" aria-hidden="true">▼</div>
+          <canvas class="ml3d-cartridge-render" aria-label="Cartucho Game Boy Advance"></canvas>
         </div>
         <div class="ml3d-cartridge-message">CARTUCHO RECONOCIDO</div>`;
       document.body.appendChild(scene);
 
       const cartridge = scene.querySelector(".ml3d-cartridge");
-      const cartridgePng = scene.querySelector(".ml3d-cartridge-png");
+      const canvas = scene.querySelector(".ml3d-cartridge-render");
 
-      cartridgePng.addEventListener("load", () => {
-        cartridge.classList.add("has-png");
-      });
-
-      cartridgePng.addEventListener("error", () => {
-        cartridgePng.remove();
-      });
-
-      playCartridgeSound(.7);
-      window.setTimeout(() => {
-        scene.classList.add("recognized");
-        vibrate([28, 34, 58]);
-      }, 700);
-      window.setTimeout(() => scene.classList.add("leaving"), 1320);
-      window.setTimeout(() => {
-        scene.remove();
-        resolve();
-      }, 1660);
+      renderCartridge(canvas, cartridgeSelection())
+        .catch(async () => {
+          /* Un fallo de carga también termina siempre en el fallback seguro. */
+          await renderCartridge(canvas, { dynamic: false, type: "gba" });
+        })
+        .catch(() => {})
+        .finally(() => {
+          cartridge.classList.add("has-render");
+          playCartridgeSound(.7);
+          window.setTimeout(() => {
+            scene.classList.add("recognized");
+            vibrate([28, 34, 58]);
+          }, 700);
+          window.setTimeout(() => scene.classList.add("leaving"), 1320);
+          window.setTimeout(() => {
+            scene.remove();
+            resolve();
+          }, 1660);
+        });
     });
   };
 

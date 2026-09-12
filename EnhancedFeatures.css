@@ -101,6 +101,8 @@
   border:3px solid #404040;
   box-shadow:inset 0 0 0 2px #050505, inset 0 -13px 18px #0009, 0 25px 50px #000;
   animation:ml3dCartridgeInsert 1.25s cubic-bezier(.2,.8,.2,1) both;
+  animation-play-state:paused;
+  visibility:hidden;
 }
 
 .ml3d-cartridge::before {
@@ -321,4 +323,29 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+/* Cartucho compuesto en tiempo de ejecución desde catálogos seguros. */
+.ml3d-cartridge.has-render {
+  width:min(88vw,520px);
+  aspect-ratio:1536/930;
+  padding:0;
+  border:0;
+  clip-path:none;
+  background:transparent;
+  box-shadow:none;
+  animation-play-state:running;
+  visibility:visible;
+}
+
+.ml3d-cartridge.has-render::before,
+.ml3d-cartridge.has-render::after {
+  display:none;
+}
+
+.ml3d-cartridge-render {
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:contain;
 }

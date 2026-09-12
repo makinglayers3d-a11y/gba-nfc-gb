@@ -12,6 +12,7 @@
   let transitioning = false;
   let initialIntroPlayed = false;
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  const imageLoads = new Map();
 
   function appElement() {
     return document.querySelector("body > .app");
@@ -35,7 +36,20 @@
     });
   }
 
-  function createRepresentation(family, style, rect) {
+  function loadImage(src) {
+    if (!src) return Promise.resolve(false);
+    if (!imageLoads.has(src)) {
+      imageLoads.set(src, new Promise((resolve) => {
+        const image = new Image();
+        image.onload = () => resolve(true);
+        image.onerror = () => resolve(false);
+        image.src = src;
+      }));
+    }
+    return imageLoads.get(src);
+  }
+
+  async function createRepresentation(family, style, rect) {
     const source = appElement();
     if (!source) throw new Error("No se encontró el contenedor del emulador");
 
@@ -57,52 +71,80 @@
     copyCanvases(source, clone);
 
     const asset = family === "sp" ? SP_TRANSITION_ASSETS[style] : null;
-    if (asset?.lid) {
-      const lid = document.createElement("img");
-      lid.className = "ml3d-console-transition-lid";
-      lid.alt = "";
-      lid.decoding = "async";
-      lid.src = asset.lid;
-      lid.addEventListener("error", () => lid.remove(), { once: true });
-      overlay.appendChild(lid);
+    if (asset?.lid && await loadImage(asset.lid)) {
+      const hinge = document.createElement("img");
+      hinge.className = "ml3d-console-transition-lid ml3d-console-transition-hinge";
+      hinge.alt = "";
+      hinge.src = asset.lid;
+      const panel = hinge.cloneNode();
+      panel.className = "ml3d-console-transition-lid ml3d-console-transition-panel";
+      overlay.append(hinge, panel);
     }
-    return { overlay, shell, lid: overlay.querySelector(".ml3d-console-transition-lid") };
+    return {
+      overlay,
+      shell,
+      hinge: overlay.querySelector(".ml3d-console-transition-hinge"),
+      panel: overlay.querySelector(".ml3d-console-transition-panel")
+    };
   }
 
   function motionFrames(rect, entering) {
     const drop = Math.max(innerHeight - rect.top + rect.height * .32, rect.height * .75);
     const frames = [
-      { transform: `translate3d(0,${drop}px,0) scale(.16)`, opacity: 0 },
-      { transform: `translate3d(0,${rect.height * .2}px,0) scale(.34)`, opacity: 1, offset: .34 },
-      { transform: "translate3d(0,0,0) scale(1)", opacity: 1 }
+      { transform: `translate3d(0,${drop}px,0) scale(.12)`, opacity: 0, offset: 0 },
+      { transform: `translate3d(0,${drop * .58}px,0) scale(.18)`, opacity: 1, offset: .18 },
+      { transform: `translate3d(0,${drop * .3}px,0) scale(.34)`, opacity: 1, offset: .34 },
+      { transform: `translate3d(0,${rect.height * .12}px,0) scale(.58)`, opacity: 1, offset: .55 },
+      { transform: `translate3d(0,${rect.height * .02}px,0) scale(.88)`, opacity: 1, offset: .82 },
+      { transform: "translate3d(0,0,0) scale(1)", opacity: 1, offset: 1 }
     ];
-    return entering ? frames : frames.reverse().map(({ offset, ...frame }, index) => ({
-      ...frame, ...(index === 1 ? { offset: .66 } : {})
-    }));
+    return entering ? frames : reverseFrames(frames);
+  }
+
+  function reverseFrames(frames) {
+    return frames.slice().reverse().map((frame) => ({ ...frame, offset: 1 - frame.offset }));
   }
 
   async function animateRepresentation(family, style, direction) {
     const app = appElement();
     if (!app) return;
     const rect = app.getBoundingClientRect();
-    const view = createRepresentation(family, style, rect);
+    const view = await createRepresentation(family, style, rect);
     const entering = direction === "in";
-    const duration = reducedMotion.matches ? 90 : (family === "sp" && view.lid ? 1250 : 720);
-    const easing = entering ? "cubic-bezier(.16,.84,.2,1)" : "cubic-bezier(.55,.02,.82,.45)";
+    const duration = reducedMotion.matches ? 100 : (family === "sp" && view.panel ? 2200 : 1100);
+    const easing = entering ? "cubic-bezier(.18,.72,.16,1)" : "cubic-bezier(.58,.04,.82,.42)";
+
+    if (reducedMotion.matches && view.panel) {
+      view.panel.style.opacity = "0";
+      view.hinge.style.opacity = "0";
+    }
 
     try {
       const animations = [view.overlay.animate(motionFrames(rect, entering), { duration, easing, fill: "both" })];
-      if (family === "sp" && view.lid && !reducedMotion.matches) {
-        const closed = { transform: "perspective(1200px) rotateX(0deg) scaleY(1)", opacity: 1 };
-        const open = { transform: "perspective(1200px) rotateX(-86deg) scaleY(.08)", opacity: 0 };
-        const lidFrames = entering
-          ? [closed, { ...closed, offset: .3 }, { transform: "perspective(1200px) rotateX(-54deg) scaleY(.58)", opacity: .78, offset: .68 }, open]
-          : [open, { transform: "perspective(1200px) rotateX(-54deg) scaleY(.58)", opacity: .78, offset: .32 }, { ...closed, offset: .7 }, closed];
-        const shellFrames = entering
-          ? [{ opacity: 0 }, { opacity: 0, offset: .28 }, { opacity: 1, offset: .76 }, { opacity: 1 }]
-          : [{ opacity: 1 }, { opacity: 1, offset: .24 }, { opacity: 0, offset: .72 }, { opacity: 0 }];
-        animations.push(view.lid.animate(lidFrames, { duration, easing, fill: "both" }));
-        animations.push(view.shell.animate(shellFrames, { duration, easing: "ease-in-out", fill: "both" }));
+      if (family === "sp" && view.panel && !reducedMotion.matches) {
+        const panelIn = [
+          { transform: "perspective(1500px) rotateX(0deg) scaleY(1)", opacity: 1, offset: 0 },
+          { transform: "perspective(1500px) rotateX(0deg) scaleY(1)", opacity: 1, offset: .34 },
+          { transform: "perspective(1500px) rotateX(-18deg) scaleY(.95)", opacity: 1, offset: .52 },
+          { transform: "perspective(1500px) rotateX(-58deg) scaleY(.5)", opacity: .82, offset: .72 },
+          { transform: "perspective(1500px) rotateX(-82deg) scaleY(.12)", opacity: .34, offset: .88 },
+          { transform: "perspective(1500px) rotateX(-89deg) scaleY(.02)", opacity: 0, offset: 1 }
+        ];
+        const hingeIn = [
+          { opacity: 1, offset: 0 }, { opacity: 1, offset: .72 },
+          { opacity: .55, offset: .88 }, { opacity: 0, offset: 1 }
+        ];
+        const shellIn = [
+          { opacity: 0, filter: "brightness(.82)", offset: 0 },
+          { opacity: 0, filter: "brightness(.82)", offset: .32 },
+          { opacity: .28, filter: "brightness(.88)", offset: .55 },
+          { opacity: .82, filter: "brightness(.97)", offset: .78 },
+          { opacity: 1, filter: "brightness(1)", offset: .95 },
+          { opacity: 1, filter: "brightness(1)", offset: 1 }
+        ];
+        animations.push(view.panel.animate(entering ? panelIn : reverseFrames(panelIn), { duration, easing, fill: "both" }));
+        animations.push(view.hinge.animate(entering ? hingeIn : reverseFrames(hingeIn), { duration, easing: "ease-in-out", fill: "both" }));
+        animations.push(view.shell.animate(entering ? shellIn : reverseFrames(shellIn), { duration, easing: "ease-in-out", fill: "both" }));
       }
       await Promise.all(animations.map((animation) => animation.finished.catch(() => {})));
     } finally {
@@ -164,4 +206,6 @@
     playConsoleIntro, playConsoleOutro, switchAppearanceAnimated, playInitialIntro,
     get transitioning() { return transitioning; }
   });
+
+  loadImage(SP_TRANSITION_ASSETS.silver.lid);
 })();

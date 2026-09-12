@@ -7,10 +7,12 @@ body.ml3d-console-transitioning{overflow:hidden!important;touch-action:none}
 body.ml3d-console-transitioning> .app{visibility:hidden!important;pointer-events:none!important}
 body.ml3d-console-transitioning #menu-button,
 body.ml3d-console-transitioning #controls{pointer-events:none!important}
-.ml3d-console-transition-overlay{position:fixed;z-index:2147483000;overflow:hidden;pointer-events:none;transform-origin:50% 50%;contain:layout paint;will-change:transform,opacity}
+.ml3d-console-transition-overlay{position:fixed;z-index:2147483000;overflow:hidden;pointer-events:none;transform-origin:50% 50%;transform-style:preserve-3d;perspective:1500px;contain:layout paint;will-change:transform,opacity}
 .ml3d-console-transition-shell{position:absolute;inset:0;will-change:opacity}
 .ml3d-console-transition-shell>.app{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;min-height:0!important;max-width:none!important;margin:0!important;overflow:hidden!important}
-.ml3d-console-transition-lid{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;transform-origin:50% 50.62%;backface-visibility:hidden;will-change:transform,opacity}
+.ml3d-console-transition-lid{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;backface-visibility:hidden;will-change:transform,opacity}
+.ml3d-console-transition-hinge{clip-path:polygon(0 43.8%,100% 43.8%,100% 50.8%,0 50.8%);transform-origin:50% 50.62%}
+.ml3d-console-transition-panel{clip-path:polygon(0 50.45%,100% 50.45%,100% 100%,0 100%);transform-origin:50% 50.62%}
 @media(prefers-reduced-motion:reduce){.ml3d-console-transition-overlay,.ml3d-console-transition-shell,.ml3d-console-transition-lid{will-change:auto}}
 body.sp-skin-test .sp-top-labels,body.sp-skin-test .sp-top-labels *{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}body.sp-skin-test .sp-code-brand{pointer-events:auto!important;touch-action:none}
 /* Browser selection is disabled for all emulator labels and logos. */

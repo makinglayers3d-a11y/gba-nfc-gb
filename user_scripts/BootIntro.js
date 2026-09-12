@@ -75,9 +75,6 @@
         window.ml3dInitialCartridgePromise
       )
         .catch(() => {})
-        .then(() => new Promise((resolve) => {
-          requestAnimationFrame(() => requestAnimationFrame(resolve));
-        }))
         .then(async () => {
           if (window.ML3DConsoleTransitions) {
             await window.ML3DConsoleTransitions.playInitialIntro();

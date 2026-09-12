@@ -11,8 +11,23 @@
 
   let transitioning = false;
   let initialIntroPlayed = false;
+  let initialIntroPromise = null;
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const imageLoads = new Map();
+
+  /*
+   * El handoff del cartucho y la apertura forman una sola transición visual.
+   * En el mismo instante en que el cartucho empieza a salir ocultamos la app
+   * real para que nunca pueda asomar un frame de la SP ya abierta.
+   */
+  const handoffStyle = document.createElement("style");
+  handoffStyle.textContent = `
+    body.ml3d-cartridge-handoff > .app {
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+  `;
+  document.head.appendChild(handoffStyle);
 
   function appElement() {
     return document.querySelector("body > .app");
@@ -49,53 +64,8 @@
     return imageLoads.get(src);
   }
 
-  async function createRepresentation(family, style, rect) {
-    const source = appElement();
-    if (!source) throw new Error("No se encontró el contenedor del emulador");
-
-    const overlay = document.createElement("div");
-    overlay.className = `ml3d-console-transition-overlay is-${family}`;
-    Object.assign(overlay.style, {
-      left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px`
-    });
-
-    const shell = document.createElement("div");
-    shell.className = "ml3d-console-transition-shell";
-    const clone = source.cloneNode(true);
-    clone.removeAttribute("id");
-    clone.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
-    clone.querySelectorAll("dialog").forEach((node) => node.remove());
-    shell.appendChild(clone);
-    overlay.appendChild(shell);
-    document.body.appendChild(overlay);
-    copyCanvases(source, clone);
-
-    const asset = family === "sp" ? SP_TRANSITION_ASSETS[style] : null;
-    let topShell = null;
-    if (asset?.lid && await loadImage(asset.lid)) {
-      shell.classList.add("ml3d-console-transition-base");
-      topShell = document.createElement("div");
-      topShell.className = "ml3d-console-transition-shell ml3d-console-transition-top";
-      const topClone = source.cloneNode(true);
-      topClone.removeAttribute("id");
-      topClone.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
-      topClone.querySelectorAll("dialog").forEach((node) => node.remove());
-      topShell.appendChild(topClone);
-      overlay.appendChild(topShell);
-      copyCanvases(source, topClone);
-
-      const panel = document.createElement("img");
-      panel.className = "ml3d-console-transition-lid ml3d-console-transition-panel";
-      panel.alt = "";
-      panel.src = asset.lid;
-      overlay.appendChild(panel);
-    }
-    return {
-      overlay,
-      shell,
-      topShell,
-      panel: overlay.querySelector(".ml3d-console-transition-panel")
-    };
+  function reverseFrames(frames) {
+    return frames.slice().reverse().map((frame) => ({ ...frame, offset: 1 - frame.offset }));
   }
 
   function motionFrames(rect, entering, settleBeforeOpening = false) {
@@ -117,16 +87,84 @@
     return entering ? frames : reverseFrames(frames);
   }
 
-  function reverseFrames(frames) {
-    return frames.slice().reverse().map((frame) => ({ ...frame, offset: 1 - frame.offset }));
+  async function createRepresentation(family, style, rect, direction) {
+    const source = appElement();
+    if (!source) throw new Error("No se encontró el contenedor del emulador");
+
+    const entering = direction === "in";
+    const asset = family === "sp" ? SP_TRANSITION_ASSETS[style] : null;
+    const hasLid = Boolean(asset?.lid && await loadImage(asset.lid));
+
+    /*
+     * Todo el snapshot se construye fuera del DOM. De este modo la carcasa
+     * interior nunca puede pintarse sola mientras esperamos/cargamos la tapa.
+     */
+    const overlay = document.createElement("div");
+    overlay.className = `ml3d-console-transition-overlay is-${family}`;
+    Object.assign(overlay.style, {
+      left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px`
+    });
+
+    const shell = document.createElement("div");
+    shell.className = "ml3d-console-transition-shell";
+    const clone = source.cloneNode(true);
+    clone.removeAttribute("id");
+    clone.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
+    clone.querySelectorAll("dialog").forEach((node) => node.remove());
+    shell.appendChild(clone);
+    overlay.appendChild(shell);
+    copyCanvases(source, clone);
+
+    let topShell = null;
+    let panel = null;
+    if (hasLid) {
+      shell.classList.add("ml3d-console-transition-base");
+
+      topShell = document.createElement("div");
+      topShell.className = "ml3d-console-transition-shell ml3d-console-transition-top";
+      const topClone = source.cloneNode(true);
+      topClone.removeAttribute("id");
+      topClone.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
+      topClone.querySelectorAll("dialog").forEach((node) => node.remove());
+      topShell.appendChild(topClone);
+      overlay.appendChild(topShell);
+      copyCanvases(source, topClone);
+
+      panel = document.createElement("img");
+      panel.className = "ml3d-console-transition-lid ml3d-console-transition-panel";
+      panel.alt = "";
+      panel.src = asset.lid;
+      overlay.appendChild(panel);
+
+      /* Estado inicial aplicado antes de insertar el overlay: cero flashes. */
+      if (entering) {
+        panel.style.transform = "rotateX(0deg)";
+        panel.style.opacity = "1";
+        topShell.style.transform = "rotateX(-90deg)";
+        topShell.style.opacity = "0";
+      } else {
+        panel.style.transform = "rotateX(90deg)";
+        panel.style.opacity = "0";
+        topShell.style.transform = "rotateX(0deg)";
+        topShell.style.opacity = "1";
+      }
+    }
+
+    const initialMotion = motionFrames(rect, entering, hasLid)[0];
+    overlay.style.transform = initialMotion.transform;
+    overlay.style.opacity = String(initialMotion.opacity);
+
+    document.body.appendChild(overlay);
+
+    return { overlay, shell, topShell, panel };
   }
 
   async function animateRepresentation(family, style, direction) {
     const app = appElement();
     if (!app) return;
     const rect = app.getBoundingClientRect();
-    const view = await createRepresentation(family, style, rect);
     const entering = direction === "in";
+    const view = await createRepresentation(family, style, rect, direction);
     const duration = reducedMotion.matches ? 100 : (family === "sp" && view.panel ? 2200 : 1100);
     const easing = entering ? "cubic-bezier(.18,.72,.16,1)" : "cubic-bezier(.58,.04,.82,.42)";
 
@@ -135,7 +173,10 @@
     }
 
     try {
-      const animations = [view.overlay.animate(motionFrames(rect, entering, Boolean(view.panel)), { duration, easing, fill: "both" })];
+      const animations = [
+        view.overlay.animate(motionFrames(rect, entering, Boolean(view.panel)), { duration, easing, fill: "both" })
+      ];
+
       if (family === "sp" && view.panel && !reducedMotion.matches) {
         const panelIn = [
           { transform: "rotateX(0deg)", opacity: 1, offset: 0 },
@@ -158,6 +199,7 @@
         animations.push(view.panel.animate(entering ? panelIn : reverseFrames(panelIn), { duration, easing, fill: "both" }));
         animations.push(view.topShell.animate(entering ? topIn : reverseFrames(topIn), { duration, easing, fill: "both" }));
       }
+
       await Promise.all(animations.map((animation) => animation.finished.catch(() => {})));
     } finally {
       view.overlay.remove();
@@ -206,11 +248,17 @@
     });
   }
 
-  async function playInitialIntro() {
-    if (initialIntroPlayed || new URLSearchParams(location.search).get("skipintro") === "1") return;
+  function playInitialIntro() {
+    if (new URLSearchParams(location.search).get("skipintro") === "1") {
+      return Promise.resolve();
+    }
+    if (initialIntroPromise) return initialIntroPromise;
+    if (initialIntroPlayed) return Promise.resolve();
+
     initialIntroPlayed = true;
     const current = currentAppearance();
-    await runLocked(() => playConsoleIntro(current.family, current.style));
+    initialIntroPromise = runLocked(() => playConsoleIntro(current.family, current.style));
+    return initialIntroPromise;
   }
 
   window.SP_TRANSITION_ASSETS = SP_TRANSITION_ASSETS;
@@ -218,6 +266,22 @@
     playConsoleIntro, playConsoleOutro, switchAppearanceAnimated, playInitialIntro,
     get transitioning() { return transitioning; }
   });
+
+  /*
+   * Arrancamos la apertura en el MISMO handoff en que sale el cartucho.
+   * BootIntro puede llamar a playInitialIntro de nuevo: recibirá esta misma
+   * promesa y esperará a que termine, sin crear una segunda animación.
+   */
+  const startOnCartridgeHandoff = () => {
+    if (document.body.classList.contains("ml3d-cartridge-handoff")) {
+      playInitialIntro().catch(() => {});
+    }
+  };
+  new MutationObserver(startOnCartridgeHandoff).observe(document.body, {
+    attributes: true,
+    attributeFilter: ["class"]
+  });
+  startOnCartridgeHandoff();
 
   Object.values(SP_TRANSITION_ASSETS).forEach((asset) => loadImage(asset.lid));
 })();

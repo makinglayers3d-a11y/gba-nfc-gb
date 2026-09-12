@@ -71,7 +71,19 @@
     copyCanvases(source, clone);
 
     const asset = family === "sp" ? SP_TRANSITION_ASSETS[style] : null;
+    let topShell = null;
     if (asset?.lid && await loadImage(asset.lid)) {
+      shell.classList.add("ml3d-console-transition-base");
+      topShell = document.createElement("div");
+      topShell.className = "ml3d-console-transition-shell ml3d-console-transition-top";
+      const topClone = source.cloneNode(true);
+      topClone.removeAttribute("id");
+      topClone.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
+      topClone.querySelectorAll("dialog").forEach((node) => node.remove());
+      topShell.appendChild(topClone);
+      overlay.appendChild(topShell);
+      copyCanvases(source, topClone);
+
       const hinge = document.createElement("img");
       hinge.className = "ml3d-console-transition-lid ml3d-console-transition-hinge";
       hinge.alt = "";
@@ -83,14 +95,21 @@
     return {
       overlay,
       shell,
+      topShell,
       hinge: overlay.querySelector(".ml3d-console-transition-hinge"),
       panel: overlay.querySelector(".ml3d-console-transition-panel")
     };
   }
 
-  function motionFrames(rect, entering) {
+  function motionFrames(rect, entering, settleBeforeOpening = false) {
     const drop = Math.max(innerHeight - rect.top + rect.height * .32, rect.height * .75);
-    const frames = [
+    const frames = settleBeforeOpening ? [
+      { transform: `translate3d(0,${drop}px,0) scale(.12)`, opacity: 0, offset: 0 },
+      { transform: `translate3d(0,${drop * .48}px,0) scale(.28)`, opacity: 1, offset: .14 },
+      { transform: `translate3d(0,${rect.height * .08}px,0) scale(.78)`, opacity: 1, offset: .27 },
+      { transform: "translate3d(0,0,0) scale(1)", opacity: 1, offset: .34 },
+      { transform: "translate3d(0,0,0) scale(1)", opacity: 1, offset: 1 }
+    ] : [
       { transform: `translate3d(0,${drop}px,0) scale(.12)`, opacity: 0, offset: 0 },
       { transform: `translate3d(0,${drop * .58}px,0) scale(.18)`, opacity: 1, offset: .18 },
       { transform: `translate3d(0,${drop * .3}px,0) scale(.34)`, opacity: 1, offset: .34 },
@@ -120,31 +139,32 @@
     }
 
     try {
-      const animations = [view.overlay.animate(motionFrames(rect, entering), { duration, easing, fill: "both" })];
+      const animations = [view.overlay.animate(motionFrames(rect, entering, Boolean(view.panel)), { duration, easing, fill: "both" })];
       if (family === "sp" && view.panel && !reducedMotion.matches) {
         const panelIn = [
-          { transform: "perspective(1500px) rotateX(0deg) scaleY(1)", opacity: 1, offset: 0 },
-          { transform: "perspective(1500px) rotateX(0deg) scaleY(1)", opacity: 1, offset: .34 },
-          { transform: "perspective(1500px) rotateX(18deg) scaleY(.95)", opacity: 1, offset: .52 },
-          { transform: "perspective(1500px) rotateX(58deg) scaleY(.5)", opacity: .82, offset: .72 },
-          { transform: "perspective(1500px) rotateX(82deg) scaleY(.12)", opacity: .34, offset: .88 },
-          { transform: "perspective(1500px) rotateX(89deg) scaleY(.02)", opacity: 0, offset: 1 }
+          { transform: "rotateX(0deg)", opacity: 1, offset: 0 },
+          { transform: "rotateX(0deg)", opacity: 1, offset: .34 },
+          { transform: "rotateX(18deg)", opacity: 1, offset: .43 },
+          { transform: "rotateX(58deg)", opacity: .9, offset: .57 },
+          { transform: "rotateX(89deg)", opacity: .12, offset: .66 },
+          { transform: "rotateX(90deg)", opacity: 0, offset: .69 },
+          { transform: "rotateX(90deg)", opacity: 0, offset: 1 }
+        ];
+        const topIn = [
+          { transform: "rotateX(-90deg)", opacity: 0, offset: 0 },
+          { transform: "rotateX(-90deg)", opacity: 0, offset: .63 },
+          { transform: "rotateX(-89deg)", opacity: .12, offset: .66 },
+          { transform: "rotateX(-58deg)", opacity: .9, offset: .76 },
+          { transform: "rotateX(-18deg)", opacity: 1, offset: .91 },
+          { transform: "rotateX(0deg)", opacity: 1, offset: 1 }
         ];
         const hingeIn = [
-          { opacity: 1, offset: 0 }, { opacity: 1, offset: .72 },
-          { opacity: .55, offset: .88 }, { opacity: 0, offset: 1 }
-        ];
-        const shellIn = [
-          { opacity: 0, filter: "brightness(.82)", offset: 0 },
-          { opacity: 0, filter: "brightness(.82)", offset: .32 },
-          { opacity: .28, filter: "brightness(.88)", offset: .55 },
-          { opacity: .82, filter: "brightness(.97)", offset: .78 },
-          { opacity: 1, filter: "brightness(1)", offset: .95 },
-          { opacity: 1, filter: "brightness(1)", offset: 1 }
+          { opacity: 1, offset: 0 }, { opacity: 1, offset: .9 },
+          { opacity: 0, offset: 1 }
         ];
         animations.push(view.panel.animate(entering ? panelIn : reverseFrames(panelIn), { duration, easing, fill: "both" }));
+        animations.push(view.topShell.animate(entering ? topIn : reverseFrames(topIn), { duration, easing, fill: "both" }));
         animations.push(view.hinge.animate(entering ? hingeIn : reverseFrames(hingeIn), { duration, easing: "ease-in-out", fill: "both" }));
-        animations.push(view.shell.animate(entering ? shellIn : reverseFrames(shellIn), { duration, easing: "ease-in-out", fill: "both" }));
       }
       await Promise.all(animations.map((animation) => animation.finished.catch(() => {})));
     } finally {

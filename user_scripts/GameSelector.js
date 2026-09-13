@@ -77,11 +77,30 @@ const FILTERS = [
 let overlay = null;
 let listViewport = null;
 let listTrack = null;
+let loadGameButton = null;
+let localFileInput = null;
+let selectorMessage = null;
+let loadButtonSelected = false;
+let localRomLoading = false;
 
 let menuOpen = false;
 let opening = false;
 
 let menuAudioContext = null;
+
+function setLoadButtonSelected(selected) {
+  loadButtonSelected = Boolean(selected);
+  if (!loadGameButton) return;
+  loadGameButton.classList.toggle("is-selected", loadButtonSelected);
+  loadGameButton.setAttribute("aria-current", loadButtonSelected ? "true" : "false");
+}
+
+function showSelectorMessage(message, isError = false) {
+  if (!selectorMessage) return;
+  selectorMessage.textContent = message || "";
+  selectorMessage.hidden = !message;
+  selectorMessage.classList.toggle("is-error", Boolean(isError));
+}
 
 function hasRunningGame() {
   return Boolean(
@@ -854,6 +873,83 @@ function closeFilterSelector() {
     }
   }
 
+  function normalizeRomName(filename) {
+    return String(filename || "")
+      .replace(/\.(gba|gbc|gb)$/i, "")
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9._-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase() || "rom";
+  }
+
+  async function romFingerprint(bytes) {
+    if (window.crypto && window.crypto.subtle) {
+      const digest = await window.crypto.subtle.digest("SHA-256", bytes);
+      return Array.from(new Uint8Array(digest).slice(0, 8), (value) =>
+        value.toString(16).padStart(2, "0")
+      ).join("");
+    }
+
+    const view = new Uint8Array(bytes);
+    let hash = 2166136261;
+    for (let index = 0; index < view.length; index += 1) {
+      hash ^= view[index];
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(16).padStart(8, "0");
+  }
+
+  async function loadLocalFile(file) {
+    if (!file || localRomLoading) return;
+    const extension = (file.name.match(/\.(gba|gbc|gb)$/i) || [])[1];
+    if (!extension) {
+      showSelectorMessage("Formato no válido. Elige un archivo .gba, .gb o .gbc.", true);
+      return;
+    }
+    if (file.size < 1024) {
+      showSelectorMessage("El archivo está vacío o es demasiado pequeño para ser una ROM.", true);
+      return;
+    }
+    if (typeof window.gbaStartLocalRom !== "function") {
+      showSelectorMessage("El cargador local todavía no está disponible.", true);
+      return;
+    }
+
+    localRomLoading = true;
+    if (loadGameButton) loadGameButton.disabled = true;
+    showSelectorMessage("Leyendo ROM local…");
+    try {
+      const buffer = await file.arrayBuffer();
+      if (buffer.byteLength < 1024) throw new Error("La ROM es demasiado pequeña.");
+      const fingerprint = await romFingerprint(buffer);
+      const system = extension.toLowerCase();
+      const displayName = file.name.replace(/\.(gba|gbc|gb)$/i, "");
+      const saveId = "local-" + normalizeRomName(file.name) + "-" + fingerprint;
+
+      playMenuSelectSound();
+      showSelectorMessage("Iniciando " + displayName + "…");
+      await window.gbaStartLocalRom({
+        bytes: new Uint8Array(buffer), filename: file.name,
+        system, saveId, displayName
+      });
+      closeScreenSelector(true);
+    } catch (error) {
+      console.error("No se pudo cargar la ROM local:", error);
+      showSelectorMessage("No se pudo iniciar la ROM: " + (error.message || "error desconocido"), true);
+    } finally {
+      localRomLoading = false;
+      if (loadGameButton) loadGameButton.disabled = false;
+      if (localFileInput) localFileInput.value = "";
+    }
+  }
+
+  function openLocalFilePicker() {
+    if (!localFileInput || localRomLoading) return;
+    localFileInput.value = "";
+    localFileInput.click();
+  }
+
   function buildOverlay() {
     if (overlay) {
       return;
@@ -949,7 +1045,7 @@ Object.assign(
   {
     position: "absolute",
     top: "5%",
-    right: "5%",
+    left: "5%",
 
     fontSize:
       "clamp(10px, 2.8vw, 16px)",
@@ -961,11 +1057,37 @@ Object.assign(
 
     marginBottom: "0",
 
-    textAlign: "right",
+    textAlign: "left",
 
     zIndex: "2"
   }
 );
+
+    loadGameButton = document.createElement("button");
+    loadGameButton.type = "button";
+    loadGameButton.className = "gba-local-rom-button";
+    loadGameButton.textContent = "CARGAR JUEGO";
+    loadGameButton.setAttribute("aria-label", "Cargar una ROM local");
+    loadGameButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setLoadButtonSelected(true);
+      openLocalFilePicker();
+    });
+
+    localFileInput = document.createElement("input");
+    localFileInput.type = "file";
+    localFileInput.accept = ".gba,.gb,.gbc";
+    localFileInput.hidden = true;
+    localFileInput.setAttribute("aria-hidden", "true");
+    localFileInput.addEventListener("change", () => {
+      const file = localFileInput.files && localFileInput.files[0];
+      if (file) loadLocalFile(file);
+    });
+
+    selectorMessage = document.createElement("div");
+    selectorMessage.className = "gba-local-rom-message";
+    selectorMessage.hidden = true;
 
     listViewport =
       document.createElement("div");
@@ -1006,7 +1128,7 @@ Object.assign(
       document.createElement("div");
 
     footer.textContent =
-      "▲ ▼ MOVER   A / START ELEGIR   SELECT FILTRO   B VOLVER";
+      "◀ ▶ OPCIONES   ▲ ▼ MOVER   A/START ELEGIR   SELECT FILTRO   B VOLVER";
    Object.assign(
   footer.style,
   {
@@ -1038,12 +1160,16 @@ Object.assign(
     );
 
     overlay.appendChild(title);
+    overlay.appendChild(loadGameButton);
+    overlay.appendChild(localFileInput);
+    overlay.appendChild(selectorMessage);
     overlay.appendChild(listViewport);
     overlay.appendChild(footer);
 
     screenFrame.appendChild(
       overlay
     );
+    setLoadButtonSelected(false);
   }
 function updateCoverBackground() {
   if (!overlay || !games.length) {
@@ -1774,6 +1900,10 @@ item.textContent =
       overlay = null;
       listViewport = null;
       listTrack = null;
+      loadGameButton = null;
+      localFileInput = null;
+      selectorMessage = null;
+      loadButtonSelected = false;
     }
 
     /*
@@ -2008,12 +2138,6 @@ item.textContent =
 
     await loadGameList();
 
-    if (!games.length) {
-      opening = false;
-      setGameAudioDucked(false);
-      return;
-    }
-
     await closeMenuIntoScreen();
 
     buildOverlay();
@@ -2022,6 +2146,9 @@ item.textContent =
     opening = false;
 
     renderList();
+    if (!games.length) {
+      showSelectorMessage("No se pudo cargar la lista. Puedes abrir una ROM local.", true);
+    }
   }
 
  function handleKeyboard(event) {
@@ -2073,18 +2200,34 @@ item.textContent =
   }
 
   switch (event.code) {
+    case "ArrowRight":
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      if (!loadButtonSelected) playMenuMoveSound();
+      setLoadButtonSelected(true);
+      return;
+
+    case "ArrowLeft":
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      if (loadButtonSelected) playMenuMoveSound();
+      setLoadButtonSelected(false);
+      return;
+
     case "ArrowUp":
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      moveSelection(-1);
+      if (!loadButtonSelected) moveSelection(-1);
       return;
 
     case "ArrowDown":
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      moveSelection(1);
+      if (!loadButtonSelected) moveSelection(1);
       return;
 
     case "ShiftLeft":
@@ -2092,7 +2235,7 @@ item.textContent =
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      openFilterSelector();
+      if (!loadButtonSelected) openFilterSelector();
       return;
 
     case "KeyX":
@@ -2100,7 +2243,8 @@ item.textContent =
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      selectCurrentGame();
+      if (loadButtonSelected) openLocalFilePicker();
+      else selectCurrentGame();
       return;
 
     case "KeyZ":
@@ -2108,7 +2252,8 @@ item.textContent =
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      closeScreenSelector();
+      if (loadButtonSelected) setLoadButtonSelected(false);
+      else closeScreenSelector();
       return;
   }
 }
@@ -2194,12 +2339,34 @@ item.textContent =
     }
 
     if (
+      key === "RIGHT"
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      if (!loadButtonSelected) playMenuMoveSound();
+      setLoadButtonSelected(true);
+      return;
+    }
+
+    if (
+      key === "LEFT"
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      if (loadButtonSelected) playMenuMoveSound();
+      setLoadButtonSelected(false);
+      return;
+    }
+
+    if (
       key === "UP"
     ) {
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      moveSelection(-1);
+      if (!loadButtonSelected) moveSelection(-1);
       return;
     }
 
@@ -2209,7 +2376,7 @@ item.textContent =
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      moveSelection(1);
+      if (!loadButtonSelected) moveSelection(1);
       return;
     }
 
@@ -2219,7 +2386,7 @@ item.textContent =
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      openFilterSelector();
+      if (!loadButtonSelected) openFilterSelector();
       return;
     }
 
@@ -2230,7 +2397,8 @@ item.textContent =
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      selectCurrentGame();
+      if (loadButtonSelected) openLocalFilePicker();
+      else selectCurrentGame();
       return;
     }
 
@@ -2240,7 +2408,8 @@ item.textContent =
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      closeScreenSelector();
+      if (loadButtonSelected) setLoadButtonSelected(false);
+      else closeScreenSelector();
       return;
     }
   }

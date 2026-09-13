@@ -44,13 +44,26 @@ const buttonColors = document.getElementById("button-colors");
   
 };
 
-const selected =
+let selected =
   requestedRom
     ? {
         name: requestedRom,
         rom: "games/" + requestedRom
       }
-    : (gameConfig[game] || gameConfig.pokemon); 
+    : (gameConfig[game] || gameConfig.pokemon);
+
+function systemFromFilename(filename) {
+  const lower = String(filename || "").toLowerCase();
+  if (lower.endsWith(".gbc")) return "gbc";
+  if (lower.endsWith(".gb")) return "gb";
+  return "gba";
+}
+
+let currentSystem = systemFromFilename(selected.rom);
+let currentSaveId = game;
+let currentSource = "remote";
+let currentLocalRom = null;
+let romStartRequest = 0;
 
   const savedBackground = localStorage.getItem("gba-background");
 const savedButtonColor = localStorage.getItem("gba-button-color");
@@ -100,11 +113,11 @@ if (Number.isFinite(savedVolume)) {
 const SAVE_TYPE_PREFIX = "gba-save-type:";
 
 function saveKey(name) {
-  return SAVE_PREFIX + game + ":" + name;
+  return SAVE_PREFIX + currentSaveId + ":" + name;
 }
 
 function saveTypeKey(name) {
-  return SAVE_TYPE_PREFIX + game + ":" + name;
+  return SAVE_TYPE_PREFIX + currentSaveId + ":" + name;
 }
 
 function bytesToBase64(bytes) {
@@ -217,8 +230,7 @@ function loadGameType(name, callback) {
   };
 
   function pressKey(keyName) {
-  const isGBFamily =
-    /\.(gb|gbc)$/i.test(selected.rom);
+  const isGBFamily = currentSystem === "gb" || currentSystem === "gbc";
 
   if (isGBFamily) {
     if (
@@ -241,8 +253,7 @@ function loadGameType(name, callback) {
 }
 
  function releaseKey(keyName) {
-  const isGBFamily =
-    /\.(gb|gbc)$/i.test(selected.rom);
+  const isGBFamily = currentSystem === "gb" || currentSystem === "gbc";
 
   if (isGBFamily) {
     if (
@@ -555,9 +566,150 @@ window.addEventListener(
   true
 ); 
 
-  /*
-   * Carga del juego.
-   */
+  async function stopCurrentEmulator() {
+    stopGbaTimers();
+
+    if (emulator) {
+      try {
+        emulator.exportSave();
+        emulator.pause();
+      } catch (error) {
+        console.warn("No se pudo detener GBA limpiamente:", error);
+      }
+      emulator = null;
+      window.__gba = null;
+    }
+
+    if (window.gbaGB && typeof window.gbaGB.stop === "function") {
+      try {
+        if (typeof window.gbaGB.save === "function") window.gbaGB.save();
+        window.gbaGB.stop();
+      } catch (error) {
+        console.warn("No se pudo detener GB/GBC limpiamente:", error);
+      }
+    }
+  }
+
+  async function startRomFromBytes(bytes, filename, options = {}) {
+    const requestId = ++romStartRequest;
+    const rom = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    const system = options.system || systemFromFilename(filename);
+
+    if (!["gba", "gb", "gbc"].includes(system)) {
+      throw new Error("Formato de ROM no compatible.");
+    }
+    if (rom.byteLength < 1024) {
+      throw new Error("La ROM está vacía o es demasiado pequeña.");
+    }
+
+    status.hidden = false;
+    status.style.display = "";
+    status.textContent = "Cargando juego…";
+    await stopCurrentEmulator();
+    if (requestId !== romStartRequest) return false;
+
+    currentSystem = system;
+    currentSaveId = options.saveId || currentSaveId;
+    currentSource = options.source || "remote";
+    selected = {
+      name: options.displayName || String(filename).replace(/\.(gba|gbc|gb)$/i, ""),
+      rom: options.romPath || ""
+    };
+    title.textContent = selected.name;
+
+    currentLocalRom = currentSource === "local"
+      ? { bytes: rom.slice(), filename, system, saveId: currentSaveId, displayName: selected.name }
+      : null;
+
+    if (system === "gb" || system === "gbc") {
+      canvas.width = 160;
+      canvas.height = 144;
+      if (!window.gbaGB || typeof window.gbaGB.startBuffer !== "function") {
+        throw new Error("Falta el núcleo GB/GBC compatible con memoria.");
+      }
+      const buffer = rom.buffer.slice(rom.byteOffset, rom.byteOffset + rom.byteLength);
+      await window.gbaGB.startBuffer(buffer, filename, currentSaveId);
+      window.__gba = null;
+    } else {
+      canvas.width = 240;
+      canvas.height = 160;
+      if (typeof GameBoyAdvanceEmulator !== "function" || typeof GameBoyAdvanceMemory !== "function") {
+        throw new Error("Falta el núcleo Game Boy Advance.");
+      }
+
+      emulator = new GameBoyAdvanceEmulator();
+      emulator.attachSaveExportHandler((name, save) => {
+        if (name.startsWith("TYPE_")) saveGameType(name.substring(5), save);
+        else saveGame(name, save);
+      });
+      emulator.attachSaveImportHandler((name, callback, errorCallback) => errorCallback());
+
+      const savedSpeed = Number(localStorage.getItem("gba-speed") || "0.95");
+      emulator.setSpeed(savedSpeed);
+      if (speedSelect) speedSelect.value = String(savedSpeed);
+      emulator.attachPlayStatusHandler(() => {});
+      emulator.settings.offthreadGfxEnabled = false;
+      emulator.settings.SKIPBoot = true;
+      const blitter = new GfxGlueCode(240, 160);
+      blitter.attachCanvas(canvas);
+      emulator.attachGraphicsFrameHandler(blitter);
+      emulator.attachROM(rom);
+      if (audioInput) {
+        emulator.attachAudioHandler(audioInput);
+        emulator.enableAudio();
+      }
+      emulator.play();
+
+      try {
+        const gameName = emulator.getGameName();
+        if (gameName) {
+          loadGameSave(gameName, (save) => {
+            if (!save || !emulator) return;
+            loadGameType(gameName, (saveType) => {
+              if (!saveType || !emulator) return;
+              try {
+                emulator.IOCore.saves.importSave(new Uint8Array(save), saveType[0] | 0);
+              } catch (error) {
+                console.error("Error restaurando partida:", error);
+              }
+            });
+          });
+        }
+      } catch (error) {
+        console.error("Error cargando partida guardada:", error);
+      }
+      window.__gba = emulator;
+      startGbaTimers();
+    }
+
+    updateEmulatorAudioOutput();
+    status.hidden = true;
+    status.style.display = "none";
+    window.dispatchEvent(new CustomEvent("ml3d-rom-started", { detail: {
+      name: selected.name, filename, system, source: currentSource, saveId: currentSaveId
+    }}));
+    return true;
+  }
+
+  window.gbaStartLocalRom = async function ({ bytes, filename, system, saveId, displayName }) {
+    try {
+      return await startRomFromBytes(bytes, filename, {
+        system, saveId, displayName, source: "local"
+      });
+    } catch (error) {
+      console.error(error);
+      status.hidden = false;
+      status.style.display = "";
+      status.textContent = "Error al iniciar la ROM local: " + error.message;
+      throw error;
+    }
+  };
+
+  window.gbaGetCurrentSystem = function () {
+    return currentSystem;
+  };
+
+  /* Carga remota inicial, conservando las rutas actuales de /games. */
   async function loadGame() {
     try {
       status.hidden = false;
@@ -574,143 +726,14 @@ window.addEventListener(
 
       const rom = new Uint8Array(await response.arrayBuffer());
 
-      if (rom.length < 1024) {
-        throw new Error("ROM inválida");
-      }
-const lowerRomPath = selected.rom.toLowerCase();
-const isGBFamily =
-  lowerRomPath.endsWith(".gb") ||
-  lowerRomPath.endsWith(".gbc");
-
-if (isGBFamily) {
-  canvas.width = 160;
-  canvas.height = 144;
-
-  if (!window.gbaGB) {
-    throw new Error("Falta el núcleo GB/GBC.");
-  }
-
- await window.gbaGB.start(selected.rom);
-
-status.hidden = true;
-status.style.display = "none";
-
-window.__gba = null;
-
-return;
-}
-
-canvas.width = 240;
-canvas.height = 160;
-      if (typeof GameBoyAdvanceEmulator !== "function") {
-        throw new Error("Falta GameBoyAdvanceEmulator");
-      }
-
-      if (typeof GameBoyAdvanceMemory !== "function") {
-        throw new Error("Falta GameBoyAdvanceMemory");
-      }
-
-      emulator = new GameBoyAdvanceEmulator();
-      
-
-      
-
-emulator.attachSaveExportHandler((name, save) => {
-  if (name.startsWith("TYPE_")) {
-    saveGameType(name.substring(5), save);
-  } else {
-    saveGame(name, save);
-  }
-});
-
-emulator.attachSaveImportHandler((name, callback, errorCallback) => {
-  errorCallback();
-});
-      
-      /*
-       * Velocidad guardada.
-       * 95% es el valor inicial.
-       */
-      const savedSpeed = Number(
-        localStorage.getItem("gba-speed") || "0.95"
-      );
-
-      emulator.setSpeed(savedSpeed);
-
-      if (speedSelect) {
-        speedSelect.value = String(savedSpeed);
-      }
-
-      emulator.attachPlayStatusHandler(() => {});
-
-      /*
-       * Arranque sin BIOS.
-       */
-      emulator.settings.offthreadGfxEnabled = false;
-      emulator.settings.SKIPBoot = true;
-
-      const blitter = new GfxGlueCode(240, 160);
-
-      blitter.attachCanvas(canvas);
-
-      emulator.attachGraphicsFrameHandler(blitter);
-      emulator.attachROM(rom);
-
-      emulator.settings.SKIPBoot = true;
-
-     emulator.play();
-
-/*
- * Cargar partida guardada después de iniciar el emulador.
- */
-try {
-  const gameName = emulator.getGameName();
-
-  if (gameName) {
-    loadGameSave(gameName, (save) => {
-      if (!save) return;
-
-      loadGameType(gameName, (saveType) => {
-        if (!saveType) return;
-
-        try {
-          emulator.IOCore.saves.importSave(
-            new Uint8Array(save),
-            saveType[0] | 0
-          );
-
-          console.log("Partida restaurada:", gameName);
-        } catch (error) {
-          console.error("Error restaurando partida:", error);
-        }
+      return await startRomFromBytes(rom, selected.rom, {
+        system: systemFromFilename(selected.rom),
+        saveId: systemFromFilename(selected.rom) === "gba" ? game : selected.rom,
+        displayName: selected.name,
+        source: "remote",
+        romPath: selected.rom
       });
-    });
-  }
-} catch (error) {
-  console.error("Error cargando partida guardada:", error);
-}
 
-window.__gba = emulator;
-
-      /*
-       * Temporizador estable.
-       *
-       * IodineGBA espera el tiempo transcurrido,
-       * no performance.now() absoluto.
-       */
-      startGbaTimers();
-      
-      status.hidden = true;
-      status.style.display = "none";
-
-      console.log(
-        "Juego iniciado:",
-        selected.rom,
-        rom.length,
-        "bytes",
-        "velocidad:",
-        savedSpeed
-      );
     } catch (error) {
       console.error(error);
 
@@ -812,8 +835,7 @@ updateHapticUI();
 
   if (saveGameButton) {
   saveGameButton.addEventListener("click", () => {
-    const isGBFamily =
-      /\.(gb|gbc)$/i.test(selected.rom);
+    const isGBFamily = currentSystem === "gb" || currentSystem === "gbc";
 
     try {
       if (isGBFamily) {
@@ -838,7 +860,20 @@ updateHapticUI();
 }
   
 if (reloadButton) {
-  reloadButton.addEventListener("click", () => {
+  reloadButton.addEventListener("click", async () => {
+    if (currentSource === "local" && currentLocalRom) {
+      try {
+        await startRomFromBytes(currentLocalRom.bytes, currentLocalRom.filename, {
+          system: currentLocalRom.system,
+          saveId: currentLocalRom.saveId,
+          displayName: currentLocalRom.displayName,
+          source: "local"
+        });
+      } catch (error) {
+        console.error("Error reiniciando la ROM local:", error);
+      }
+      return;
+    }
     try {
       if (emulator) {
         emulator.pause();

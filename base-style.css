@@ -1508,6 +1508,69 @@ line-height: 1;
   opacity: 0.8;
 }
 
+.gba-local-rom-button {
+  position: absolute;
+  top: 3.5%;
+  right: 4%;
+  z-index: 4;
+  min-height: 30px;
+  max-width: 43%;
+  padding: 7px 11px;
+  border: 1px solid rgba(220, 225, 232, .42);
+  border-radius: 10px;
+  background: rgba(55, 59, 65, .88);
+  color: #fff;
+  font: 900 clamp(8px, 2.15vw, 12px)/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: .035em;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 3px 9px rgba(0, 0, 0, .32);
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.gba-local-rom-button.is-selected,
+.gba-local-rom-button:focus-visible {
+  outline: none;
+  border-color: rgba(255, 255, 255, .92);
+  background: rgba(112, 118, 127, .96);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .2), 0 0 14px rgba(220, 230, 242, .55);
+  transform: scale(1.035);
+}
+
+.gba-local-rom-button:disabled {
+  cursor: wait;
+  opacity: .72;
+}
+
+.gba-local-rom-message {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  bottom: 9%;
+  z-index: 5;
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: rgba(18, 24, 31, .9);
+  color: #e8edf2;
+  font: 700 clamp(7px, 1.8vw, 10px)/1.25 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  text-align: center;
+  pointer-events: none;
+}
+
+.gba-local-rom-message.is-error {
+  border: 1px solid rgba(255, 151, 151, .65);
+  color: #ffd8d8;
+}
+
+@media (max-width: 420px) {
+  .gba-local-rom-button {
+    top: 3%;
+    right: 3%;
+    min-height: 27px;
+    padding: 6px 8px;
+  }
+}
+
 /* Escena animada del selector de filtros. */
 .gba-filter-logo-scene {
   position: absolute;

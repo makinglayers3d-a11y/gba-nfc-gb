@@ -13,11 +13,6 @@
     const originalStop=api.stop;api.stop=function(){saveCurrent();if(saveTimer){clearInterval(saveTimer);saveTimer=null}currentEmulator=null;currentKey=null;return originalStop.call(this)};
     addEventListener('pagehide',saveCurrent);addEventListener('beforeunload',saveCurrent)
   }
-  if(originalStart&&originalStartBuffer){
-    api.start=async function(r){prepareStart();const g=await originalStart.call(this,r);if(saveTimer)clearInterval(saveTimer);return attachSaveIdentity(r,g)};
-    api.startBuffer=async function(buffer,filename,identity,useLegacySave){prepareStart();const g=await originalStartBuffer.call(this,buffer,filename,identity,useLegacySave);return attachSaveIdentity(identity||filename,g)};
-    api.save=saveCurrent;
-    const originalStop=api.stop;api.stop=function(){saveCurrent();if(saveTimer){clearInterval(saveTimer);saveTimer=null}currentEmulator=null;currentKey=null;return originalStop.call(this)};
-    addEventListener('pagehide',saveCurrent);addEventListener('beforeunload',saveCurrent)
-  }
+  if(!document.querySelector('script[data-ml3d-developer-tools]')){const p=document.createElement('script');p.src='developer-tools-panels.js?v=3';p.onload=()=>{const s=document.createElement('script');s.src='developer-tools.js?v=8';s.dataset.ml3dDeveloperTools='true';s.onload=()=>{const r=document.createElement('script');r.src='ml3d-feature-repair.js?v=1';r.onload=()=>{const f=document.createElement('script');f.src='ml3d-interaction-fixes.js?v=5';f.onload=()=>{const a=document.createElement('script');a.src='appearance-selector.js?v=3';document.head.appendChild(a)};document.head.appendChild(f)};document.head.appendChild(r)};document.head.appendChild(s)};document.head.appendChild(p)}
+  if(!document.querySelector('script[data-ml3d-sp-swipe-fix]')){const w=document.createElement('script');w.src='sp-selector-swipe-fix.js?v=1';w.dataset.ml3dSpSwipeFix='true';document.head.appendChild(w)}
 })();

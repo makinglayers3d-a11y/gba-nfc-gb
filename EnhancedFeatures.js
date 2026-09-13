@@ -54,6 +54,21 @@
       src: "assets/cartridges/labels/ml3d-blue.png",
       crop: Object.freeze([0, 0, 1536, 604]),
       destination: Object.freeze([185, 235, 1168, 490])
+    }),
+    zafiro: Object.freeze({
+      src: "assets/cartridges/labels/pokemon-zafiro-es.png",
+      crop: Object.freeze([0, 0, 1536, 787]),
+      destination: Object.freeze([185, 235, 1168, 490])
+    }),
+    "rojo-fuego": Object.freeze({
+      src: "assets/cartridges/labels/pokemon-rojo-fuego-es.png",
+      crop: Object.freeze([0, 0, 1536, 775]),
+      destination: Object.freeze([185, 235, 1168, 490])
+    }),
+    esmeralda: Object.freeze({
+      src: "assets/cartridges/labels/pokemon-esmeralda-es.png",
+      crop: Object.freeze([0, 0, 1536, 775]),
+      destination: Object.freeze([185, 235, 1168, 490])
     })
   });
 

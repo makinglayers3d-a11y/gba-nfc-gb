@@ -1,5 +1,5 @@
 /* Main stylesheet loader. Base snapshot + current SP alignment overrides. */
-@import url("base-style.css?v=sp-skin-4");
+@import url("base-style.css?v=local-rom-1");
 @import url("sp-controls-fix.css?v=1");
 
 /* Temporary snapshots keep final layout and touch geometry completely untouched. */

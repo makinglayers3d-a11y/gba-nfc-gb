@@ -2,7 +2,7 @@
   "use strict";
   const FAMILY_KEY = "ml3d-appearance-family";
   const SP_STYLE_KEY = "ml3d-sp-style";
-  const SP_STYLES = ["silver", "gray-red", "cream-burgundy", "gold-zelda", "yellow-character"];
+  const SP_STYLES = ["silver", "gray-red", "cream-burgundy", "gold-zelda", "yellow-character", "groudon", "kyogre", "rayquaza"];
 
   /* Remove state left behind by the retired custom SP colour editor. */
   localStorage.removeItem("ml3d-sp-shell-color");
@@ -32,6 +32,9 @@
           <button type="button" data-sp="cream-burgundy" style="--swatch:linear-gradient(135deg,#f3e4cd 0 62%,#741326 63%)" aria-label="SP crema con botones burdeos" title="Crema y burdeos"></button>
           <button type="button" data-sp="gold-zelda" style="--swatch:linear-gradient(135deg,#d8b64b 0 62%,#171717 63%)" aria-label="SP dorada Zelda" title="Dorada Zelda"></button>
           <button type="button" data-sp="yellow-character" style="--swatch:linear-gradient(135deg,#ffd70a 0 62%,#965d46 63%)" aria-label="SP amarilla" title="Amarilla"></button>
+          <button type="button" data-sp="groudon" style="--swatch:linear-gradient(135deg,#d52f33 0 68%,#292929 69%)" aria-label="SP roja Groudon" title="Groudon"></button>
+          <button type="button" data-sp="kyogre" style="--swatch:linear-gradient(135deg,#0867e8 0 68%,#17233c 69%)" aria-label="SP azul Kyogre" title="Kyogre"></button>
+          <button type="button" data-sp="rayquaza" style="--swatch:linear-gradient(135deg,#08a873 0 68%,#075f50 69%)" aria-label="SP verde Rayquaza" title="Rayquaza"></button>
         </div>
       </div>`;
     section.insertBefore(selector, section.children[1] || null);

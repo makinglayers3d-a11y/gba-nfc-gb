@@ -35,6 +35,9 @@ body.sp-skin-test[data-sp-style="gray-red"]{--ml3d-sp-shell:url("assets/gba-sp-g
 body.sp-skin-test[data-sp-style="cream-burgundy"]{--ml3d-sp-shell:url("assets/gba-sp-cream-burgundy.png?v=2")}
 body.sp-skin-test[data-sp-style="gold-zelda"]{--ml3d-sp-shell:url("assets/gba-sp-gold-zelda.png?v=1")}
 body.sp-skin-test[data-sp-style="yellow-character"]{--ml3d-sp-shell:url("assets/gba-sp-yellow-character.jpg?v=1")}
+body.sp-skin-test[data-sp-style="groudon"]{--ml3d-sp-shell:url("assets/gba-sp-groudon.webp?v=2")}
+body.sp-skin-test[data-sp-style="kyogre"]{--ml3d-sp-shell:url("assets/gba-sp-kyogre.webp?v=2")}
+body.sp-skin-test[data-sp-style="rayquaza"]{--ml3d-sp-shell:url("assets/gba-sp-rayquaza.webp?v=2")}
 body.sp-skin-test .app::before{background-image:var(--ml3d-sp-shell)!important}
 
 /* Menu buttons follow the active appearance family. */

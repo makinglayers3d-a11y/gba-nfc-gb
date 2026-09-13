@@ -69,6 +69,21 @@
       src: "assets/cartridges/labels/pokemon-esmeralda-es.png",
       crop: Object.freeze([0, 0, 1536, 775]),
       destination: Object.freeze([185, 235, 1168, 490])
+    }),
+    rubi: Object.freeze({
+      src: "assets/cartridges/labels/pokemon-rubi-es.png",
+      crop: Object.freeze([0, 0, 1536, 604]),
+      destination: Object.freeze([185, 235, 1168, 490])
+    }),
+    "verde-hoja": Object.freeze({
+      src: "assets/cartridges/labels/pokemon-verde-hoja-es.png",
+      crop: Object.freeze([0, 0, 1536, 604]),
+      destination: Object.freeze([185, 235, 1168, 490])
+    }),
+    "minish-cap": Object.freeze({
+      src: "assets/cartridges/labels/zelda-minish-cap-eur.png",
+      crop: Object.freeze([0, 0, 1536, 604]),
+      destination: Object.freeze([185, 235, 1168, 490])
     })
   });
 

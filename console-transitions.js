@@ -7,9 +7,9 @@
     "cream-burgundy": Object.freeze({ shell: "assets/gba-sp-cream-burgundy.png?v=2", lid: "assets/sp-lids/cream-burgundy.webp?v=1" }),
     "gold-zelda": Object.freeze({ shell: "assets/gba-sp-gold-zelda.png?v=1", lid: "assets/sp-lids/gold-zelda.webp?v=1" }),
     "yellow-character": Object.freeze({ shell: "assets/gba-sp-yellow-character.jpg?v=1", lid: "assets/sp-lids/yellow-character.webp?v=1" }),
-    groudon: Object.freeze({ shell: "assets/gba-sp-groudon.webp?v=2", lid: "assets/sp-lids/groudon.webp?v=1" }),
-    kyogre: Object.freeze({ shell: "assets/gba-sp-kyogre.webp?v=2", lid: "assets/sp-lids/kyogre.webp?v=1" }),
-    rayquaza: Object.freeze({ shell: "assets/gba-sp-rayquaza.webp?v=2", lid: "assets/sp-lids/rayquaza.webp?v=1" })
+    groudon: Object.freeze({ shell: "assets/gba-sp-groudon.webp?v=2", lid: "assets/sp-lids/groudon.webp?v=2" }),
+    kyogre: Object.freeze({ shell: "assets/gba-sp-kyogre.webp?v=2", lid: "assets/sp-lids/kyogre.webp?v=2" }),
+    rayquaza: Object.freeze({ shell: "assets/gba-sp-rayquaza.webp?v=2", lid: "assets/sp-lids/rayquaza.webp?v=2" })
   });
 
   let transitioning = false;

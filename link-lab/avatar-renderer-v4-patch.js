@@ -184,7 +184,7 @@
       subtree: true,
       childList: true,
       attributes: true,
-      attributeFilter: ["class", "hidden", "style"]
+      attributeFilter: ["class", "hidden"]
     });
   }
 

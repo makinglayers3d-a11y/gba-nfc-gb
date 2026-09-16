@@ -15,4 +15,24 @@
   }
   if(!document.querySelector('script[data-ml3d-developer-tools]')){const p=document.createElement('script');p.src='developer-tools-panels.js?v=3';p.onload=()=>{const s=document.createElement('script');s.src='developer-tools.js?v=8';s.dataset.ml3dDeveloperTools='true';s.onload=()=>{const r=document.createElement('script');r.src='ml3d-feature-repair.js?v=1';r.onload=()=>{const f=document.createElement('script');f.src='ml3d-interaction-fixes.js?v=5';f.onload=()=>{const a=document.createElement('script');a.src='appearance-selector.js?v=3';document.head.appendChild(a)};document.head.appendChild(f)};document.head.appendChild(r)};document.head.appendChild(s)};document.head.appendChild(p)}
   if(!document.querySelector('script[data-ml3d-sp-swipe-fix]')){const w=document.createElement('script');w.src='sp-selector-swipe-fix.js?v=1';w.dataset.ml3dSpSwipeFix='true';document.head.appendChild(w)}
+
+  /* ML3D Link: se carga antes de app.js para poder reutilizar los controles físicos sin duplicarlos. */
+  if(!document.getElementById('ml3d-link-emulator-style')){const l=document.createElement('link');l.id='ml3d-link-emulator-style';l.rel='stylesheet';l.href='ml3d-link-emulator.css?v=1';document.head.appendChild(l)}
+  if(!document.querySelector('script[data-ml3d-link-avatar]')){const a=document.createElement('script');a.src='ml3d-avatar.js?v=1';a.dataset.ml3dLinkAvatar='true';a.onload=()=>{if(document.querySelector('script[data-ml3d-link-loader]'))return;const s=document.createElement('script');s.src='ml3d-link-emulator-loader.js?v=1';s.dataset.ml3dLinkLoader='true';document.head.appendChild(s)};document.head.appendChild(a)}
+
+  const linkKeyboardMap={KeyX:'A',KeyZ:'B',Enter:'START',ShiftLeft:'SELECT',ShiftRight:'SELECT',ArrowRight:'RIGHT',ArrowLeft:'LEFT',ArrowUp:'UP',ArrowDown:'DOWN',KeyS:'R',KeyA:'L'};
+  const linkPressed=new Set();
+  const linkActive=()=>Boolean(window.ml3dLink&&window.ml3dLink.active);
+  const linkDown=(key)=>{if(!key||linkPressed.has(key))return;linkPressed.add(key);window.ml3dLink?.handleKeyDown?.(key)};
+  const linkUp=(key)=>{if(!key||!linkPressed.has(key))return;linkPressed.delete(key);window.ml3dLink?.handleKeyUp?.(key)};
+  const keyFromTarget=(target)=>target?.closest?.('[data-key]')?.dataset?.key||null;
+
+  document.addEventListener('mousedown',(event)=>{if(!linkActive())return;const key=keyFromTarget(event.target);if(!key)return;event.preventDefault();event.stopImmediatePropagation();linkDown(key)},true);
+  document.addEventListener('mouseup',(event)=>{if(!linkActive())return;const key=keyFromTarget(event.target);event.preventDefault();event.stopImmediatePropagation();if(key)linkUp(key);else [...linkPressed].forEach(linkUp)},true);
+  document.addEventListener('touchstart',(event)=>{if(!linkActive())return;const key=keyFromTarget(event.target);if(!key)return;event.preventDefault();event.stopImmediatePropagation();linkDown(key)},{capture:true,passive:false});
+  document.addEventListener('touchend',(event)=>{if(!linkActive())return;const key=keyFromTarget(event.target);event.preventDefault();event.stopImmediatePropagation();if(key)linkUp(key);else [...linkPressed].forEach(linkUp)},{capture:true,passive:false});
+  document.addEventListener('touchcancel',(event)=>{if(!linkActive())return;event.preventDefault();event.stopImmediatePropagation();[...linkPressed].forEach(linkUp)},{capture:true,passive:false});
+  window.addEventListener('keydown',(event)=>{if(!linkActive())return;const key=linkKeyboardMap[event.code];if(!key)return;event.preventDefault();event.stopImmediatePropagation();if(!event.repeat)linkDown(key)},true);
+  window.addEventListener('keyup',(event)=>{if(!linkActive())return;const key=linkKeyboardMap[event.code];if(!key)return;event.preventDefault();event.stopImmediatePropagation();linkUp(key)},true);
+  window.addEventListener('blur',()=>{if(!linkActive())return;[...linkPressed].forEach(linkUp)});
 })();

@@ -1,0 +1,21 @@
+.avatar-base-sprite {
+  width: 64px;
+  height: 96px;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  transform-origin: bottom center;
+}
+
+/* Para personaje dentro de la sala */
+.avatar-base-sprite.in-room {
+  position: absolute;
+  transform: translate(-50%, -88%) scale(0.6);
+  z-index: 4;
+}
+
+/* Para el preview del editor */
+.avatar-base-sprite.in-preview {
+  margin: 0 auto;
+  transform: scale(1.6);
+}

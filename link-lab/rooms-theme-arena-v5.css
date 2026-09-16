@@ -1,0 +1,219 @@
+/* ML3D Link Lobby — arena v5
+   Forma basada en la nueva referencia: vista superior casi plana,
+   gran pista central con esquinas recortadas, pared superior/perimetral
+   metálica y saliente inferior centrado. Se carga después del tema v4
+   para conservar avatares, chat y resto de acabados. */
+
+.lobby-stage {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(55,108,151,.09), transparent 64%),
+    linear-gradient(180deg,#05090d 0%,#010306 100%);
+  perspective:none;
+}
+
+/* Cuerpo exterior azul metalizado, siguiendo la silueta de la referencia. */
+.lobby-stage::before {
+  content:"";
+  position:absolute;
+  z-index:0;
+  left:1.8%;
+  right:1.8%;
+  top:3.4%;
+  bottom:4.2%;
+  clip-path:polygon(
+    6.8% 0,
+    93.2% 0,
+    100% 7.8%,
+    100% 25.5%,
+    97.1% 29.2%,
+    97.1% 86.7%,
+    93.2% 91.2%,
+    59.5% 91.2%,
+    59.5% 100%,
+    40.5% 100%,
+    40.5% 91.2%,
+    6.8% 91.2%,
+    2.9% 86.7%,
+    2.9% 29.2%,
+    0 25.5%,
+    0 7.8%
+  );
+  background:
+    linear-gradient(180deg,
+      rgba(235,248,255,.95) 0%,
+      rgba(154,215,255,.92) 2.3%,
+      #67b6ea 5.6%,
+      #3e91c8 11.5%,
+      #246a9d 19%,
+      #174e7b 34%,
+      #103858 62%,
+      #09253c 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.70),
+    inset 0 -7px 13px rgba(0,0,0,.28),
+    inset 7px 0 12px rgba(255,255,255,.07),
+    inset -7px 0 12px rgba(0,0,0,.18),
+    0 9px 24px rgba(0,0,0,.48);
+}
+
+/* Cara interior del muro, sin efecto de túnel. */
+.lobby-stage::after {
+  content:"";
+  position:absolute;
+  z-index:1;
+  left:4.6%;
+  right:4.6%;
+  top:19.7%;
+  bottom:8.9%;
+  clip-path:polygon(
+    4.7% 0,
+    95.3% 0,
+    100% 5.6%,
+    100% 87.2%,
+    96.2% 92.5%,
+    58.2% 92.5%,
+    58.2% 100%,
+    41.8% 100%,
+    41.8% 92.5%,
+    3.8% 92.5%,
+    0 87.2%,
+    0 5.6%
+  );
+  background:linear-gradient(180deg,rgba(1,8,14,.46),rgba(1,5,9,.18));
+  box-shadow:
+    0 -5px 10px rgba(0,0,0,.40),
+    inset 0 2px 0 rgba(173,222,253,.10);
+  pointer-events:none;
+}
+
+/* Suelo: conserva el estilo actual pero dentro de la nueva silueta plana. */
+.room-pattern {
+  position:absolute;
+  z-index:2;
+  left:5.7%;
+  right:5.7%;
+  top:21.2%;
+  bottom:9.8%;
+  clip-path:polygon(
+    4.5% 0,
+    95.5% 0,
+    100% 5.2%,
+    100% 86.4%,
+    96.1% 91.8%,
+    58% 91.8%,
+    58% 100%,
+    42% 100%,
+    42% 91.8%,
+    3.9% 91.8%,
+    0 86.4%,
+    0 5.2%
+  );
+  background:
+    radial-gradient(ellipse at 50% 48%,rgba(86,151,193,.13),transparent 42%),
+    repeating-linear-gradient(90deg,rgba(149,194,222,.035) 0 1px,transparent 1px 52px),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 46px),
+    linear-gradient(160deg,#273640 0%,#1c2933 50%,#121b23 100%);
+  box-shadow:
+    inset 0 0 0 2px rgba(168,213,241,.30),
+    inset 0 0 0 7px rgba(4,9,13,.56),
+    inset 0 0 28px rgba(65,126,166,.08);
+}
+
+/* Línea interior clara inspirada en la pista de la referencia. */
+.room-pattern::before {
+  content:"";
+  position:absolute;
+  inset:5.7% 4.8% 6.5%;
+  clip-path:polygon(
+    3.2% 0,
+    96.8% 0,
+    100% 4.4%,
+    100% 85.3%,
+    96.1% 90.4%,
+    57.1% 90.4%,
+    57.1% 100%,
+    42.9% 100%,
+    42.9% 90.4%,
+    3.9% 90.4%,
+    0 85.3%,
+    0 4.4%
+  );
+  border:2px solid rgba(229,244,253,.66);
+  box-sizing:border-box;
+  box-shadow:
+    0 0 8px rgba(137,202,242,.08),
+    inset 0 0 0 2px rgba(8,17,24,.42);
+}
+
+.room-pattern::after {
+  content:"MAKING LAYERS // LINK SPACE";
+  position:absolute;
+  left:50%;
+  bottom:2.8%;
+  transform:translateX(-50%);
+  color:rgba(191,220,238,.30);
+  font:800 clamp(5px,.9vw,9px)/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  letter-spacing:.17em;
+  white-space:nowrap;
+}
+
+/* Logo ML3D lineal, ya sin deformación por perspectiva. */
+.room-rug {
+  left:39%;
+  top:42%;
+  width:22%;
+  height:26%;
+  border-radius:50%;
+  background:
+    radial-gradient(circle,transparent 0 43%,rgba(135,197,234,.08) 44% 46%,transparent 47% 64%,rgba(135,197,234,.05) 65% 67%,transparent 68%);
+  opacity:.88;
+}
+.room-rug::before {
+  inset:18%;
+  transform:none;
+  opacity:.74;
+}
+
+/* La placa de pared de v4 no forma parte de la nueva referencia. */
+.room-console {
+  display:none !important;
+}
+
+/* Línea blanca discontinua sobre la pared superior. */
+.lobby-stage .players-layer::before {
+  content:"";
+  position:absolute;
+  z-index:-1;
+  left:9.5%;
+  right:9.5%;
+  top:12.3%;
+  height:3px;
+  border-radius:3px;
+  background:repeating-linear-gradient(
+    90deg,
+    rgba(239,249,255,.93) 0 4.1%,
+    transparent 4.1% 6.1%
+  );
+  filter:drop-shadow(0 0 3px rgba(202,235,255,.24));
+  opacity:.90;
+}
+
+/* Marcas blancas cortas en los chaflanes superiores. */
+.lobby-stage .players-layer::after {
+  content:"";
+  position:absolute;
+  z-index:-1;
+  left:2.5%;
+  right:2.5%;
+  top:15.6%;
+  height:2px;
+  background:
+    linear-gradient(118deg,transparent 0 3.5%,rgba(239,249,255,.78) 3.6% 5.6%,transparent 5.7% 94.3%,rgba(239,249,255,.78) 94.4% 96.4%,transparent 96.5% 100%);
+  opacity:.75;
+}
+
+/* Ya no hay perspectiva: todos los personajes mantienen una escala estable. */
+.player {
+  --depth-scale:1 !important;
+  transform:translate(-50%,-50%) !important;
+}

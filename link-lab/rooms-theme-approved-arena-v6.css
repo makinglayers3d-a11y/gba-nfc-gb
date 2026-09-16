@@ -1,0 +1,59 @@
+/* ML3D Link Lobby v6 — asset aprobado por el usuario.
+   La sala completa (pared, suelo, logo central y cartel superior) se dibuja desde
+   un único asset 3:2. Las capas dinámicas del lobby permanecen encima. */
+
+.lobby-stage {
+  position: relative;
+  aspect-ratio: 3 / 2;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background-color: #02060b !important;
+  background-image: url("./assets/ml3d-link-lobby-arena.webp") !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+  box-shadow: none !important;
+}
+
+/* Desactiva toda la reconstrucción CSS anterior. El asset aprobado es la base. */
+.lobby-stage::before,
+.lobby-stage::after,
+.room-pattern,
+.room-rug,
+.room-console {
+  display: none !important;
+  content: none !important;
+}
+
+/* Los jugadores siguen siendo interactivos/dinámicos sobre el fondo. */
+.players-layer {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 20 !important;
+  overflow: visible !important;
+}
+
+.player {
+  z-index: 21;
+}
+
+.chat-bubble,
+.player-name {
+  position: relative;
+  z-index: 24;
+}
+
+.session-banner {
+  z-index: 30 !important;
+}
+
+/* Zona visual útil del terreno: evita que los avatares invadan la pared superior
+   al integrarlo posteriormente en la pantalla del emulador. */
+@media (max-width: 760px) {
+  .player {
+    transform-origin: 50% 88%;
+  }
+}

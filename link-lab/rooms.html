@@ -91,15 +91,15 @@
 
     <div class="touch-controls" aria-label="Controles del lobby">
       <div class="dpad" id="dpad">
-        <button data-move="up" class="d-up" aria-label="Arriba">▲</button>
-        <button data-move="left" class="d-left" aria-label="Izquierda">◀</button>
-        <button data-move="right" class="d-right" aria-label="Derecha">▶</button>
-        <button data-move="down" class="d-down" aria-label="Abajo">▼</button>
+        <button type="button" data-move="up" class="d-up" aria-label="Arriba">▲</button>
+        <button type="button" data-move="left" class="d-left" aria-label="Izquierda">◀</button>
+        <button type="button" data-move="right" class="d-right" aria-label="Derecha">▶</button>
+        <button type="button" data-move="down" class="d-down" aria-label="Abajo">▼</button>
       </div>
       <div class="side-buttons">
-        <button id="avatarButton" class="shoulder">L<br><small>PERSONAJE</small></button>
-        <button id="chatButton" class="shoulder">R<br><small>CHAT</small></button>
-        <button id="selectButton" class="select-button">SELECT</button>
+        <button type="button" id="avatarButton" class="shoulder">L<br><small>PERSONAJE</small></button>
+        <button type="button" id="chatButton" class="shoulder">R<br><small>CHAT</small></button>
+        <button type="button" id="selectButton" class="select-button">SELECT</button>
       </div>
     </div>
   </section>
@@ -133,7 +133,7 @@
 
 <div id="avatarModal" class="modal" hidden>
   <div class="modal-card">
-    <div class="modal-head"><h2>Tu personaje</h2><button data-close-modal="avatarModal">×</button></div>
+    <div class="modal-head"><h2>Tu personaje</h2><button type="button" data-close-modal="avatarModal">×</button></div>
     <div id="avatarPreview" class="avatar-preview"></div>
     <label for="profileName">Nombre</label>
     <input id="profileName" maxlength="32">
@@ -145,19 +145,19 @@
     <div id="faceChoices" class="choice-row"></div>
     <label>Accesorio</label>
     <div id="accessoryChoices" class="choice-row"></div>
-    <button id="saveProfile" class="primary top-gap">GUARDAR PERSONAJE</button>
+    <button type="button" id="saveProfile" class="primary top-gap">GUARDAR PERSONAJE</button>
   </div>
 </div>
 
 <div id="selectModal" class="modal" hidden>
   <div class="modal-card select-menu-card">
-    <div class="modal-head"><h2>SELECT · Sala</h2><button data-close-modal="selectModal">×</button></div>
+    <div class="modal-head"><h2>SELECT · Sala</h2><button type="button" data-close-modal="selectModal">×</button></div>
     <div id="hostMenu" hidden>
       <details open>
         <summary>Juego</summary>
         <label for="hostGameInput">Juego de la sala</label>
         <input id="hostGameInput" maxlength="80">
-        <button id="applyGame" class="top-gap">APLICAR JUEGO</button>
+        <button type="button" id="applyGame" class="top-gap">APLICAR JUEGO</button>
       </details>
       <details>
         <summary>Gestión de jugadores</summary>
@@ -172,24 +172,25 @@
         <label for="hostPasswordInput">Nueva contraseña</label>
         <input id="hostPasswordInput" type="password" maxlength="64" placeholder="Dejar vacío = sin cambiar">
         <div class="grid compact-gap top-gap">
-          <button id="applyRoomSettings">GUARDAR SALA</button>
-          <button id="removePassword">QUITAR CONTRASEÑA</button>
+          <button type="button" id="applyRoomSettings">GUARDAR SALA</button>
+          <button type="button" id="removePassword">QUITAR CONTRASEÑA</button>
         </div>
-        <button id="closeRoom" class="danger top-gap">CERRAR SALA</button>
+        <button type="button" id="closeRoom" class="danger top-gap">CERRAR SALA</button>
       </details>
       <details>
         <summary>Conexión</summary>
         <p class="hint">Comprueba los círculos de calidad antes de iniciar.</p>
-        <button id="startSession" class="primary">INICIAR CONEXIÓN</button>
+        <button type="button" id="startSession" class="primary">INICIAR CONEXIÓN</button>
       </details>
     </div>
     <div id="guestMenu" hidden>
       <p id="guestRoomInfo" class="hint"></p>
-      <button id="leaveRoom" class="danger">SALIR DE LA SALA</button>
+      <button type="button" id="leaveRoom" class="danger">SALIR DE LA SALA</button>
     </div>
   </div>
 </div>
 
 <script src="rooms.js?v=3"></script>
+<script src="rooms-touch-fix.js?v=1"></script>
 </body>
 </html>

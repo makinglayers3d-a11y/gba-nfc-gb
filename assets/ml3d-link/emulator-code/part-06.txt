@@ -1,0 +1,68 @@
+ect></label><label>Calzado<select id="ml3d-link-profile-shoes">${numericOptions(4)}</select></label></div>
+        <label>Accesorio<select id="ml3d-link-profile-accessory">${optionList(window.ML3DAvatar.accessories)}</select></label>
+        <div class="ml3d-link-grid"><label>Color pelo<select id="ml3d-link-profile-haircolor">${optionList(Object.keys(window.ML3DAvatar.colors))}</select></label><label>Color principal<select id="ml3d-link-profile-primary">${optionList(Object.keys(window.ML3DAvatar.colors))}</select></label><label>Color secundario<select id="ml3d-link-profile-secondary">${optionList(Object.keys(window.ML3DAvatar.colors))}</select></label></div>
+        <button id="ml3d-link-profile-save" type="button">GUARDAR PERSONAJE</button>
+      </div></dialog>
+      <dialog id="ml3d-link-room-dialog" class="ml3d-link-dialog"><div class="menu-card ml3d-link-card">
+        <button type="button" class="ml3d-link-x" data-link-close="ml3d-link-room-dialog">×</button><h2>SELECT · Sala</h2>
+        <div id="ml3d-link-player-management"></div>
+        <div id="ml3d-link-host-menu"><label>Sala<input id="ml3d-link-room-name-input"></label><label>Juego<input id="ml3d-link-room-game-input"></label><label>Máx. jugadores<select id="ml3d-link-room-max-input"><option>2</option><option>3</option><option>4</option></select></label><label>Nueva contraseña<input id="ml3d-link-room-password-input" type="password"></label><button id="ml3d-link-room-save" type="button">GUARDAR SALA</button><button id="ml3d-link-room-no-pass" type="button">QUITAR CONTRASEÑA</button><button id="ml3d-link-session-start" type="button">INICIAR CONEXIÓN</button><button id="ml3d-link-room-close" type="button" class="danger">CERRAR SALA</button></div>
+        <div id="ml3d-link-guest-menu" hidden><button id="ml3d-link-room-leave" type="button" class="danger">SALIR DE LA SALA</button></div>
+      </div></dialog>`);
+
+    linkButton.addEventListener("click", openSetup);
+    $$('[data-link-close]').forEach((b) => b.addEventListener("click", () => closeDialog(b.dataset.linkClose)));
+    $("#ml3d-link-create").addEventListener("click", createRoom);
+    $("#ml3d-link-search").addEventListener("click", searchRooms);
+    $("#ml3d-link-join").addEventListener("click", joinRoom);
+    $("#ml3d-link-edit-profile-from-setup").addEventListener("click", openAvatarEditor);
+    $("#ml3d-link-profile-save").addEventListener("click", applyProfile);
+    $$(`#ml3d-link-avatar-dialog select, #ml3d-link-avatar-dialog input`).forEach((el) => el.addEventListener("input", renderProfilePreview));
+    $("#ml3d-link-room-save").addEventListener("click", () => saveRoomSettings(false));
+    $("#ml3d-link-room-no-pass").addEventListener("click", () => saveRoomSettings(true));
+    $("#ml3d-link-session-start").addEventListener("click", startSession);
+    $("#ml3d-link-room-close").addEventListener("click", closeHostRoom);
+    $("#ml3d-link-room-leave").addEventListener("click", () => leaveRoom(true));
+    $("#ml3d-link-chat").addEventListener("submit", (e) => { e.preventDefault(); sendChat($("#ml3d-link-chat-input").value); $("#ml3d-link-chat").hidden = true; });
+  }
+
+  function handleKeyDown(key) {
+    if (!state.active) return false;
+    if (state.modal) {
+      if (key === "B") { closeDialog(state.modal); return true; }
+      return true;
+    }
+    if (["UP", "DOWN", "LEFT", "RIGHT"].includes(key)) { setMove(key.toLowerCase(), true); return true; }
+    if (key === "L") { openAvatarEditor(); return true; }
+    if (key === "R") { openChat(); return true; }
+    if (key === "SELECT") { openRoomMenu(); return true; }
+    if (key === "B") { openRoomMenu(); return true; }
+    return true;
+  }
+
+  function handleKeyUp(key) {
+    if (!state.active) return false;
+    if (["UP", "DOWN", "LEFT", "RIGHT"].includes(key)) setMove(key.toLowerCase(), false);
+    return true;
+  }
+
+  async function init() {
+    try {
+      await window.ML3DAvatar.ready();
+      state.profile = window.ML3DAvatar.loadProfile();
+      injectUI();
+      loadArena().catch(() => {});
+    } catch (e) { console.error("ML3D Link init:", e); }
+  }
+
+  window.ml3dLink = {
+    get active() { return state.active; },
+    handleKeyDown,
+    handleKeyUp,
+    open: openSetup,
+    state
+  };
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, { once: true });
+  else init();
+})();

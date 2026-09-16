@@ -1,0 +1,46 @@
+/* ML3D Link Avatar V2 — modular retro lobby sprites */
+.ml3d-avatar-v2 {
+  --skin:#efc3a1;
+  --hair:#3a291f;
+  --primary:#3f79bd;
+  --secondary:#eef3f7;
+  --accent:#202933;
+  position:relative;
+  width:48px;
+  height:64px;
+  margin:0 auto;
+  image-rendering:pixelated;
+  filter:drop-shadow(0 5px 2px rgba(0,0,0,.36));
+  transform-origin:50% 92%;
+}
+.ml3d-avatar-v2 svg{width:100%;height:100%;display:block;overflow:visible;shape-rendering:crispEdges}
+.ml3d-avatar-v2.walking{animation:ml3dAvatarStep .23s steps(2,end) infinite}
+.player.local .ml3d-avatar-v2::after{content:"";position:absolute;left:50%;bottom:-3px;width:38px;height:11px;transform:translateX(-50%);border:1px solid rgba(91,190,255,.72);border-radius:50%;box-shadow:0 0 8px rgba(65,173,239,.5),inset 0 0 7px rgba(65,173,239,.16);pointer-events:none}
+@keyframes ml3dAvatarStep{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+
+/* The old CSS avatar stays as a compatibility fallback, hidden when V2 mounted. */
+.avatar-wrap.ml3d-v2-mounted > :not(.ml3d-avatar-v2){display:none!important}
+.avatar-wrap.ml3d-v2-mounted{width:52px!important;height:68px!important;filter:none!important;animation:none!important;background:none!important}
+.avatar-wrap.ml3d-v2-mounted::before,.avatar-wrap.ml3d-v2-mounted::after{display:none!important}
+
+.avatar-v2-editor{display:grid;gap:12px;margin-top:10px}
+.avatar-v2-section{display:grid;gap:7px}
+.avatar-v2-section>strong{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:#9ebbd0}
+.avatar-v2-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(56px,1fr));gap:7px}
+.avatar-v2-choice{position:relative;min-height:48px;padding:5px;border:1px solid #405566;border-radius:9px;background:#111b24;color:#dce8ef;display:grid;place-items:center;font-size:10px;font-weight:800;cursor:pointer}
+.avatar-v2-choice.selected{border-color:#62b9ef;box-shadow:0 0 0 1px #62b9ef inset,0 0 10px rgba(64,167,232,.16);background:#152b3a}
+.avatar-v2-choice .mini-avatar{width:30px;height:40px;pointer-events:none}
+.avatar-v2-choice.swatch{min-height:34px;color:#fff;text-shadow:0 1px 2px #000}
+.avatar-v2-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.avatar-v2-preview{min-height:104px;display:grid;place-items:center;border:1px solid #334958;border-radius:12px;background:radial-gradient(circle at 50% 70%,rgba(70,151,202,.14),transparent 50%),#0a1118}
+.avatar-v2-preview .ml3d-avatar-v2{width:72px;height:96px;filter:drop-shadow(0 8px 3px rgba(0,0,0,.42))}
+.avatar-v2-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.avatar-v2-tabs button{padding:9px 6px}
+.avatar-v2-save{width:100%;margin-top:5px}
+.avatar-v2-note{font-size:10px;color:#758b9b;margin:0}
+
+@media(max-width:640px){
+  .avatar-v2-grid{grid-template-columns:repeat(4,1fr)}
+  .avatar-v2-two{grid-template-columns:1fr}
+  .avatar-v2-choice{min-width:0}
+}

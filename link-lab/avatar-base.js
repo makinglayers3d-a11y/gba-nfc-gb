@@ -11,6 +11,8 @@
   const LOGICAL_H = 96;
   const GRID = 4;
   const BG_THRESHOLD = 58;
+  const WALK_FRAME_MS = 115;
+  const WALK_HOLD_MS = 210;
 
   const compiled = new Map();
   const remoteProfiles = new Map();
@@ -187,6 +189,7 @@
   async function drawFrame(target, base, direction = "down", frame = 0) {
     if (!target?.getContext) return;
     const frames = await compileSheet(base === "female" ? "female" : "male");
+    if (!target.isConnected) return;
     const row = DIR_ROW[direction] ?? 0;
     const col = ((Number(frame) || 0) % GRID + GRID) % GRID;
     const ctx = target.getContext("2d");
@@ -204,18 +207,36 @@
     return remoteProfiles.get(playerName(el))?.base || "male";
   }
 
+  function directChildByClass(el, className) {
+    for (const child of el.children) {
+      if (child.classList?.contains(className)) return child;
+    }
+    return null;
+  }
+
   function ensurePlayerCanvas(el) {
     const wrap = el.querySelector(".avatar-wrap");
     if (!wrap) return null;
+
+    el.classList.add("ml3d-base-player");
     wrap.classList.add("ml3d-base-mounted");
-    let canvas = wrap.querySelector(".avatar-base-canvas");
+
+    let host = directChildByClass(el, "avatar-base-host");
+    if (!host) {
+      host = document.createElement("div");
+      host.className = "avatar-base-host";
+      host.setAttribute("aria-hidden", "true");
+      wrap.before(host);
+    }
+
+    let canvas = host.querySelector(".avatar-base-canvas");
     if (!canvas) {
       canvas = document.createElement("canvas");
       canvas.width = LOGICAL_W;
       canvas.height = LOGICAL_H;
       canvas.className = "avatar-base-canvas";
       canvas.setAttribute("aria-hidden", "true");
-      wrap.append(canvas);
+      host.append(canvas);
     }
     return canvas;
   }
@@ -238,19 +259,69 @@
   function paintPlayer(el, now) {
     const canvas = ensurePlayerCanvas(el);
     if (!canvas) return;
+
     const id = el.dataset.playerId || playerName(el);
     const pos = positionOf(el);
-    const previous = stateByPlayer.get(id) || { x: pos.x, y: pos.y, dir: "down", frame: 0, lastMove: 0 };
-    const moved = Math.abs(pos.x - previous.x) > 0.02 || Math.abs(pos.y - previous.y) > 0.02;
+    const previous = stateByPlayer.get(id) || {
+      x: pos.x,
+      y: pos.y,
+      dir: "down",
+      frame: 0,
+      lastMove: -Infinity,
+      moving: false,
+      walkStartedAt: 0
+    };
+
+    const moved =
+      Math.abs(pos.x - previous.x) > 0.02 ||
+      Math.abs(pos.y - previous.y) > 0.02;
+
     const dir = chooseDirection(previous, pos, previous.dir);
-    const frame = moved ? Math.floor(now / 120) % GRID : (now - previous.lastMove > 140 ? 0 : previous.frame);
     const lastMove = moved ? now : previous.lastMove;
-    drawFrame(canvas, resolveBase(el), dir, frame).catch(console.error);
-    stateByPlayer.set(id, { x: pos.x, y: pos.y, dir, frame, lastMove });
+    const movingSignal = moved || el.classList.contains("is-moving");
+    const moving = movingSignal || now - lastMove <= WALK_HOLD_MS;
+
+    let walkStartedAt = previous.walkStartedAt;
+    if (moving && !previous.moving) walkStartedAt = now;
+    if (!moving) walkStartedAt = 0;
+
+    const frame = moving
+      ? Math.floor((now - walkStartedAt) / WALK_FRAME_MS) % GRID
+      : 0;
+
+    const base = resolveBase(el);
+    const paintKey = `${base}:${dir}:${frame}`;
+
+    if (canvas.dataset.paintKey !== paintKey) {
+      canvas.dataset.paintKey = paintKey;
+      drawFrame(canvas, base, dir, frame).catch((error) => {
+        canvas.dataset.paintKey = "";
+        console.error(error);
+      });
+    }
+
+    stateByPlayer.set(id, {
+      x: pos.x,
+      y: pos.y,
+      dir,
+      frame,
+      lastMove,
+      moving,
+      walkStartedAt
+    });
   }
 
   function renderPlayers(now = performance.now()) {
-    document.querySelectorAll("#playersLayer .player").forEach(el => paintPlayer(el, now));
+    const activeIds = new Set();
+    document.querySelectorAll("#playersLayer .player").forEach(el => {
+      const id = el.dataset.playerId || playerName(el);
+      activeIds.add(id);
+      paintPlayer(el, now);
+    });
+
+    for (const id of stateByPlayer.keys()) {
+      if (!activeIds.has(id)) stateByPlayer.delete(id);
+    }
   }
 
   function hideLegacyEditorFields() {

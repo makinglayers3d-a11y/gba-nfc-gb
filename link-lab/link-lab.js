@@ -4,6 +4,7 @@
   const $ = (selector) => document.querySelector(selector);
 
   const statusText = $("#statusText");
+  const errorDetail = $("#errorDetail");
   const logEl = $("#log");
   const localOffer = $("#localOffer");
   const remoteOffer = $("#remoteOffer");
@@ -13,6 +14,8 @@
   const sendButton = $("#send");
   const pingButton = $("#ping");
   const pingResult = $("#pingResult");
+
+  const SIGNAL_PREFIX = "ML3D1.";
 
   let pc = null;
   let channel = null;
@@ -24,9 +27,22 @@
     logEl.scrollTop = logEl.scrollHeight;
   }
 
+  function clearError() {
+    if (!errorDetail) return;
+    errorDetail.hidden = true;
+    errorDetail.textContent = "";
+  }
+
+  function showError(message) {
+    if (!errorDetail) return;
+    errorDetail.hidden = false;
+    errorDetail.textContent = message;
+  }
+
   function setState(state, text) {
     document.body.dataset.linkState = state;
     statusText.textContent = text;
+    if (state !== "error") clearError();
   }
 
   function setChannelReady(ready) {
@@ -40,44 +56,97 @@
     }
 
     return new Promise((resolve) => {
+      let settled = false;
+
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        peer.removeEventListener("icegatheringstatechange", onStateChange);
+        resolve();
+      };
+
       const onStateChange = () => {
-        if (peer.iceGatheringState === "complete") {
-          peer.removeEventListener("icegatheringstatechange", onStateChange);
-          resolve();
-        }
+        if (peer.iceGatheringState === "complete") finish();
       };
 
       peer.addEventListener("icegatheringstatechange", onStateChange);
-
-      // Evita que la interfaz quede bloqueada indefinidamente si el navegador
-      // tarda demasiado en declarar ICE como completo.
-      window.setTimeout(() => {
-        peer.removeEventListener("icegatheringstatechange", onStateChange);
-        resolve();
-      }, 8000);
+      window.setTimeout(finish, 10000);
     });
+  }
+
+  function toBase64Url(text) {
+    const bytes = new TextEncoder().encode(text);
+    let binary = "";
+
+    for (let i = 0; i < bytes.length; i += 1) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+
+    return btoa(binary)
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/g, "");
+  }
+
+  function fromBase64Url(value) {
+    let base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+    while (base64.length % 4) base64 += "=";
+
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+
+    return new TextDecoder().decode(bytes);
   }
 
   function serializeDescription(description) {
-    return JSON.stringify({
+    const json = JSON.stringify({
       type: description.type,
       sdp: description.sdp
     });
+
+    return `${SIGNAL_PREFIX}${toBase64Url(json)}`;
   }
 
-  function parseDescription(text) {
-    const parsed = JSON.parse(text.trim());
+  function parseDescription(text, expectedType) {
+    let value = String(text || "").trim();
 
-    if (!parsed || !parsed.type || !parsed.sdp) {
+    if (!value) {
+      throw new Error("No hay ningún código pegado.");
+    }
+
+    let parsed;
+
+    try {
+      if (value.startsWith(SIGNAL_PREFIX)) {
+        value = fromBase64Url(value.slice(SIGNAL_PREFIX.length));
+      }
+
+      parsed = JSON.parse(value);
+    } catch (error) {
+      throw new Error("El código está incompleto o se ha modificado al copiarlo.");
+    }
+
+    if (!parsed || typeof parsed.type !== "string" || typeof parsed.sdp !== "string") {
       throw new Error("Descripción WebRTC no válida.");
     }
 
-    return parsed;
+    if (expectedType && parsed.type !== expectedType) {
+      throw new Error(`Se esperaba una ${expectedType}, pero se recibió ${parsed.type}.`);
+    }
+
+    if (!parsed.sdp.startsWith("v=0")) {
+      throw new Error("El SDP recibido no parece válido.");
+    }
+
+    return { type: parsed.type, sdp: parsed.sdp };
   }
 
   function attachChannel(dataChannel) {
     channel = dataChannel;
-
     channel.binaryType = "arraybuffer";
 
     channel.addEventListener("open", () => {
@@ -88,7 +157,7 @@
       sendPacket({
         type: "hello",
         protocol: "ml3d-link-lab",
-        version: 1,
+        version: 2,
         time: Date.now()
       });
     });
@@ -100,8 +169,10 @@
     });
 
     channel.addEventListener("error", (event) => {
+      const message = event.message || "Error desconocido del canal.";
       setState("error", "Error de canal");
-      log(`Error del canal: ${event.message || "desconocido"}`);
+      showError(message);
+      log(`Error del canal: ${message}`);
     });
 
     channel.addEventListener("message", (event) => {
@@ -139,6 +210,11 @@
         return;
       }
 
+      if (packet.type === "hello") {
+        log(`Handshake ML3D Link v${packet.version || "?"} recibido.`);
+        return;
+      }
+
       log(`Paquete remoto: ${JSON.stringify(packet)}`);
     });
   }
@@ -146,27 +222,37 @@
   function createPeerConnection() {
     closePeer(false);
 
-    // Primera fase: sin STUN/TURN ni servidor de señalización.
-    // Está pensada para validar WebRTC manualmente, preferiblemente
-    // en dos dispositivos de la misma red local.
     pc = new RTCPeerConnection({ iceServers: [] });
 
+    pc.addEventListener("signalingstatechange", () => {
+      log(`Signaling: ${pc ? pc.signalingState : "closed"}`);
+    });
+
     pc.addEventListener("connectionstatechange", () => {
+      if (!pc) return;
+
       log(`PeerConnection: ${pc.connectionState}`);
 
       if (pc.connectionState === "connecting") {
-        setState("connecting", "Conectando…");
+        setState("connecting", "Conectando peer…");
       } else if (pc.connectionState === "connected") {
-        setState("connected", "LINK CONECTADO");
+        setState("connecting", "Peer conectado · abriendo canal…");
       } else if (["failed", "disconnected"].includes(pc.connectionState)) {
         setState("error", "Conexión interrumpida");
+        showError(`PeerConnection: ${pc.connectionState}`);
       } else if (pc.connectionState === "closed") {
         setState("idle", "Sin conexión");
       }
     });
 
     pc.addEventListener("iceconnectionstatechange", () => {
+      if (!pc) return;
       log(`ICE: ${pc.iceConnectionState}`);
+    });
+
+    pc.addEventListener("icegatheringstatechange", () => {
+      if (!pc) return;
+      log(`ICE gathering: ${pc.iceGatheringState}`);
     });
 
     pc.addEventListener("datachannel", (event) => {
@@ -208,6 +294,7 @@
 
   async function createOffer() {
     try {
+      clearError();
       setState("connecting", "Generando oferta…");
       const peer = createPeerConnection();
 
@@ -219,18 +306,25 @@
       await peer.setLocalDescription(offer);
       await waitForIceGatheringComplete(peer);
 
+      if (!peer.localDescription || peer.localDescription.type !== "offer") {
+        throw new Error("El navegador no conservó la oferta local.");
+      }
+
       localOffer.value = serializeDescription(peer.localDescription);
       setState("idle", "Oferta lista");
-      log("Oferta creada. Cópiala al dispositivo B.");
+      log(`Oferta creada (${localOffer.value.length} caracteres). Cópiala completa al dispositivo B.`);
     } catch (error) {
+      const message = error && error.message ? error.message : String(error);
       setState("error", "No se pudo crear la oferta");
-      log(`ERROR: ${error.message}`);
+      showError(message);
+      log(`ERROR: ${message}`);
     }
   }
 
   async function createAnswer() {
     try {
-      const offer = parseDescription(remoteOffer.value);
+      clearError();
+      const offer = parseDescription(remoteOffer.value, "offer");
       setState("connecting", "Procesando oferta…");
 
       const peer = createPeerConnection();
@@ -240,28 +334,46 @@
       await peer.setLocalDescription(answer);
       await waitForIceGatheringComplete(peer);
 
+      if (!peer.localDescription || peer.localDescription.type !== "answer") {
+        throw new Error("El navegador no conservó la respuesta local.");
+      }
+
       localAnswer.value = serializeDescription(peer.localDescription);
-      setState("connecting", "Respuesta lista");
-      log("Respuesta creada. Devuélvela al dispositivo A.");
+      setState("connecting", "Respuesta lista · envíala a A");
+      log(`Respuesta creada (${localAnswer.value.length} caracteres). Devuélvela completa al dispositivo A.`);
     } catch (error) {
+      const message = error && error.message ? error.message : String(error);
       setState("error", "No se pudo generar la respuesta");
-      log(`ERROR: ${error.message}`);
+      showError(message);
+      log(`ERROR: ${message}`);
     }
   }
 
   async function applyAnswer() {
     try {
+      clearError();
+
       if (!pc) {
-        throw new Error("Primero debes crear una oferta en este dispositivo.");
+        throw new Error("La oferta activa de A ya no existe. Pulsa CREAR OFERTA de nuevo y repite el intercambio sin recargar la página.");
       }
 
-      const answer = parseDescription(remoteAnswer.value);
+      if (pc.signalingState !== "have-local-offer") {
+        throw new Error(`A no está esperando una respuesta (estado: ${pc.signalingState}). Crea una oferta nueva y vuelve a intentarlo.`);
+      }
+
+      const answer = parseDescription(remoteAnswer.value, "answer");
+      log(`Aplicando respuesta. Estado previo: ${pc.signalingState}.`);
+
       await pc.setRemoteDescription(answer);
-      setState("connecting", "Esperando conexión…");
-      log("Respuesta aplicada. Esperando apertura del canal.");
+
+      setState("connecting", "Respuesta aplicada · abriendo enlace…");
+      log(`Respuesta aplicada correctamente. Signaling: ${pc.signalingState}. Esperando apertura del canal.`);
     } catch (error) {
+      const name = error && error.name ? `${error.name}: ` : "";
+      const message = `${name}${error && error.message ? error.message : String(error)}`;
       setState("error", "No se pudo aplicar la respuesta");
-      log(`ERROR: ${error.message}`);
+      showError(message);
+      log(`ERROR al aplicar respuesta: ${message}`);
     }
   }
 
@@ -270,11 +382,11 @@
 
     try {
       await navigator.clipboard.writeText(textarea.value);
-      log(`${label} copiada al portapapeles.`);
+      log(`${label} copiada al portapapeles (${textarea.value.length} caracteres).`);
     } catch (_) {
       textarea.focus();
       textarea.select();
-      log(`No se pudo copiar automáticamente. ${label} seleccionada.`);
+      log(`No se pudo copiar automáticamente. ${label} seleccionada: usa Copiar del navegador.`);
     }
   }
 
@@ -319,8 +431,9 @@
 
   if (!("RTCPeerConnection" in window)) {
     setState("error", "WebRTC no disponible");
+    showError("Este navegador no expone RTCPeerConnection.");
     log("Este navegador no expone RTCPeerConnection.");
   } else {
-    log("ML3D Link Lab listo. Protocolo manual v1.");
+    log("ML3D Link Lab listo. Protocolo manual v2.");
   }
 })();

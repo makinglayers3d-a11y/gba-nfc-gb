@@ -4,7 +4,7 @@
   globalThis.__ml3dBaseLoaderInstalled = true;
 
   const script = document.createElement("script");
-  script.src = "./avatar-base.js?v=3";
+  script.src = "./avatar-base.js?v=4";
   script.async = false;
   script.dataset.ml3dBaseLoader = "1";
 

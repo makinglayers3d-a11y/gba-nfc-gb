@@ -1,0 +1,105 @@
+state.players.set(p.id, { ...(state.players.get(p.id) || {}), ...p }); renderPlayers(); return;
+    }
+    if (packet.type === "lobby:move") {
+      const p = state.players.get(String(packet.playerId));
+      if (p && p.id !== state.localId) {
+        p.x = clamp(packet.x, 8, 92, p.x); p.y = clamp(packet.y, 29, 84, p.y);
+        p.direction = ["up", "down", "left", "right"].includes(packet.direction) ? packet.direction : p.direction;
+        p.frame = clamp(packet.frame, 0, 3, p.frame); renderPlayers();
+      }
+      return;
+    }
+    if (packet.type === "lobby:chat") { showBubble(packet.playerId, packet.text); return; }
+    if (packet.type === "lobby:quality") {
+      const p = state.players.get(String(packet.playerId));
+      if (p) { p.quality = qualityClass(packet.quality); p.rtt = packet.rtt; p.jitter = packet.jitter; renderPlayers(); }
+      return;
+    }
+    if (packet.type === "lobby:room" && state.guest) { state.guest.room = { ...state.guest.room, ...packet.room }; updateRoomHeader(state.guest.room); return; }
+    if (packet.type === "lobby:player-left") { state.players.delete(String(packet.playerId)); renderPlayers(); return; }
+    if (packet.type === "net:ping" && state.guest) { safeSend(state.guest.channel, { type: "net:pong", id: packet.id, sentAt: packet.sentAt, time: Date.now() }); return; }
+    if (packet.type === "lobby:request-profile" && state.guest) { safeSend(state.guest.channel, { type: "lobby:profile", profile: state.profile, time: Date.now() }); return; }
+    if (packet.type === "session:start") { countdown(); return; }
+    if (packet.type === "lobby:kicked") { banner("EXPULSADO", 1800); setTimeout(() => leaveRoom(false), 1200); }
+  }
+
+  function attachHostChannel(joinId, channel, peer) {
+    peer.channel = channel;
+    channel.addEventListener("open", async () => {
+      setStatus("LINK CONECTADO");
+      try { await api(`/v1/rooms/${encodeURIComponent(state.host.room.id)}/joins/${encodeURIComponent(joinId)}/connected`, { method: "POST", token: state.host.token }); } catch {}
+      safeSend(channel, lobbySnapshot());
+      safeSend(channel, { type: "lobby:request-profile" });
+      renderRoomPlayers();
+    });
+    channel.addEventListener("message", (e) => { try { handleHostPacket(joinId, JSON.parse(e.data)); } catch {} });
+    channel.addEventListener("close", () => {
+      state.players.delete(joinId); state.host?.peers.delete(joinId);
+      sendAll({ type: "lobby:player-left", playerId: joinId }); renderPlayers();
+    });
+  }
+
+  async function prepareOffer(join) {
+    const pos = spawnPoint(Math.min(3, state.host.peers.size + 1));
+    state.players.set(join.id, normalizePlayer({ id: join.id, name: join.displayName, avatar: state.profile, x: pos.x, y: pos.y }));
+    renderPlayers();
+    const peer = { join, pc: null, channel: null, answerApplied: false, metrics: { pending: new Map(), rtt: null, jitter: null, lastRtt: null, missed: 0 } };
+    const pc = makePeer(() => {}); peer.pc = pc;
+    const channel = pc.createDataChannel("ml3d-link", { ordered: true }); attachHostChannel(join.id, channel, peer);
+    state.host.peers.set(join.id, peer);
+    const offer = await pc.createOffer(); await pc.setLocalDescription(offer); await waitIce(pc);
+    await api(`/v1/rooms/${encodeURIComponent(state.host.room.id)}/joins/${encodeURIComponent(join.id)}/offer`, { method: "POST", token: state.host.token, body: { offer: serialize(pc.localDescription) } });
+  }
+
+  async function pollHost() {
+    if (!state.host || state.host.pollBusy) return;
+    state.host.pollBusy = true;
+    try {
+      const data = await api(`/v1/rooms/${encodeURIComponent(state.host.room.id)}/joins`, { token: state.host.token });
+      state.host.joins = data.joins || [];
+      for (const join of state.host.joins) {
+        if (join.status === "requested" && !state.host.peers.has(join.id)) await prepareOffer(join);
+        const peer = state.host.peers.get(join.id);
+        if (join.status === "answer_ready" && peer && !peer.answerApplied && join.answer) {
+          await peer.pc.setRemoteDescription(parseDesc(join.answer, "answer")); peer.answerApplied = true;
+        }
+      }
+      renderRoomPlayers();
+    } catch (e) { console.warn("ML3D Link host poll:", e); }
+    finally { if (state.host) state.host.pollBusy = false; }
+  }
+
+  function runQuality() {
+    if (!state.host) return;
+    const now = performance.now();
+    for (const [joinId, peer] of state.host.peers) {
+      if (peer.channel?.readyState !== "open") continue;
+      for (const [id, started] of [...peer.metrics.pending]) {
+        if (now - started > 5000) { peer.metrics.pending.delete(id); peer.metrics.missed++; }
+      }
+      const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      peer.metrics.pending.set(id, now); safeSend(peer.channel, { type: "net:ping", id, sentAt: Date.now() });
+      if (peer.metrics.missed >= 2) updateQuality(joinId, peer);
+    }
+  }
+
+  function handlePong(joinId, peer, packet) {
+    const started = peer.metrics.pending.get(packet.id); if (started === undefined) return;
+    peer.metrics.pending.delete(packet.id);
+    const rtt = performance.now() - started;
+    const jitter = peer.metrics.lastRtt == null ? 0 : Math.abs(rtt - peer.metrics.lastRtt);
+    peer.metrics.lastRtt = rtt;
+    peer.metrics.rtt = peer.metrics.rtt == null ? rtt : peer.metrics.rtt * 0.72 + rtt * 0.28;
+    peer.metrics.jitter = peer.metrics.jitter == null ? jitter : peer.metrics.jitter * 0.72 + jitter * 0.28;
+    peer.metrics.missed = 0; updateQuality(joinId, peer);
+  }
+
+  function updateQuality(joinId, peer) {
+    const q = qualityFromMetrics(peer.metrics.rtt, peer.metrics.jitter, peer.metrics.missed);
+    const p = state.players.get(joinId);
+    if (p) { p.quality = q; p.rtt = peer.metrics.rtt; p.jitter = peer.metrics.jitter; renderPlayers(); }
+    sendAll({ type: "lobby:quality", playerId: joinId, rtt: peer.metrics.rtt, jitter: peer.metrics.jitter, quality: q, time: Date.now() });
+  }
+
+  async function createRoom() {
+    try {

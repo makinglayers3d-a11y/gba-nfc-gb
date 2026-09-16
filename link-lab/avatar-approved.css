@@ -1,15 +1,15 @@
 /* ML3D Link — renderer basado en los sprites aprobados */
-.avatar-wrap.ml3d-approved-mounted{width:52px!important;height:84px!important;margin-top:2px!important;filter:drop-shadow(0 5px 4px rgba(0,0,0,.34))!important}
+.avatar-wrap.ml3d-approved-mounted{width:64px!important;height:96px!important;margin-top:2px!important;filter:drop-shadow(0 5px 4px rgba(0,0,0,.34))!important}
 .avatar-wrap.ml3d-approved-mounted>.ml3d-avatar-final,.avatar-wrap.ml3d-approved-mounted>.avatar-head,.avatar-wrap.ml3d-approved-mounted>.avatar-body,.avatar-wrap.ml3d-approved-mounted>.avatar-accessory,.avatar-wrap.ml3d-approved-mounted>.ml3d-avatar-v2,.avatar-wrap.ml3d-approved-mounted>.avatar-pro-layer{display:none!important}
-.ml3d-approved-sprite{position:absolute;left:0;bottom:0;width:52px;height:84px;background-repeat:no-repeat;background-size:208px 336px;image-rendering:auto;pointer-events:none;transform-origin:50% 100%}
+.ml3d-approved-sprite{position:absolute;left:0;bottom:0;width:64px;height:96px;background-repeat:no-repeat;background-size:256px 384px;image-rendering:auto;pointer-events:none;transform-origin:50% 100%}
 .player.local .ml3d-approved-sprite{filter:drop-shadow(0 0 4px rgba(88,190,255,.88))}
 .player{transform:translate(-50%,-72%)!important}
-.chat-bubble{bottom:92px!important}
-.avatar-approved-preview{width:104px;height:168px;background-repeat:no-repeat;background-size:416px 672px;background-position:0 0;filter:drop-shadow(0 8px 7px rgba(0,0,0,.42));margin:auto}
-.avatar-final-main-preview{min-height:196px!important}
+.chat-bubble{bottom:104px!important}
+.avatar-approved-preview{width:128px;height:192px;background-repeat:no-repeat;background-size:512px 768px;background-position:0 0;filter:drop-shadow(0 8px 7px rgba(0,0,0,.42));margin:auto}
+.avatar-final-main-preview{min-height:220px!important}
 .avatar-final-main-preview>canvas{display:none!important}
 .avatar-final-main-preview .avatar-approved-preview{display:block}
 .avatar-final-section{display:none!important}
 .avatar-approved-status{margin:10px 0 2px;padding:10px 12px;border:1px solid #32526d;border-radius:10px;background:#0a1722;color:#a8dfff;font-size:11px;line-height:1.45;text-align:center}
 .avatar-approved-status strong{color:#fff}
-@media(max-width:560px){.avatar-wrap.ml3d-approved-mounted{width:44px!important;height:71px!important}.ml3d-approved-sprite{width:44px;height:71px;background-size:176px 284px}.chat-bubble{bottom:79px!important}}
+@media(max-width:560px){.avatar-wrap.ml3d-approved-mounted{width:54px!important;height:81px!important}.ml3d-approved-sprite{width:54px;height:81px;background-size:216px 324px}.chat-bubble{bottom:89px!important}}

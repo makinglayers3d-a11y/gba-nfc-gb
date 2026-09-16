@@ -257,16 +257,16 @@
     const hiddenIds = new Set(["colorChoices", "bodyChoices", "faceChoices", "accessoryChoices"]);
     hiddenIds.forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.hidden = true;
+      if (el && !el.hidden) el.hidden = true;
     });
     document.querySelectorAll("#avatarModal .modal-card > label").forEach(label => {
       const text = (label.textContent || "").trim().toLowerCase();
-      if (["color", "cuerpo", "cara", "accesorio"].includes(text)) label.hidden = true;
+      if (["color", "cuerpo", "cara", "accesorio"].includes(text) && !label.hidden) label.hidden = true;
     });
     const legacySave = document.getElementById("saveProfile");
-    if (legacySave) legacySave.hidden = true;
+    if (legacySave && !legacySave.hidden) legacySave.hidden = true;
     const modular = document.getElementById("avatarFinalControls");
-    if (modular) modular.hidden = true;
+    if (modular && !modular.hidden) modular.hidden = true;
   }
 
   function ensureEditorPreview() {

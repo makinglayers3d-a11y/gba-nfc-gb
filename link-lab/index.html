@@ -7,27 +7,82 @@
   <title>ML3D Link Lab</title>
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0b0f15; color: #f5f7fa; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0b0f15;
+      color: #f5f7fa;
+    }
     main { width: min(920px, 100%); margin: 0 auto; padding: 22px 16px 40px; }
     h1 { margin: 0 0 6px; font-size: clamp(25px, 6vw, 40px); }
     .subtitle { margin: 0 0 20px; color: #aeb8c5; }
-    .card { border: 1px solid #2b3746; border-radius: 16px; background: #111821; padding: 16px; margin: 14px 0; }
-    .status { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: .02em; }
+    .card {
+      border: 1px solid #2b3746;
+      border-radius: 16px;
+      background: #111821;
+      padding: 16px;
+      margin: 14px 0;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      letter-spacing: .02em;
+    }
     .dot { width: 12px; height: 12px; border-radius: 50%; background: #707986; }
     body[data-link-state="connecting"] .dot { background: #e6b84b; }
     body[data-link-state="connected"] .dot { background: #49c873; }
     body[data-link-state="error"] .dot { background: #df5a62; }
     .row { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
-    button { min-height: 46px; border: 1px solid #42546a; border-radius: 11px; background: #1b2633; color: white; font: inherit; font-weight: 750; padding: 10px 12px; cursor: pointer; }
+    button {
+      min-height: 46px;
+      border: 1px solid #42546a;
+      border-radius: 11px;
+      background: #1b2633;
+      color: white;
+      font: inherit;
+      font-weight: 750;
+      padding: 10px 12px;
+      cursor: pointer;
+    }
     button.primary { background: #294a70; }
     button:disabled { opacity: .45; cursor: default; }
-    textarea, input { width: 100%; border: 1px solid #344355; border-radius: 10px; background: #090e14; color: #eaf1f8; font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; padding: 11px; }
+    textarea, input {
+      width: 100%;
+      border: 1px solid #344355;
+      border-radius: 10px;
+      background: #090e14;
+      color: #eaf1f8;
+      font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      padding: 11px;
+    }
     textarea { min-height: 150px; resize: vertical; }
     label { display: block; margin: 14px 0 7px; font-weight: 700; }
     .hint { color: #9eabb9; font-size: 13px; line-height: 1.45; }
-    .error-detail { margin: 12px 0 0; border: 1px solid #7f3f45; border-radius: 10px; background: #251216; color: #ffc7cc; padding: 10px 12px; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    .rooms-link { display:inline-block; margin:0 0 8px; border:1px solid #42546a; border-radius:11px; padding:10px 14px; background:#294a70; color:white; text-decoration:none; font-weight:800; }
-    #log { min-height: 110px; max-height: 260px; overflow: auto; white-space: pre-wrap; background: #070b10; border-radius: 10px; padding: 11px; color: #a9d3ff; font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .error-detail {
+      margin: 12px 0 0;
+      border: 1px solid #7f3f45;
+      border-radius: 10px;
+      background: #251216;
+      color: #ffc7cc;
+      padding: 10px 12px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    #log {
+      min-height: 110px;
+      max-height: 260px;
+      overflow: auto;
+      white-space: pre-wrap;
+      background: #070b10;
+      border-radius: 10px;
+      padding: 11px;
+      color: #a9d3ff;
+      font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
     @media (max-width: 640px) { .row { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -35,7 +90,7 @@
 <main>
   <h1>ML3D LINK LAB</h1>
   <p class="subtitle">Prueba aislada de cable Link virtual · Fase 1: transporte WebRTC</p>
-  <a class="rooms-link" href="rooms.html">SALAS CERCANAS · FASE 2</a>
+  <p><a href="rooms.html" style="color:#dceaff;font-weight:800">SALAS CERCANAS · FASE 2 →</a></p>
 
   <section class="card">
     <div class="status"><span class="dot"></span><span id="statusText">Sin conexión</span></div>
@@ -49,6 +104,7 @@
     <label for="localOffer">Oferta generada</label>
     <textarea id="localOffer" readonly placeholder="Aquí aparecerá la oferta para copiar al dispositivo B"></textarea>
     <button id="copyOffer">COPIAR OFERTA</button>
+
     <label for="remoteAnswer">Respuesta del dispositivo B</label>
     <textarea id="remoteAnswer" placeholder="Pega aquí la respuesta generada por el dispositivo B"></textarea>
     <button id="applyAnswer">3. APLICAR RESPUESTA</button>
@@ -59,6 +115,7 @@
     <label for="remoteOffer">Oferta del dispositivo A</label>
     <textarea id="remoteOffer" placeholder="Pega aquí la oferta del dispositivo A"></textarea>
     <button id="createAnswer" class="primary">2. GENERAR RESPUESTA</button>
+
     <label for="localAnswer">Respuesta generada</label>
     <textarea id="localAnswer" readonly placeholder="Aquí aparecerá la respuesta para devolver al dispositivo A"></textarea>
     <button id="copyAnswer">COPIAR RESPUESTA</button>
@@ -66,11 +123,21 @@
 
   <section class="card">
     <h2>Prueba del canal</h2>
-    <div class="row"><input id="message" value="Hola desde ML3D Link" aria-label="Mensaje de prueba"><button id="send" disabled>ENVIAR MENSAJE</button></div>
-    <div class="row" style="margin-top:10px"><button id="ping" disabled>MEDIR PING</button><button id="disconnect">DESCONECTAR</button></div>
+    <div class="row">
+      <input id="message" value="Hola desde ML3D Link" aria-label="Mensaje de prueba">
+      <button id="send" disabled>ENVIAR MENSAJE</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="ping" disabled>MEDIR PING</button>
+      <button id="disconnect">DESCONECTAR</button>
+    </div>
     <p id="pingResult" class="hint">Ping: —</p>
   </section>
-  <section class="card"><h2>Registro</h2><div id="log"></div></section>
+
+  <section class="card">
+    <h2>Registro</h2>
+    <div id="log"></div>
+  </section>
 </main>
 <script src="link-lab.js?v=2"></script>
 </body>

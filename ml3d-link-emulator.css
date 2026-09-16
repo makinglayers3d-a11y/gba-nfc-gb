@@ -1,0 +1,226 @@
+/* ML3D Link integrado en la pantalla del emulador. */
+.screen-frame { position: relative; }
+
+.ml3d-link-screen {
+  --ml3d-link-arena: linear-gradient(180deg,#0e2231,#09141e);
+  position:absolute;
+  inset:0;
+  z-index:42;
+  overflow:hidden;
+  background-image:var(--ml3d-link-arena);
+  background-size:100% 100%;
+  background-position:center;
+  background-repeat:no-repeat;
+  color:#fff;
+  image-rendering:auto;
+}
+.ml3d-link-screen[hidden] { display:none !important; }
+.ml3d-link-screen::after {
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,.08),transparent 18%,transparent 82%,rgba(0,0,0,.12));
+}
+.ml3d-link-screen-head {
+  position:absolute;
+  z-index:5;
+  left:4%; right:4%; top:2%;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:8px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  text-shadow:0 1px 4px #000;
+  pointer-events:none;
+}
+.ml3d-link-screen-head strong { display:block; font-size:clamp(7px,1.55vw,12px); letter-spacing:.04em; }
+.ml3d-link-screen-head span { display:block; font-size:clamp(5px,1.1vw,9px); opacity:.78; }
+#ml3d-link-room-code { font-weight:800; color:#a7d9ff; }
+
+.ml3d-link-players { position:absolute; inset:0; z-index:4; }
+.ml3d-link-player {
+  position:absolute;
+  width:42px;
+  transform:translate(-50%,-72%);
+  text-align:center;
+  pointer-events:none;
+  transition:left 70ms linear,top 70ms linear;
+  filter:drop-shadow(0 4px 2px rgba(0,0,0,.34));
+}
+.ml3d-link-player.local::after {
+  content:"";
+  position:absolute;
+  left:50%; bottom:0;
+  width:30px; height:9px;
+  transform:translate(-50%,45%);
+  border:1px solid rgba(99,190,255,.78);
+  border-radius:50%;
+  box-shadow:0 0 8px rgba(80,182,255,.72);
+}
+.ml3d-link-avatar {
+  display:block;
+  width:32px;
+  height:48px;
+  margin:0 auto;
+  image-rendering:pixelated;
+  image-rendering:crisp-edges;
+}
+.ml3d-link-name {
+  display:inline-flex;
+  align-items:center;
+  gap:3px;
+  max-width:76px;
+  min-height:11px;
+  padding:1px 4px;
+  margin-bottom:-2px;
+  overflow:hidden;
+  border:1px solid rgba(173,211,238,.28);
+  border-radius:7px;
+  background:rgba(2,8,14,.86);
+  color:#fff;
+  font:800 6px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  box-shadow:0 2px 5px rgba(0,0,0,.35);
+}
+.ml3d-link-name-text { overflow:hidden; text-overflow:ellipsis; }
+.ml3d-link-quality { display:inline-block; width:5px; height:5px; flex:0 0 5px; border-radius:50%; background:#77818c; box-shadow:0 0 3px currentColor; }
+.ml3d-link-quality.good { background:#40d77c; color:#40d77c; }
+.ml3d-link-quality.ok { background:#f0c54e; color:#f0c54e; }
+.ml3d-link-quality.bad { background:#e85f69; color:#e85f69; }
+.ml3d-link-bubble {
+  position:absolute;
+  z-index:20;
+  left:50%; bottom:86%;
+  min-width:44px; max-width:95px;
+  transform:translateX(-50%);
+  padding:3px 5px;
+  border:1px solid #18232d;
+  border-radius:8px 8px 8px 2px;
+  background:#fff;
+  color:#17202a;
+  font:700 6px/1.25 system-ui,sans-serif;
+  box-shadow:0 2px 7px rgba(0,0,0,.38);
+  white-space:normal;
+}
+.ml3d-link-banner {
+  position:absolute;
+  z-index:30;
+  inset:0;
+  display:grid;
+  place-items:center;
+  background:rgba(0,5,10,.55);
+  color:#fff;
+  text-align:center;
+  white-space:pre-line;
+  font:900 clamp(15px,5vw,34px)/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  letter-spacing:.08em;
+  text-shadow:0 0 14px #42b8ff;
+}
+.ml3d-link-banner[hidden] { display:none; }
+.ml3d-link-chat {
+  position:absolute;
+  z-index:31;
+  left:5%; right:5%; bottom:5%;
+  display:flex;
+  gap:4px;
+  padding:4px;
+  border:1px solid rgba(137,194,232,.38);
+  border-radius:7px;
+  background:rgba(4,10,16,.92);
+  pointer-events:auto;
+}
+.ml3d-link-chat[hidden] { display:none; }
+.ml3d-link-chat input { flex:1; min-width:0; height:24px; font-size:11px; }
+.ml3d-link-chat button { width:auto; min-width:52px; margin:0; padding:0 7px; font-size:9px; }
+
+.ml3d-link-dialog { border:0; padding:0; background:transparent; max-width:min(92vw,480px); width:min(92vw,480px); }
+.ml3d-link-dialog::backdrop { background:rgba(0,0,0,.72); backdrop-filter:blur(3px); }
+.ml3d-link-card { position:relative; max-height:86vh; overflow:auto; }
+.ml3d-link-card section { margin:12px 0; }
+.ml3d-link-card h3 { margin:8px 0 6px; color:#fff; font-size:14px; }
+.ml3d-link-card input,.ml3d-link-card select { box-sizing:border-box; width:100%; margin:4px 0 7px; }
+.ml3d-link-x { position:absolute !important; top:8px; right:8px; width:34px !important; height:34px !important; margin:0 !important; padding:0 !important; border-radius:50% !important; z-index:3; }
+.ml3d-link-status { padding:7px 9px; border-radius:7px; background:rgba(60,151,210,.12); color:#cbeaff; }
+.ml3d-link-status.error { background:rgba(190,62,73,.16); color:#ffc3c8; }
+.ml3d-link-hint { opacity:.72; font-size:12px; }
+.ml3d-link-room-result { display:flex !important; flex-direction:column; align-items:flex-start !important; gap:2px; text-align:left; }
+.ml3d-link-room-result span { font-size:11px; opacity:.72; }
+.ml3d-link-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+#ml3d-link-profile-preview { display:block; width:96px; height:144px; margin:4px auto 12px; image-rendering:pixelated; image-rendering:crisp-edges; }
+.ml3d-link-manage-player { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:5px 0; padding:6px 7px; border:1px solid rgba(255,255,255,.12); border-radius:7px; }
+.ml3d-link-manage-player > span { display:flex; align-items:center; gap:5px; }
+.ml3d-link-manage-player button { width:auto !important; margin:0 !important; padding:5px 8px !important; }
+
+/* El menú Link hereda la estética activa del menú del emulador. */
+body.sp-skin-test .ml3d-link-card,
+body[data-appearance-family="sp"] .ml3d-link-card { border-radius:10px; }
+body.ml3d-custom-skin .ml3d-link-card,
+body[data-appearance-family="custom"] .ml3d-link-card { border-radius:14px; }
+
+@media (max-width:520px) {
+  .ml3d-link-grid { grid-template-columns:1fr 1fr; }
+  .ml3d-link-card { max-height:82vh; }
+}
+
+/* Replica el lenguaje visual del menú SP también en los diálogos ML3D Link. */
+body.sp-skin-test .ml3d-link-dialog,
+body[data-appearance-family="sp"] .ml3d-link-dialog { background:transparent !important; overflow:visible; }
+body.sp-skin-test .ml3d-link-dialog::backdrop,
+body[data-appearance-family="sp"] .ml3d-link-dialog::backdrop {
+  background:#00121d66;
+  backdrop-filter:blur(2px);
+  -webkit-backdrop-filter:blur(2px);
+}
+body.sp-skin-test .ml3d-link-dialog .menu-card,
+body[data-appearance-family="sp"] .ml3d-link-dialog .menu-card {
+  position:relative;
+  overflow:hidden;
+  background:linear-gradient(145deg,#063c4cf0,#04141ef0) !important;
+  border:1px solid #74f3ffbb !important;
+  box-shadow:0 0 16px #42eaffaa,0 0 48px #00bfff70,inset 0 0 30px #40eaff25 !important;
+  color:#e5fdff !important;
+  text-shadow:0 0 4px #26dfff;
+  isolation:isolate;
+}
+body.sp-skin-test .ml3d-link-dialog .menu-card::before,
+body[data-appearance-family="sp"] .ml3d-link-dialog .menu-card::before {
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent 0 3px,#b8f8ff12 4px,#00d9ff10 5px);
+  mix-blend-mode:screen;
+  animation:spHoloScan 3.2s linear infinite;
+}
+body.sp-skin-test .ml3d-link-dialog .menu-card > *,
+body[data-appearance-family="sp"] .ml3d-link-dialog .menu-card > * { position:relative; z-index:2; }
+body.sp-skin-test .ml3d-link-dialog button:not(.color-swatch),
+body[data-appearance-family="sp"] .ml3d-link-dialog button:not(.color-swatch) {
+  border:1px solid #79f4ffb8 !important;
+  background:linear-gradient(145deg,#0b78956e,#04384c82) !important;
+  color:#e2fdff !important;
+  box-shadow:0 0 10px #37eaff70,inset 0 0 14px #64f5ff32 !important;
+  text-shadow:0 0 6px #45eaff !important;
+  backdrop-filter:blur(3px);
+}
+body.sp-skin-test .ml3d-link-dialog input,
+body.sp-skin-test .ml3d-link-dialog select,
+body[data-appearance-family="sp"] .ml3d-link-dialog input,
+body[data-appearance-family="sp"] .ml3d-link-dialog select {
+  border-color:#79f4ff88 !important;
+  background:#052936dd !important;
+  color:#e7fdff !important;
+  box-shadow:inset 0 0 10px #26dfff18,0 0 4px #26dfff35 !important;
+}
+
+/* En Personalizado usa el mismo aspecto sobrio del menú normal. */
+body.ml3d-custom-skin .ml3d-link-dialog .menu-card,
+body[data-appearance-family="custom"] .ml3d-link-dialog .menu-card {
+  background:linear-gradient(155deg,#151c26f4,#090d13f7) !important;
+  border:1px solid #ffffff2b !important;
+  color:#fff !important;
+  box-shadow:0 22px 65px #000c,inset 0 0 24px #ffffff07 !important;
+}

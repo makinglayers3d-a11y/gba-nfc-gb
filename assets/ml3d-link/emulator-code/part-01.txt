@@ -1,0 +1,157 @@
+medir";
+      window.ML3DAvatar.render($("canvas", el), p.avatar, p.direction, p.frame).catch(console.error);
+    }
+    old.forEach((el) => el.remove());
+    renderRoomPlayers();
+  }
+
+  function showBubble(playerId, text) {
+    const el = $(`.ml3d-link-player[data-player-id="${CSS.escape(String(playerId))}"]`);
+    if (!el) return;
+    let bubble = $(".ml3d-link-bubble", el);
+    if (!bubble) {
+      bubble = document.createElement("div");
+      bubble.className = "ml3d-link-bubble";
+      el.append(bubble);
+    }
+    bubble.textContent = cleanText(text, 90);
+    clearTimeout(state.chatTimers.get(playerId));
+    state.chatTimers.set(playerId, setTimeout(() => bubble.remove(), 5200));
+  }
+
+  function loadArena() {
+    if (state.arenaUrl) return Promise.resolve(state.arenaUrl);
+    return Promise.all(ARENA_PARTS.map(async (url) => {
+      const r = await fetch(url, { cache: "force-cache" });
+      if (!r.ok) throw new Error(`Arena: HTTP ${r.status}`);
+      return (await r.text()).trim();
+    })).then((chunks) => {
+      state.arenaUrl = `url("data:image/webp;base64,${chunks.join("")}")`;
+      const stage = $("#ml3d-link-screen");
+      if (stage) stage.style.setProperty("--ml3d-link-arena", state.arenaUrl);
+      return state.arenaUrl;
+    });
+  }
+
+  function activateLobby(room) {
+    state.active = true;
+    const screen = $("#ml3d-link-screen");
+    screen.hidden = false;
+    screen.classList.add("active");
+    updateRoomHeader(room);
+    loadArena().catch(showError);
+    window.gbaSetGameMenuAudioDucked?.(true);
+    closeAllDialogs();
+    ensureMoveTimer();
+  }
+
+  function deactivateLobby() {
+    state.active = false;
+    state.held.clear();
+    stopMoveTimer();
+    const screen = $("#ml3d-link-screen");
+    if (screen) { screen.hidden = true; screen.classList.remove("active"); }
+    window.gbaSetGameMenuAudioDucked?.(false);
+    closeAllDialogs();
+  }
+
+  function updateRoomHeader(room) {
+    if (!room) return;
+    $("#ml3d-link-room-name").textContent = room.name || "ML3D LINK";
+    $("#ml3d-link-room-game").textContent = room.game || "Sin juego";
+    $("#ml3d-link-room-code").textContent = room.id || "";
+  }
+
+  function safeSend(channel, packet) {
+    if (!channel || channel.readyState !== "open") return false;
+    try { channel.send(JSON.stringify(packet)); return true; } catch { return false; }
+  }
+
+  function sendAll(packet, except = null) {
+    if (!state.host) return 0;
+    let count = 0;
+    for (const [joinId, peer] of state.host.peers) {
+      if (joinId === except) continue;
+      if (safeSend(peer.channel, packet)) count++;
+    }
+    return count;
+  }
+
+  function serialize(desc) { return JSON.stringify({ type: desc.type, sdp: desc.sdp }); }
+  function parseDesc(value, expected) {
+    const p = typeof value === "string" ? JSON.parse(value) : value;
+    if (!p || p.type !== expected || typeof p.sdp !== "string") throw new Error(`SDP ${expected} no válido.`);
+    return p;
+  }
+
+  function waitIce(pc) {
+    if (pc.iceGatheringState === "complete") return Promise.resolve();
+    return new Promise((resolve) => {
+      const timer = setTimeout(resolve, 10000);
+      const change = () => {
+        if (pc.iceGatheringState === "complete") {
+          clearTimeout(timer); pc.removeEventListener("icegatheringstatechange", change); resolve();
+        }
+      };
+      pc.addEventListener("icegatheringstatechange", change);
+    });
+  }
+
+  function makePeer(onDataChannel) {
+    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    pc.addEventListener("datachannel", (e) => onDataChannel(e.channel));
+    return pc;
+  }
+
+  function lobbySnapshot() {
+    return { type: "lobby:snapshot", room: state.host?.room || null, players: [...state.players.values()].map(playerSnapshot), time: Date.now() };
+  }
+
+  function broadcastPlayer(p, except = null) {
+    sendAll({ type: "lobby:player", player: playerSnapshot(p), time: Date.now() }, except);
+  }
+
+  function broadcastProfile() {
+    const me = state.players.get(state.localId);
+    if (!me) return;
+    if (state.host) broadcastPlayer(me);
+    else if (state.guest) safeSend(state.guest.channel, { type: "lobby:profile", profile: state.profile, time: Date.now() });
+  }
+
+  function sendMovement(p) {
+    const packet = { type: "lobby:move", playerId: p.id, x: p.x, y: p.y, direction: p.direction, frame: p.frame, time: Date.now() };
+    if (state.host) sendAll(packet);
+    else if (state.guest) safeSend(state.guest.channel, packet);
+  }
+
+  function handleHostPacket(joinId, packet) {
+    const peer = state.host?.peers.get(joinId);
+    const p = state.players.get(joinId);
+    if (!peer) return;
+    if (packet.type === "lobby:profile" && p) {
+      p.avatar = normalizeAvatar(packet.profile);
+      p.name = cleanName(packet.profile?.name);
+      renderPlayers(); broadcastPlayer(p); return;
+    }
+    if (packet.type === "lobby:move" && p) {
+      p.x = clamp(packet.x, 8, 92, p.x); p.y = clamp(packet.y, 29, 84, p.y);
+      p.direction = ["up", "down", "left", "right"].includes(packet.direction) ? packet.direction : p.direction;
+      p.frame = clamp(packet.frame, 0, 3, p.frame);
+      renderPlayers();
+      sendAll({ ...packet, playerId: joinId, x: p.x, y: p.y }, joinId); return;
+    }
+    if (packet.type === "lobby:chat" && p) {
+      const text = cleanText(packet.text, 90); if (!text) return;
+      showBubble(joinId, text); sendAll({ type: "lobby:chat", playerId: joinId, text, time: Date.now() }); return;
+    }
+    if (packet.type === "net:pong") handlePong(joinId, peer, packet);
+  }
+
+  function handleGuestPacket(packet) {
+    if (packet.type === "lobby:snapshot") {
+      state.players = new Map((packet.players || []).map((raw) => { const p = normalizePlayer(raw); return [p.id, p]; }));
+      if (packet.room && state.guest) { state.guest.room = { ...state.guest.room, ...packet.room }; updateRoomHeader(state.guest.room); }
+      renderPlayers(); return;
+    }
+    if (packet.type === "lobby:player") {
+      const p = normalizePlayer(packet.player); 

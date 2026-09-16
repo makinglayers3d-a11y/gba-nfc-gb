@@ -7,6 +7,23 @@
   margin:3px auto 0!important;
   filter:drop-shadow(0 5px 4px rgba(0,0,0,.34))!important;
 }
+
+/*
+ * El runtime histórico reconstruye .avatar-wrap en cada actualización de
+ * posición. El renderer nuevo mantiene su propio host como hijo directo del
+ * jugador para que el canvas no sea destruido entre pasos de movimiento.
+ */
+.player.ml3d-base-player>.avatar-wrap{
+  display:none!important;
+}
+.avatar-base-host{
+  position:relative;
+  width:56px;
+  height:84px;
+  margin:3px auto 0;
+  filter:drop-shadow(0 5px 4px rgba(0,0,0,.34));
+  pointer-events:none;
+}
 .avatar-wrap.ml3d-base-mounted>.ml3d-avatar-final,
 .avatar-wrap.ml3d-base-mounted>.ml3d-approved-sprite,
 .avatar-wrap.ml3d-base-mounted>.avatar-head,
@@ -66,7 +83,8 @@
 }
 
 @media(max-width:560px){
-  .avatar-wrap.ml3d-base-mounted{width:48px!important;height:72px!important}
+  .avatar-wrap.ml3d-base-mounted,
+  .avatar-base-host{width:48px!important;height:72px!important}
   .avatar-base-canvas{width:48px;height:72px}
   .avatar-base-preview-canvas{width:80px;height:120px}
   .avatar-base-choice-canvas{width:34px;height:51px}

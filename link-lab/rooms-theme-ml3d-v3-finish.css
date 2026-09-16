@@ -1,0 +1,44 @@
+/* Ajustes finales de la arena v3: logo lineal de suelo y piernas del avatar. */
+
+.room-rug::before {
+  content:"";
+  position:absolute;
+  inset:14%;
+  background:linear-gradient(180deg,rgba(220,238,249,.55),rgba(99,166,208,.36));
+  -webkit-mask:url("../assets/ml3d-logo.png") center/contain no-repeat;
+  mask:url("../assets/ml3d-logo.png") center/contain no-repeat;
+  filter:drop-shadow(0 0 7px rgba(98,177,226,.24));
+  opacity:.72;
+}
+.room-rug::after { content:none; }
+
+/* Dos piernas separadas sin añadir más nodos al DOM. */
+.avatar-wrap::before {
+  content:"";
+  position:absolute;
+  z-index:1;
+  left:50%;
+  top:43px;
+  width:24px;
+  height:11px;
+  transform:translateX(-50%);
+  border-radius:3px 3px 5px 5px;
+  background:
+    linear-gradient(90deg,
+      #1f2a34 0 38%,
+      transparent 38% 62%,
+      #1f2a34 62% 100%);
+  box-shadow:0 6px 5px -4px rgba(0,0,0,.72);
+  filter:none;
+}
+
+/* Pies ligeramente más anchos para que el personaje tenga una silueta chibi clara. */
+.avatar-wrap .avatar-body {
+  transform-origin:50% 100%;
+}
+.body-bean .avatar-body { transform:rotate(-3deg); }
+
+/* El jugador local conserva el aro luminoso bajo los pies. */
+.player.local .avatar-wrap::after {
+  bottom:-2px;
+}

@@ -23,14 +23,6 @@
       margin-left: 0 !important;
       bottom: 0 !important;
     }
-
-    /* En reposo damos un pequeño margen óptico al raster completo. No se
-       toca ningún frame ni la animación: simplemente evitamos que detalles
-       laterales, como la oreja, queden pegados al borde del canvas visible. */
-    #playersLayer .player:not(.ml3d-walking) .avatar-v5-canvas {
-      transform: translateX(-50%) scale(0.94) !important;
-      transform-origin: 50% 100% !important;
-    }
   `;
   document.head.appendChild(style);
 })();

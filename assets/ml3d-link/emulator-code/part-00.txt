@@ -1,0 +1,184 @@
+(() => {
+  "use strict";
+
+  const API_BASE = "https://ml3d-link-lab.makinglayers3d.workers.dev";
+  const ICE_SERVERS = [{ urls: ["stun:stun.cloudflare.com:3478"] }];
+  const MOVE_TICK = 55;
+  const QUALITY_TICK = 2000;
+  const ROOM_TTL_HEARTBEAT = 20000;
+  const ARENA_PARTS = [0, 1, 2, 3].map((n) => `link-lab/assets/arena-v7/part-${String(n).padStart(2, "0")}.txt`);
+
+  const state = {
+    active: false,
+    profile: null,
+    selectedRoom: null,
+    host: null,
+    guest: null,
+    localId: null,
+    players: new Map(),
+    held: new Set(),
+    lastDirection: "down",
+    walkFrame: 0,
+    moveTimer: null,
+    arenaUrl: null,
+    modal: null,
+    chatTimers: new Map()
+  };
+
+  const $ = (s, root = document) => root.querySelector(s);
+  const $$ = (s, root = document) => [...root.querySelectorAll(s)];
+
+  function cleanText(value, max = 80) {
+    return String(value ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max);
+  }
+
+  function cleanName(value) {
+    return cleanText(value || "Jugador", 32) || "Jugador";
+  }
+
+  function clamp(value, min, max, fallback) {
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+  }
+
+  async function api(path, { method = "GET", body, token } = {}) {
+    const headers = { Accept: "application/json" };
+    if (body !== undefined) headers["Content-Type"] = "application/json";
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const response = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      cache: "no-store"
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    return data;
+  }
+
+  function getLocation() {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) return reject(new Error("El navegador no ofrece ubicación."));
+      navigator.geolocation.getCurrentPosition(
+        (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude, accuracy: p.coords.accuracy }),
+        (e) => reject(new Error(`No se pudo obtener la ubicación: ${e.message}`)),
+        { enableHighAccuracy: false, timeout: 12000, maximumAge: 30000 }
+      );
+    });
+  }
+
+  function setStatus(text, error = false) {
+    const el = $("#ml3d-link-status");
+    if (!el) return;
+    el.textContent = text;
+    el.classList.toggle("error", error);
+  }
+
+  function showError(error) {
+    const message = error?.message || String(error);
+    console.error("ML3D Link:", error);
+    setStatus(message, true);
+  }
+
+  function spawnPoint(index) {
+    const points = [
+      { x: 50, y: 72 },
+      { x: 31, y: 59 },
+      { x: 69, y: 59 },
+      { x: 50, y: 43 }
+    ];
+    return points[Math.min(points.length - 1, Math.max(0, index))];
+  }
+
+  function normalizeAvatar(raw) {
+    return window.ML3DAvatar.normalizeProfile({ ...state.profile, ...(raw || {}) });
+  }
+
+  function playerSnapshot(p) {
+    return {
+      id: p.id,
+      name: p.name,
+      avatar: p.avatar,
+      x: p.x,
+      y: p.y,
+      direction: p.direction || "down",
+      frame: Number.isFinite(p.frame) ? p.frame : 0,
+      quality: p.quality || "unknown",
+      rtt: Number.isFinite(p.rtt) ? p.rtt : null,
+      jitter: Number.isFinite(p.jitter) ? p.jitter : null,
+      host: Boolean(p.host)
+    };
+  }
+
+  function normalizePlayer(raw = {}) {
+    return {
+      id: String(raw.id || "unknown"),
+      name: cleanName(raw.name),
+      avatar: normalizeAvatar(raw.avatar),
+      x: clamp(raw.x, 8, 92, 50),
+      y: clamp(raw.y, 29, 84, 60),
+      direction: ["up", "down", "left", "right"].includes(raw.direction) ? raw.direction : "down",
+      frame: clamp(raw.frame, 0, 3, 0),
+      quality: ["good", "ok", "bad"].includes(raw.quality) ? raw.quality : "unknown",
+      rtt: Number.isFinite(raw.rtt) ? raw.rtt : null,
+      jitter: Number.isFinite(raw.jitter) ? raw.jitter : null,
+      host: Boolean(raw.host)
+    };
+  }
+
+  function ensureLocal(id, host, pos = spawnPoint(host ? 0 : 1)) {
+    state.localId = id;
+    let p = state.players.get(id);
+    if (!p) {
+      p = normalizePlayer({
+        id,
+        name: state.profile.name,
+        avatar: state.profile,
+        x: pos.x,
+        y: pos.y,
+        direction: "down",
+        frame: 0,
+        quality: host ? "good" : "unknown",
+        rtt: host ? 0 : null,
+        jitter: host ? 0 : null,
+        host
+      });
+      state.players.set(id, p);
+    }
+    renderPlayers();
+    return p;
+  }
+
+  function qualityClass(q) {
+    return ["good", "ok", "bad"].includes(q) ? q : "unknown";
+  }
+
+  function qualityFromMetrics(rtt, jitter, missed = 0) {
+    if (missed >= 2) return "bad";
+    if (!Number.isFinite(rtt)) return "unknown";
+    if (rtt <= 80 && (jitter ?? 0) <= 35) return "good";
+    if (rtt <= 180 && (jitter ?? 0) <= 80) return "ok";
+    return "bad";
+  }
+
+  async function renderPlayers() {
+    const layer = $("#ml3d-link-players");
+    if (!layer) return;
+    const old = new Map($$(".ml3d-link-player", layer).map((el) => [el.dataset.playerId, el]));
+    for (const p of state.players.values()) {
+      let el = old.get(p.id);
+      if (!el) {
+        el = document.createElement("div");
+        el.className = "ml3d-link-player";
+        el.dataset.playerId = p.id;
+        el.innerHTML = `<div class="ml3d-link-name"><span class="ml3d-link-quality"></span><span class="ml3d-link-name-text"></span></div><canvas class="ml3d-link-avatar" width="32" height="48"></canvas>`;
+        layer.append(el);
+      }
+      old.delete(p.id);
+      el.classList.toggle("local", p.id === state.localId);
+      el.style.left = `${p.x}%`;
+      el.style.top = `${p.y}%`;
+      $(".ml3d-link-name-text", el).textContent = p.host ? `${p.name} ★` : p.name;
+      const dot = $(".ml3d-link-quality", el);
+      dot.className = `ml3d-link-quality ${qualityClass(p.quality)}`;
+      dot.title = Number.isFinite(p.rtt) ? `${Math.round(p.rtt)} ms` : "Sin 

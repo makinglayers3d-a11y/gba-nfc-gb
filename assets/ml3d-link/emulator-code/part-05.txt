@@ -1,0 +1,87 @@
+ $("#ml3d-link-profile-shoes").value,
+      accessory: $("#ml3d-link-profile-accessory").value,
+      hairColor: $("#ml3d-link-profile-haircolor").value,
+      primaryColor: $("#ml3d-link-profile-primary").value,
+      secondaryColor: $("#ml3d-link-profile-secondary").value
+    });
+  }
+
+  function renderProfilePreview() {
+    window.ML3DAvatar.render($("#ml3d-link-profile-preview"), profileFromEditor(), "down", 0).catch(() => {});
+  }
+
+  function applyProfile() {
+    state.profile = window.ML3DAvatar.saveProfile(profileFromEditor());
+    const p = state.players.get(state.localId);
+    if (p) { p.name = state.profile.name; p.avatar = state.profile; renderPlayers(); broadcastProfile(); }
+    closeDialog("ml3d-link-avatar-dialog");
+  }
+
+  function openChat() {
+    const box = $("#ml3d-link-chat"); box.hidden = false;
+    const input = $("#ml3d-link-chat-input"); input.value = ""; setTimeout(() => input.focus(), 40);
+  }
+
+  function openRoomMenu() {
+    const hostBox = $("#ml3d-link-host-menu"), guestBox = $("#ml3d-link-guest-menu");
+    hostBox.hidden = !state.host; guestBox.hidden = !state.guest;
+    if (state.host) {
+      $("#ml3d-link-room-name-input").value = state.host.room.name || "";
+      $("#ml3d-link-room-game-input").value = state.host.room.game || "";
+      $("#ml3d-link-room-max-input").value = String(state.host.room.maxPlayers || 2);
+      renderRoomPlayers();
+    }
+    openDialog("ml3d-link-room-dialog");
+  }
+
+  function renderRoomPlayers() {
+    const box = $("#ml3d-link-player-management"); if (!box) return;
+    box.textContent = "";
+    for (const p of state.players.values()) {
+      const row = document.createElement("div"); row.className = "ml3d-link-manage-player";
+      const label = document.createElement("span"); label.innerHTML = `<i class="ml3d-link-quality ${qualityClass(p.quality)}"></i>${escapeHtml(p.name)}${p.host ? " ★" : ""}`;
+      row.append(label);
+      if (state.host && !p.host) {
+        const kick = document.createElement("button"); kick.type = "button"; kick.textContent = "EXPULSAR"; kick.addEventListener("click", () => kickPlayer(p.id)); row.append(kick);
+      }
+      box.append(row);
+    }
+  }
+
+  function escapeHtml(text) {
+    return String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c]));
+  }
+
+  function optionList(values) { return values.map((v) => `<option value="${v}">${v}</option>`).join(""); }
+  function numericOptions(max) { return Array.from({ length: max }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join(""); }
+
+  function injectUI() {
+    if ($("#ml3d-link-button")) return;
+    const selectGame = $("#select-game-button");
+    const linkButton = document.createElement("button");
+    linkButton.id = "ml3d-link-button"; linkButton.type = "button"; linkButton.textContent = "ML3D Link";
+    selectGame?.insertAdjacentElement("afterend", linkButton);
+
+    const frame = $(".screen-frame");
+    frame?.insertAdjacentHTML("beforeend", `
+      <div id="ml3d-link-screen" class="ml3d-link-screen" hidden>
+        <div class="ml3d-link-screen-head"><div><strong id="ml3d-link-room-name">ML3D LINK</strong><span id="ml3d-link-room-game">Sin juego</span></div><span id="ml3d-link-room-code"></span></div>
+        <div id="ml3d-link-players" class="ml3d-link-players"></div>
+        <div id="ml3d-link-banner" class="ml3d-link-banner" hidden></div>
+        <form id="ml3d-link-chat" class="ml3d-link-chat" hidden><input id="ml3d-link-chat-input" maxlength="90" placeholder="Mensaje…"><button>ENVIAR</button></form>
+      </div>`);
+
+    document.body.insertAdjacentHTML("beforeend", `
+      <dialog id="ml3d-link-setup-dialog" class="ml3d-link-dialog"><div class="menu-card ml3d-link-card">
+        <button type="button" class="ml3d-link-x" data-link-close="ml3d-link-setup-dialog">×</button><h2>ML3D Link</h2>
+        <p id="ml3d-link-status" class="ml3d-link-status">Listo</p>
+        <section><h3>Crear sala</h3><input id="ml3d-link-create-name" maxlength="48" placeholder="Nombre de sala"><input id="ml3d-link-create-game" maxlength="80" placeholder="Juego"><input id="ml3d-link-create-password" type="password" maxlength="64" placeholder="Contraseña opcional"><select id="ml3d-link-create-max"><option>2</option><option>3</option><option>4</option></select><button id="ml3d-link-create" type="button">CREAR SALA</button></section>
+        <section><h3>Buscar salas cercanas</h3><select id="ml3d-link-search-radius"><option value="0.5">500 m</option><option value="1" selected>1 km</option><option value="5">5 km</option><option value="10">10 km</option></select><button id="ml3d-link-search" type="button">BUSCAR SALAS</button><div id="ml3d-link-results"></div></section>
+        <section id="ml3d-link-join-box" hidden><h3>Unirse</h3><p id="ml3d-link-join-info"></p><input id="ml3d-link-join-password" type="password" placeholder="Contraseña"><button id="ml3d-link-join" type="button">ENTRAR AL LOBBY</button></section>
+        <button id="ml3d-link-edit-profile-from-setup" type="button">PERSONAJE</button>
+      </div></dialog>
+      <dialog id="ml3d-link-avatar-dialog" class="ml3d-link-dialog"><div class="menu-card ml3d-link-card">
+        <button type="button" class="ml3d-link-x" data-link-close="ml3d-link-avatar-dialog">×</button><h2>Personaje</h2>
+        <canvas id="ml3d-link-profile-preview" width="32" height="48"></canvas>
+        <label>Nombre<input id="ml3d-link-profile-name" maxlength="32"></label>
+        <div class="ml3d-link-grid"><label>Base<select id="ml3d-link-profile-base"><option value="male">Hombre</option><option value="female">Mujer</option></select></label><label>Piel<select id="ml3d-link-profile-skin">${numericOptions(6)}</select></label><label>Pelo<select id="ml3d-link-profile-hair">${numericOptions(4)}</select></label><label>Ropa<select id="ml3d-link-profile-top">${numericOptions(4)}</select></label><label>Parte inferior<select id="ml3d-link-profile-bottom">${numericOptions(4)}</sel

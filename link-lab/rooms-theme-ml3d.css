@@ -1,0 +1,292 @@
+/* ML3D Link Lobby visual v1
+   La habitación está pensada para integrarse dentro de una pantalla GBA 3:2.
+   Los controles visibles en link-lab siguen siendo únicamente un banco de pruebas. */
+
+.lobby-stage {
+  position: relative;
+  aspect-ratio: 3 / 2;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid #394654;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(77, 137, 190, .11), transparent 38%),
+    linear-gradient(180deg, #070a0e 0%, #020305 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.025),
+    inset 0 -24px 50px rgba(0,0,0,.52),
+    0 16px 38px rgba(0,0,0,.28);
+}
+
+/* Carcasa elevada alrededor de la habitación. */
+.lobby-stage::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 4.5% 2.2% 3.5%;
+  clip-path: polygon(8% 0, 92% 0, 100% 17%, 96% 100%, 4% 100%, 0 17%);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.16), transparent 12%),
+    linear-gradient(100deg, #1a2028 0%, #454d57 9%, #232a33 17%, #151b22 50%, #29313a 82%, #4a525c 91%, #1a2028 100%);
+  box-shadow:
+    0 10px 24px rgba(0,0,0,.62),
+    inset 0 0 0 2px rgba(255,255,255,.07),
+    inset 0 -18px 32px rgba(0,0,0,.48);
+}
+
+/* Suelo transitable. El patrón son "capas" y trazas, no motivos de ninguna franquicia. */
+.room-pattern {
+  z-index: 1;
+  inset: 13.5% 6.4% 8%;
+  clip-path: polygon(6% 0, 94% 0, 100% 14%, 96% 100%, 4% 100%, 0 14%);
+  background:
+    linear-gradient(145deg, rgba(117,178,226,.07) 0 1px, transparent 1px 100%),
+    repeating-linear-gradient(90deg, rgba(137,184,220,.045) 0 1px, transparent 1px 31px),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 27px),
+    linear-gradient(155deg, #29323c 0%, #1a2129 42%, #11171d 100%);
+  background-size: 100% 100%, 31px 100%, 100% 27px, 100% 100%;
+  box-shadow:
+    inset 0 0 0 2px rgba(122,183,228,.34),
+    inset 0 0 0 7px rgba(3,6,9,.72),
+    inset 0 0 38px rgba(86,147,196,.08),
+    0 8px 18px rgba(0,0,0,.36);
+}
+
+.room-pattern::before {
+  content: "";
+  position: absolute;
+  inset: 7% 6.2% 8%;
+  clip-path: polygon(5% 0,95% 0,100% 13%,96% 100%,4% 100%,0 13%);
+  box-shadow:
+    inset 0 0 0 2px rgba(178,215,241,.42),
+    inset 0 0 0 4px rgba(12,18,24,.58);
+  background:
+    linear-gradient(90deg, transparent 0 23%, rgba(106,177,227,.08) 23% 23.5%, transparent 23.5% 76.5%, rgba(106,177,227,.08) 76.5% 77%, transparent 77%),
+    linear-gradient(180deg, transparent 0 43%, rgba(255,255,255,.035) 43% 44%, transparent 44%);
+}
+
+.room-pattern::after {
+  content: "MAKING LAYERS  /  LINK SPACE";
+  position: absolute;
+  left: 50%;
+  bottom: 4.5%;
+  transform: translateX(-50%);
+  color: rgba(186,211,231,.38);
+  font: 800 clamp(6px,1.15vw,10px)/1 system-ui,sans-serif;
+  letter-spacing: .22em;
+  white-space: nowrap;
+}
+
+/* Núcleo central, reinterpretando el punto de encuentro de la referencia con geometría ML3D. */
+.room-rug {
+  z-index: 2;
+  width: 27%;
+  height: 23%;
+  left: 36.5%;
+  top: 48.5%;
+  border: 0;
+  border-radius: 0;
+  clip-path: polygon(13% 0,87% 0,100% 24%,100% 76%,87% 100%,13% 100%,0 76%,0 24%);
+  background:
+    linear-gradient(135deg, rgba(133,195,239,.20), transparent 34%),
+    linear-gradient(160deg, #263440 0%, #121a22 58%, #0a0f14 100%);
+  box-shadow:
+    inset 0 0 0 2px rgba(146,202,242,.46),
+    inset 0 0 0 6px rgba(5,9,13,.74),
+    0 12px 25px rgba(0,0,0,.34);
+}
+
+.room-rug::before {
+  content: "ML3D";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #dceaf4;
+  font: 950 clamp(12px,3vw,25px)/1 system-ui,sans-serif;
+  letter-spacing: .10em;
+  text-shadow: 0 0 16px rgba(106,181,235,.30);
+}
+
+.room-rug::after {
+  content: "// LINK";
+  position: absolute;
+  left: 50%;
+  bottom: 15%;
+  transform: translateX(-50%);
+  color: rgba(131,191,234,.78);
+  font: 900 clamp(5px,1vw,9px)/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  letter-spacing: .18em;
+  white-space: nowrap;
+}
+
+/* Panel de pared superior. */
+.room-console {
+  z-index: 3;
+  left: 50%;
+  top: 6.2%;
+  width: 39%;
+  height: 8.4%;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  transform: translateX(-50%);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  clip-path: polygon(7% 0,93% 0,100% 50%,93% 100%,7% 100%,0 50%);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.14), transparent 32%),
+    linear-gradient(90deg,#11171e,#2b3945 42%,#344959 50%,#2b3945 58%,#11171e);
+  box-shadow: 0 7px 15px rgba(0,0,0,.46);
+  color: transparent;
+  font-size: 0;
+}
+
+.room-console::before {
+  content: "MAKING LAYERS";
+  color: #e7eef4;
+  font: 900 clamp(6px,1.25vw,11px)/1 system-ui,sans-serif;
+  letter-spacing: .18em;
+}
+
+.room-console::after {
+  content: "ML3D // LINK";
+  position: absolute;
+  left: 50%;
+  bottom: 13%;
+  transform: translateX(-50%);
+  color: #74b7e5;
+  font: 900 clamp(4px,.8vw,7px)/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  letter-spacing: .16em;
+  white-space: nowrap;
+}
+
+.players-layer {
+  z-index: 5;
+}
+
+.player {
+  width: 70px;
+  z-index: 6;
+  transition: left 80ms linear, top 80ms linear;
+}
+
+.player.local {
+  z-index: 7;
+}
+
+.player-name {
+  max-width: 70px;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 1px solid rgba(152,199,232,.20);
+  border-radius: 999px;
+  background: rgba(4,8,12,.82);
+  color: #f0f5f8;
+  font-size: 9px;
+  box-shadow: 0 3px 9px rgba(0,0,0,.32);
+}
+
+.quality-dot {
+  width: 7px;
+  height: 7px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.20), 0 0 5px currentColor;
+}
+
+.avatar-wrap {
+  width: 36px;
+  height: 46px;
+  margin-top: 3px;
+  filter: drop-shadow(0 5px 4px rgba(0,0,0,.35));
+}
+
+.avatar-wrap::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  bottom: -2px;
+  width: 28px;
+  height: 8px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: rgba(0,0,0,.38);
+  filter: blur(1px);
+}
+
+.player.local .avatar-wrap {
+  filter: drop-shadow(0 0 5px rgba(104,181,235,.42)) drop-shadow(0 5px 4px rgba(0,0,0,.36));
+}
+
+.avatar-head {
+  left: 6px;
+  top: 0;
+  width: 24px;
+  height: 23px;
+  border-width: 1px;
+  box-shadow: inset 4px 4px 8px rgba(255,255,255,.10), inset -3px -4px 7px rgba(0,0,0,.14);
+}
+
+.avatar-body {
+  left: 4px;
+  top: 20px;
+  width: 28px;
+  height: 24px;
+  border-width: 1px;
+  box-shadow: inset 4px 4px 8px rgba(255,255,255,.08), inset -3px -4px 7px rgba(0,0,0,.16);
+}
+
+.avatar-eye { top: 8px; width: 3px; height: 4px; }
+.avatar-eye.left { left: 6px; }
+.avatar-eye.right { right: 6px; }
+.face-happy .avatar-mouth { left: 8px; top: 14px; width: 7px; height: 4px; border-bottom-width: 1px; }
+.face-flat .avatar-mouth { left: 8px; top: 15px; width: 7px; border-top-width: 1px; }
+.face-wow .avatar-mouth { left: 10px; top: 14px; width: 5px; height: 5px; }
+
+.accessory-cap { left: 3px; top: -3px; width: 29px; height: 10px; border-width: 1px; }
+.accessory-antenna { left: 16px; top: -9px; width: 3px; height: 11px; }
+.accessory-antenna:after { left: -3px; top: -4px; width: 9px; height: 9px; }
+.accessory-bow { left: 2px; top: 2px; width: 10px; height: 7px; }
+
+.chat-bubble {
+  bottom: 50px;
+  max-width: 145px;
+  padding: 6px 8px;
+  border: 1px solid rgba(10,16,22,.10);
+  border-radius: 11px 11px 11px 3px;
+  font-size: 10px;
+  box-shadow: 0 5px 14px rgba(0,0,0,.30);
+}
+
+/* Barra de datos discreta: en la integración final podrá vivir fuera de la pantalla. */
+.lobby-toolbar {
+  border-color: #2f3c49;
+  background: linear-gradient(180deg,#111820,#0c1218);
+}
+
+.lobby-help {
+  border-color: #2f3c49;
+  background: #0c1218;
+}
+
+/* Los controles siguientes siguen visibles solo en el laboratorio.
+   No forman parte del diseño final integrado en ML3Demuler. */
+.touch-controls {
+  opacity: .78;
+}
+
+@media (max-width:640px) {
+  .lobby-stage {
+    aspect-ratio: 3 / 2;
+    min-height: 0;
+  }
+  .player { width: 58px; }
+  .player-name { max-width: 58px; font-size: 8px; padding: 2px 5px; }
+  .avatar-wrap { transform: scale(.86); transform-origin: 50% 100%; margin-top: 0; }
+  .room-pattern::after { letter-spacing: .12em; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .player { transition: none; }
+}

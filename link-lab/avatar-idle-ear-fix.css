@@ -1,0 +1,8 @@
+/* Ajuste visual mínimo para el sprite en reposo.
+   Conserva la animación/movimiento v5 y añade margen óptico lateral
+   únicamente cuando el personaje está parado, evitando que detalles como
+   las orejas queden pegados al borde del canvas principal. */
+#playersLayer .player:not(.ml3d-walking) .avatar-v5-canvas {
+  transform: translateX(-50%) scale(0.94) !important;
+  transform-origin: 50% 100% !important;
+}

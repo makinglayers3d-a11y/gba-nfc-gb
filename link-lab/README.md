@@ -2,40 +2,32 @@
 
 Laboratorio aislado para desarrollar un cable Link virtual sin modificar todavía el emulador normal.
 
-## Fase actual
+## Fases disponibles
 
-Fase 1: validar un `RTCDataChannel` WebRTC entre dos navegadores mediante señalización manual.
+### Fase 1 — señalización manual
 
-Todavía NO hay emulación de puerto serie GBA ni sincronización de IodineGBA/binjgb.
+`index.html` mantiene la prueba de `RTCDataChannel` mediante copiar/pegar oferta y respuesta.
 
-## Prueba inicial recomendada
+### Fase 2 — salas cercanas
 
-Usa dos dispositivos conectados a la misma red Wi-Fi.
+`rooms.html` añade:
 
-1. Abre `link-lab/` en ambos dispositivos desde una versión publicada de esta rama.
-2. En el dispositivo A pulsa `CREAR OFERTA` y copia el texto generado.
-3. Pasa ese texto al dispositivo B y pégalo en `Oferta del dispositivo A`.
-4. En B pulsa `GENERAR RESPUESTA` y copia la respuesta.
-5. Devuelve la respuesta al dispositivo A y pégala en `Respuesta del dispositivo B`.
-6. En A pulsa `APLICAR RESPUESTA`.
-7. Cuando ambos indiquen `LINK CONECTADO`, prueba `ENVIAR MENSAJE` y `MEDIR PING`.
+- Crear sala con nombre.
+- Juego opcional.
+- Contraseña opcional.
+- Capacidad de 2, 3 o 4 jugadores.
+- Publicación por cercanía.
+- Búsqueda por radio (500 m, 1 km, 5 km o 10 km).
+- Señalización WebRTC automática mediante el Worker `cloudflare-link-worker/`.
+- STUN de Cloudflare para mejorar la conexión entre redes/NAT.
+- Mensajes y ping para validar el canal antes de integrar un núcleo de emulación.
 
-## Red
+La posición del host se redondea en el Worker antes de guardarse y el buscador solo recibe una distancia aproximada.
 
-Esta primera fase usa:
+## Backend
 
-```js
-new RTCPeerConnection({ iceServers: [] })
-```
+La fase 2 necesita desplegar `cloudflare-link-worker/` como Worker separado con una D1 propia llamada `ml3d-link-lab`. No reutiliza el Worker ni la D1 del acceso promocional.
 
-Por tanto no depende de STUN, TURN ni de un servidor de salas. Está pensada para validar primero el transporte en red local. Para conexiones entre redes diferentes se añadirá después señalización automática y STUN/TURN.
+## Todavía pendiente
 
-## Siguiente fase
-
-Después de validar el canal entre dos dispositivos:
-
-1. Añadir transporte binario y numeración de paquetes.
-2. Añadir pausa/reanudación coordinada al ir a segundo plano.
-3. Integrar un núcleo GBA con soporte Link en una página separada.
-4. Probar dos instancias localmente antes de usar dos dispositivos.
-5. Solo después integrar `ML3D LINK` en la interfaz del emulador de pruebas.
+Todavía NO hay emulación del puerto serie GBA ni sincronización de IodineGBA/binjgb. La fase de salas valida descubrimiento, autenticación, señalización y transporte. Cuando sea estable, el siguiente paso será conectar un núcleo GBA con soporte Link al `RTCDataChannel`.

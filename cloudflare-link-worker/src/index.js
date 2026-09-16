@@ -249,7 +249,7 @@ async function joinHeartbeat(env, request, roomId, joinId) {
   if (!join) return bad(env, request, "Jugador no encontrado", 404);
   if (!(await requireJoin(env, request, join))) return bad(env, request, "No autorizado", 401);
   const now = Date.now();
-  await env.DB.prepare("UPDATE room_joins SET updated_at = ?, expires_at = ? WHERE id = ? AND room_id = ?").bind(now + JOIN_TTL_MS, now, joinId).run();
+  await env.DB.prepare("UPDATE room_joins SET updated_at = ?, expires_at = ? WHERE id = ? AND room_id = ?").bind(now, now + JOIN_TTL_MS, joinId).run();
   return response(env, request, { ok: true, expiresAt: now + JOIN_TTL_MS });
 }
 

@@ -14,6 +14,20 @@
     window.dispatchEvent(new KeyboardEvent("keyup", { key, bubbles: true, cancelable: true }));
   }
 
+  function focusLobby() {
+    const stage = document.getElementById("lobbyStage");
+    try { stage?.focus({ preventScroll: true }); } catch { stage?.focus(); }
+  }
+
+  function closeModalDirect(id) {
+    const modal = document.getElementById(id);
+    if (!modal) return false;
+    modal.hidden = true;
+    focusLobby();
+    log(`Modal cerrado: ${id}.`);
+    return true;
+  }
+
   function openAvatarFallback() {
     const modal = document.getElementById("avatarModal");
     if (!modal) return;
@@ -65,6 +79,23 @@
     button.addEventListener("click", activate, { passive: false });
   }
 
+  function bindCloseButtons() {
+    document.querySelectorAll("[data-close-modal]").forEach((button) => {
+      let lastClose = 0;
+      const close = (event) => {
+        const now = performance.now();
+        if (now - lastClose < 300) return;
+        lastClose = now;
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
+        closeModalDirect(button.dataset.closeModal);
+      };
+      button.addEventListener("pointerup", close, { passive: false });
+      button.addEventListener("touchend", close, { passive: false });
+      button.addEventListener("click", close, { passive: false });
+    });
+  }
+
   bind("avatarButton", () => {
     log("L pulsado.");
     dispatchLobbyKey("l");
@@ -92,5 +123,13 @@
     openSelectDirect();
   });
 
-  log("Compatibilidad directa L/R/SELECT v2 activa.");
+  bindCloseButtons();
+
+  window.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (!document.getElementById("avatarModal")?.hidden) closeModalDirect("avatarModal");
+    else if (!document.getElementById("selectModal")?.hidden) closeModalDirect("selectModal");
+  });
+
+  log("Compatibilidad directa L/R/SELECT y cierre de modales v3 activa.");
 })();

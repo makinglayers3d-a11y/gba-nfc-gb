@@ -2,8 +2,8 @@
   "use strict";
 
   const PROFILE_KEY = "ml3d-link-avatar-final-v1";
-  const MALE_URL = "./assets/avatar-approved/male.webp?v=1";
-  const FEMALE_URL = "./assets/avatar-approved/female.webp?v=1";
+  const MALE_URL = "./assets/avatar-approved/male.webp?v=2";
+  const FEMALE_URL = "./assets/avatar-approved/female.webp?v=2";
   const DIR_ROW = { front: 0, back: 1, left: 2, right: 3 };
   const remoteProfiles = new Map();
   const stateByPlayer = new Map();
@@ -85,8 +85,8 @@
     sprite.style.backgroundImage = `url("${spriteUrl(profile.base)}")`;
 
     const mobile = matchMedia("(max-width:560px)").matches;
-    const cellW = mobile ? 44 : 52;
-    const cellH = mobile ? 71 : 84;
+    const cellW = mobile ? 54 : 64;
+    const cellH = mobile ? 81 : 96;
     sprite.style.backgroundPosition = `${-frame * cellW}px ${-DIR_ROW[dir] * cellH}px`;
 
     stateByPlayer.set(id, { x: pos.x, y: pos.y, dir, frame, lastMove });

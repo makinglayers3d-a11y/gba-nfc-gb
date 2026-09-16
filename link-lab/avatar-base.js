@@ -340,11 +340,11 @@
 
     const players = document.getElementById("playersLayer");
     if (players) {
-      new MutationObserver(() => renderPlayers()).observe(players, {
-        subtree: true,
+      new MutationObserver((mutations) => {
+        if (mutations.some((mutation) => mutation.type === "childList")) renderPlayers();
+      }).observe(players, {
         childList: true,
-        attributes: true,
-        attributeFilter: ["style", "class"]
+        subtree: false
       });
     }
 

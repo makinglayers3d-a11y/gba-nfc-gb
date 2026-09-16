@@ -1,0 +1,111 @@
+     setStatus("Obteniendo ubicación…");
+      const loc = await getLocation();
+      const body = {
+        name: $("#ml3d-link-create-name").value,
+        game: $("#ml3d-link-create-game").value,
+        password: $("#ml3d-link-create-password").value,
+        maxPlayers: Number($("#ml3d-link-create-max").value),
+        lat: loc.lat, lon: loc.lon
+      };
+      setStatus("Creando sala…");
+      const data = await api("/v1/rooms", { method: "POST", body });
+      state.players = new Map();
+      state.host = { room: data.room, token: data.hostToken, peers: new Map(), joins: [], pollBusy: false };
+      state.guest = null;
+      ensureLocal("host", true, spawnPoint(0));
+      activateLobby(data.room);
+      setStatus("Sala abierta");
+      state.host.pollTimer = setInterval(pollHost, 1200);
+      state.host.heartbeat = setInterval(() => api(`/v1/rooms/${encodeURIComponent(data.room.id)}/heartbeat`, { method: "POST", token: data.hostToken }).catch(() => {}), ROOM_TTL_HEARTBEAT);
+      state.host.quality = setInterval(runQuality, QUALITY_TICK);
+      await pollHost();
+    } catch (e) { showError(e); }
+  }
+
+  async function searchRooms() {
+    try {
+      setStatus("Buscando salas…");
+      const loc = await getLocation();
+      const radius = Number($("#ml3d-link-search-radius").value || 1);
+      const data = await api(`/v1/rooms/nearby?lat=${encodeURIComponent(loc.lat)}&lon=${encodeURIComponent(loc.lon)}&radiusKm=${encodeURIComponent(radius)}`);
+      renderSearchResults(data.rooms || []);
+      setStatus(data.rooms?.length ? `${data.rooms.length} sala(s)` : "No hay salas cercanas");
+    } catch (e) { showError(e); }
+  }
+
+  function renderSearchResults(rooms) {
+    const box = $("#ml3d-link-results"); box.textContent = "";
+    if (!rooms.length) { box.innerHTML = '<p class="ml3d-link-hint">No hay salas cercanas.</p>'; return; }
+    rooms.forEach((room) => {
+      const row = document.createElement("button"); row.type = "button"; row.className = "ml3d-link-room-result";
+      const dist = room.distanceMeters < 1000 ? `${room.distanceMeters} m` : `${(room.distanceMeters / 1000).toFixed(1)} km`;
+      row.innerHTML = `<strong>${escapeHtml(room.name)}</strong><span>${escapeHtml(room.game || "Sin juego")} · ${dist} · ${room.players}/${room.maxPlayers}${room.locked ? " · 🔒" : ""}</span>`;
+      row.addEventListener("click", () => selectRoom(room)); box.append(row);
+    });
+  }
+
+  function selectRoom(room) {
+    state.selectedRoom = room;
+    $("#ml3d-link-join-box").hidden = false;
+    $("#ml3d-link-join-info").textContent = `${room.name} · ${room.game || "Sin juego"}`;
+    $("#ml3d-link-join-password").hidden = !room.locked;
+  }
+
+  async function joinRoom() {
+    if (!state.selectedRoom) return;
+    try {
+      setStatus("Solicitando entrada…");
+      const data = await api(`/v1/rooms/${encodeURIComponent(state.selectedRoom.id)}/join`, { method: "POST", body: { password: $("#ml3d-link-join-password").value, displayName: state.profile.name } });
+      state.players = new Map();
+      state.host = null;
+      state.guest = { room: state.selectedRoom, join: data.join, token: data.joinToken, pc: null, channel: null, answerSent: false, pollBusy: false };
+      state.localId = data.join.id;
+      activateLobby(state.selectedRoom);
+      ensureLocal(state.localId, false, spawnPoint(1));
+      state.guest.pollTimer = setInterval(pollGuest, 900);
+      state.guest.heartbeat = setInterval(() => api(`/v1/rooms/${encodeURIComponent(state.guest.room.id)}/joins/${encodeURIComponent(state.guest.join.id)}/heartbeat`, { method: "POST", token: state.guest.token }).catch(() => {}), ROOM_TTL_HEARTBEAT);
+      await pollGuest();
+    } catch (e) { showError(e); }
+  }
+
+  async function pollGuest() {
+    if (!state.guest || state.guest.pollBusy) return;
+    state.guest.pollBusy = true;
+    try {
+      const g = state.guest;
+      const data = await api(`/v1/rooms/${encodeURIComponent(g.room.id)}/joins/${encodeURIComponent(g.join.id)}`, { token: g.token });
+      if (data.status === "kicked" || data.status === "closed") { await leaveRoom(false); return; }
+      if (data.offer && !g.answerSent) await acceptOffer(data.offer);
+    } catch (e) { console.warn("ML3D Link guest poll:", e); }
+    finally { if (state.guest) state.guest.pollBusy = false; }
+  }
+
+  async function acceptOffer(rawOffer) {
+    const g = state.guest;
+    const pc = makePeer((channel) => attachGuestChannel(channel));
+    g.pc = pc;
+    await pc.setRemoteDescription(parseDesc(rawOffer, "offer"));
+    const answer = await pc.createAnswer(); await pc.setLocalDescription(answer); await waitIce(pc);
+    await api(`/v1/rooms/${encodeURIComponent(g.room.id)}/joins/${encodeURIComponent(g.join.id)}/answer`, { method: "POST", token: g.token, body: { answer: serialize(pc.localDescription) } });
+    g.answerSent = true;
+  }
+
+  function attachGuestChannel(channel) {
+    if (!state.guest) return;
+    state.guest.channel = channel;
+    channel.addEventListener("open", async () => {
+      setStatus("LINK CONECTADO");
+      try { await api(`/v1/rooms/${encodeURIComponent(state.guest.room.id)}/joins/${encodeURIComponent(state.guest.join.id)}/connected`, { method: "POST", token: state.guest.token }); } catch {}
+      safeSend(channel, { type: "lobby:profile", profile: state.profile, time: Date.now() });
+    });
+    channel.addEventListener("message", (e) => { try { handleGuestPacket(JSON.parse(e.data)); } catch {} });
+    channel.addEventListener("close", () => setStatus("Conexión cerrada"));
+  }
+
+  async function closeHostRoom() {
+    if (!state.host) return;
+    const h = state.host; sendAll({ type: "lobby:kicked" });
+    try { await api(`/v1/rooms/${encodeURIComponent(h.room.id)}/close`, { method: "POST", token: h.token }); } catch {}
+    clearInterval(h.pollTimer); clearInterval(h.heartbeat); clearInterval(h.quality);
+    h.peers.forEach((p) => { try { p.pc.close(); } catch {} });
+    state.host = null; state.players.clear(); state.localId = null; deactivateLobby

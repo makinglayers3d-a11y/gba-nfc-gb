@@ -61,6 +61,17 @@
     textarea { min-height: 150px; resize: vertical; }
     label { display: block; margin: 14px 0 7px; font-weight: 700; }
     .hint { color: #9eabb9; font-size: 13px; line-height: 1.45; }
+    .error-detail {
+      margin: 12px 0 0;
+      border: 1px solid #7f3f45;
+      border-radius: 10px;
+      background: #251216;
+      color: #ffc7cc;
+      padding: 10px 12px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
     #log {
       min-height: 110px;
       max-height: 260px;
@@ -82,7 +93,8 @@
 
   <section class="card">
     <div class="status"><span class="dot"></span><span id="statusText">Sin conexión</span></div>
-    <p class="hint">Esta versión solo conecta dos navegadores. Todavía no ejecuta ni sincroniza emuladores.</p>
+    <p id="errorDetail" class="error-detail" hidden></p>
+    <p class="hint">Esta versión solo conecta dos navegadores. Todavía no ejecuta ni sincroniza emuladores. Usa siempre los botones COPIAR para no alterar los códigos.</p>
   </section>
 
   <section class="card">
@@ -126,6 +138,6 @@
     <div id="log"></div>
   </section>
 </main>
-<script src="link-lab.js?v=1"></script>
+<script src="link-lab.js?v=2"></script>
 </body>
 </html>

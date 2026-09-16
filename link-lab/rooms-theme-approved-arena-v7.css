@@ -1,0 +1,56 @@
+/* ML3D Link Lobby v7 — sala aprobada como asset fijo 3:2.
+   Mantiene por encima jugadores, nombres, calidad, chat y banners dinámicos. */
+
+.lobby-stage.arena-asset-ready {
+  position: relative;
+  aspect-ratio: 3 / 2;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background-color: #02060b !important;
+  background-image: var(--ml3d-link-arena) !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+  box-shadow: none !important;
+}
+
+/* El asset contiene toda la sala: pared frontal, laterales, suelo, cartel,
+   marco, portal inferior y dibujo ML3D central. */
+.lobby-stage.arena-asset-ready::before,
+.lobby-stage.arena-asset-ready::after,
+.lobby-stage.arena-asset-ready .room-pattern,
+.lobby-stage.arena-asset-ready .room-rug,
+.lobby-stage.arena-asset-ready .room-console {
+  display: none !important;
+  content: none !important;
+}
+
+/* Capas vivas del lobby. */
+.lobby-stage.arena-asset-ready .players-layer {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 20 !important;
+  overflow: visible !important;
+}
+
+.lobby-stage.arena-asset-ready .player {
+  z-index: 21;
+}
+
+.lobby-stage.arena-asset-ready .player-name,
+.lobby-stage.arena-asset-ready .chat-bubble {
+  z-index: 24;
+}
+
+.lobby-stage.arena-asset-ready .session-banner {
+  z-index: 30 !important;
+}
+
+/* Si el asset no pudiera cargarse se conserva automáticamente la sala CSS
+   anterior como fallback, para no dejar el lobby inutilizable. */
+.lobby-stage.arena-asset-error {
+  outline: 1px solid rgba(226, 93, 102, .24);
+}

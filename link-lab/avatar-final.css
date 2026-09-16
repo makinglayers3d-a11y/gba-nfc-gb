@@ -1,6 +1,6 @@
 /* ML3D Link — avatar final pixel-art */
 .avatar-wrap.ml3d-final-mounted{width:52px!important;height:62px!important;filter:drop-shadow(0 5px 4px rgba(0,0,0,.35))!important}
-.avatar-wrap.ml3d-final-mounted>.avatar-head,.avatar-wrap.ml3d-final-mounted>.avatar-body,.avatar-wrap.ml3d-final-mounted>.avatar-accessory,.avatar-wrap.ml3d-final-mounted>.ml3d-avatar-v2{display:none!important}
+.avatar-wrap.ml3d-final-mounted>.avatar-head,.avatar-wrap.ml3d-final-mounted>.avatar-body,.avatar-wrap.ml3d-final-mounted>.avatar-accessory,.avatar-wrap.ml3d-final-mounted>.ml3d-avatar-v2,.avatar-wrap.ml3d-final-mounted>.avatar-pro-layer{display:none!important}
 .ml3d-avatar-final{position:absolute;inset:0;display:grid;place-items:end center;pointer-events:none}
 .ml3d-avatar-final canvas{width:52px;height:65px;image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 .player.local .ml3d-avatar-final canvas{filter:drop-shadow(0 0 4px rgba(88,190,255,.85))}

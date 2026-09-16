@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b0f15">
+  <title>ML3D Link · Salas cercanas</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0b0f15; color: #f5f7fa; }
+    main { width: min(960px,100%); margin: 0 auto; padding: 20px 14px 44px; }
+    h1 { margin: 0 0 4px; font-size: clamp(25px,6vw,40px); }
+    h2 { margin: 0 0 12px; }
+    .subtitle,.hint { color: #9eabb9; }
+    .hint { font-size: 13px; line-height: 1.45; }
+    .card { border: 1px solid #2b3746; border-radius: 16px; background: #111821; padding: 16px; margin: 14px 0; }
+    .status { display:flex; align-items:center; gap:10px; font-weight:800; }
+    .dot { width:12px; height:12px; border-radius:50%; background:#707986; }
+    body[data-state="working"] .dot { background:#e6b84b; }
+    body[data-state="connected"] .dot { background:#49c873; }
+    body[data-state="error"] .dot { background:#df5a62; }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    label { display:block; margin:12px 0 6px; font-weight:700; }
+    input,select,button { width:100%; min-height:46px; border:1px solid #42546a; border-radius:11px; background:#0b1119; color:#f5f7fa; font:inherit; padding:10px 12px; }
+    button { background:#1b2633; font-weight:750; cursor:pointer; }
+    button.primary { background:#294a70; }
+    button.danger { background:#54242b; }
+    button:disabled { opacity:.45; cursor:default; }
+    .room { border:1px solid #344355; border-radius:13px; padding:13px; margin:10px 0; background:#0c131c; }
+    .room-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .room-title { font-weight:850; font-size:17px; }
+    .badges { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .badge { border:1px solid #3a4b60; border-radius:999px; padding:4px 8px; font-size:12px; color:#c8d4e1; }
+    .room button { margin-top:10px; }
+    .error { border:1px solid #7f3f45; border-radius:10px; background:#251216; color:#ffc7cc; padding:10px 12px; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .ok { border:1px solid #2d6d43; border-radius:10px; background:#10261a; color:#bcebc9; padding:10px 12px; }
+    #log { min-height:120px; max-height:260px; overflow:auto; white-space:pre-wrap; background:#070b10; border-radius:10px; padding:11px; color:#a9d3ff; font:12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+    .top-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .top-actions a { color:#dceaff; text-decoration:none; border:1px solid #42546a; border-radius:10px; padding:9px 11px; }
+    [hidden] { display:none !important; }
+    @media (max-width:640px) { .grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body data-state="idle">
+<main>
+  <h1>ML3D LINK</h1>
+  <p class="subtitle">Salas cercanas · laboratorio experimental</p>
+  <div class="top-actions"><a href="./">← Prueba manual</a></div>
+
+  <section class="card">
+    <div class="status"><span class="dot"></span><span id="statusText">Sin conexión</span></div>
+    <p id="errorBox" class="error" hidden></p>
+    <p class="hint">La ubicación del host se redondea antes de guardarse. A otros jugadores solo se les muestra una distancia aproximada, nunca las coordenadas.</p>
+  </section>
+
+  <section class="card">
+    <h2>Servidor Link</h2>
+    <label for="apiBase">API de salas</label>
+    <input id="apiBase" type="url" autocomplete="off" spellcheck="false">
+    <div class="grid" style="margin-top:10px">
+      <button id="saveApi">GUARDAR API</button>
+      <button id="checkApi">COMPROBAR API</button>
+    </div>
+    <p id="apiStatus" class="hint">Sin comprobar.</p>
+  </section>
+
+  <section class="card" id="createCard">
+    <h2>Crear sala</h2>
+    <div class="grid">
+      <div><label for="roomName">Nombre de sala</label><input id="roomName" maxlength="48" placeholder="Sala de Alex"></div>
+      <div><label for="gameName">Juego</label><input id="gameName" maxlength="80" placeholder="Pokémon Esmeralda"></div>
+    </div>
+    <div class="grid">
+      <div><label for="roomPassword">Contraseña (opcional)</label><input id="roomPassword" type="password" maxlength="64" placeholder="Sin contraseña"></div>
+      <div><label for="maxPlayers">Jugadores</label><select id="maxPlayers"><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
+    </div>
+    <button id="createRoom" class="primary" style="margin-top:12px">CREAR SALA CERCA DE MÍ</button>
+    <div id="hostPanel" hidden style="margin-top:14px">
+      <div class="ok"><strong id="hostRoomTitle"></strong><br><span id="hostRoomCode"></span></div>
+      <h3>Jugadores</h3><div id="hostPlayers" class="hint">Esperando jugadores…</div>
+      <button id="closeRoom" class="danger">CERRAR SALA</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Buscar salas cercanas</h2>
+    <div class="grid">
+      <div><label for="radius">Radio de búsqueda</label><select id="radius"><option value="0.5">500 m</option><option value="1" selected>1 km</option><option value="5">5 km</option><option value="10">10 km</option></select></div>
+      <div style="display:flex;align-items:end"><button id="searchRooms" class="primary">BUSCAR SALAS</button></div>
+    </div>
+    <div id="roomsList" style="margin-top:12px"><p class="hint">Todavía no has buscado.</p></div>
+  </section>
+
+  <section class="card" id="joinCard" hidden>
+    <h2>Unirse a sala</h2><p id="joinRoomInfo" class="hint"></p>
+    <div class="grid">
+      <div><label for="playerName">Tu nombre</label><input id="playerName" maxlength="32" value="Jugador"></div>
+      <div id="joinPasswordWrap"><label for="joinPassword">Contraseña</label><input id="joinPassword" type="password" maxlength="64"></div>
+    </div>
+    <button id="joinRoom" class="primary" style="margin-top:12px">UNIRME</button>
+  </section>
+
+  <section class="card">
+    <h2>Prueba del enlace</h2>
+    <div class="grid"><input id="message" value="Hola desde ML3D Link" aria-label="Mensaje de prueba"><button id="send" disabled>ENVIAR MENSAJE</button></div>
+    <div class="grid" style="margin-top:10px"><button id="ping" disabled>MEDIR PING</button><div id="pingResult" class="hint" style="padding:12px">Ping: —</div></div>
+  </section>
+  <section class="card"><h2>Registro</h2><div id="log"></div></section>
+</main>
+<script src="rooms.js?v=1"></script>
+</body>
+</html>

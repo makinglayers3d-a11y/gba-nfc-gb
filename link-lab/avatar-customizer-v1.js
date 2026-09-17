@@ -3,8 +3,7 @@
   if (window.__ml3dAvatarCustomizerV1) return;
   window.__ml3dAvatarCustomizerV1 = true;
 
-  const W=64,H=96,SCALE=2,OY=16;
-  const ACCESSORY_LABELS={NADA:'none',GORRA:'cap',GAFAS:'glasses',CASCOS:'headphones',MOCHILA:'backpack',BUFANDA:'scarf',BOINA:'beret',BOLSO:'shoulderbag'};
+  const W=64,H=96,OY=16;
   const colorFields={
     'Piel':'skin',
     'Pelo · color':'hairColor',
@@ -95,18 +94,19 @@
   function ensureCanvas(host,cls,w=W,h=H){let c=host.querySelector(`:scope>.${cls}`);if(!c){c=document.createElement('canvas');c.className=cls;c.width=w;c.height=h;host.append(c);}return c;}
 
   function drawSkinMask(base,out,skin){
-    const s=base.getContext('2d').getImageData(0,0,base.width,base.height),d=out.getContext('2d').createImageData(out.width,out.height),col=hexToRgb(skin);
-    for(let i=0;i<s.data.length;i+=4){const r=s.data[i],g=s.data[i+1],b=s.data[i+2],a=s.data[i+3];if(a<15)continue;const warm=r>g*1.04&&g>b*1.03&&r>95&&g>55&&b>35&&(r-b)>28;if(!warm)continue;const lum=(r*0.299+g*0.587+b*0.114)/180,shade=Math.max(.55,Math.min(1.35,lum));d.data[i]=clamp(col.r*shade);d.data[i+1]=clamp(col.g*shade);d.data[i+2]=clamp(col.b*shade);d.data[i+3]=a;}
+    const s=base.getContext('2d').getImageData(0,0,base.width,base.height),d=out.getContext('2d').createImageData(out.width,out.height),col=hexToRgb(skin),limit=Math.min(s.data.length,d.data.length);
+    for(let i=0;i<limit;i+=4){const r=s.data[i],g=s.data[i+1],b=s.data[i+2],a=s.data[i+3];if(a<15)continue;const warm=r>g*1.04&&g>b*1.03&&r>95&&g>55&&b>35&&(r-b)>28;if(!warm)continue;const lum=(r*0.299+g*0.587+b*0.114)/180,shade=Math.max(.55,Math.min(1.35,lum));d.data[i]=clamp(col.r*shade);d.data[i+1]=clamp(col.g*shade);d.data[i+2]=clamp(col.b*shade);d.data[i+3]=a;}
     out.getContext('2d').putImageData(d,0,0);
   }
 
   function repaintPlayers(){
-    const p=profile();document.querySelectorAll('#playersLayer .player').forEach(player=>{const host=player.querySelector(':scope>.avatar-base-host');const base=host?.querySelector(':scope>.avatar-v5-canvas');if(!host||!base)return;const skin=ensureCanvas(host,'avatar-custom-skin-canvas'),layer=ensureCanvas(host,'avatar-custom-layer-canvas');const k=parseKey(base);drawSkinMask(base,skin,p.skin);drawLayers(layer,p,k.dir,k.frame);});
+    const p=profile();document.querySelectorAll('#playersLayer .player.local').forEach(player=>{const host=player.querySelector(':scope>.avatar-base-host');const base=host?.querySelector(':scope>.avatar-v5-canvas');if(!host||!base)return;const skin=ensureCanvas(host,'avatar-custom-skin-canvas'),layer=ensureCanvas(host,'avatar-custom-layer-canvas');const k=parseKey(base);drawSkinMask(base,skin,p.skin);drawLayers(layer,p,k.dir,k.frame);});
   }
 
   function paintPreview(){
     const root=document.getElementById('avatarFinalPreview'),base=root?.querySelector(':scope>.avatar-v5-preview');if(!root||!base)return;const p=profile();const skin=ensureCanvas(root,'avatar-custom-skin-preview',128,168),layer=ensureCanvas(root,'avatar-custom-layer-preview',128,168);
-    const tempSkin=document.createElement('canvas');tempSkin.width=64;tempSkin.height=96;drawSkinMask(base,tempSkin,p.skin);
+    const baseSmall=document.createElement('canvas');baseSmall.width=64;baseSmall.height=96;const bc=baseSmall.getContext('2d');bc.imageSmoothingEnabled=false;bc.drawImage(base,0,0,base.width,base.height,0,0,64,96);
+    const tempSkin=document.createElement('canvas');tempSkin.width=64;tempSkin.height=96;drawSkinMask(baseSmall,tempSkin,p.skin);
     const tempLayer=document.createElement('canvas');tempLayer.width=64;tempLayer.height=96;drawLayers(tempLayer,p,'down',0);
     const paint=(src,dst)=>{const c=dst.getContext('2d');c.clearRect(0,0,128,168);c.imageSmoothingEnabled=false;c.drawImage(src,0,0,64,96,18,14,92,140);};paint(tempSkin,skin);paint(tempLayer,layer);
   }

@@ -1,0 +1,6 @@
+html:not(.ml3d-avatar-v3-active) #avatarFinalControls{display:block!important}
+html:not(.ml3d-avatar-v3-active) .avatar-custom-skin-canvas,
+html:not(.ml3d-avatar-v3-active) .avatar-custom-layer-canvas,
+html:not(.ml3d-avatar-v3-active) .avatar-custom-skin-preview,
+html:not(.ml3d-avatar-v3-active) .avatar-custom-layer-preview{display:block!important}
+html:not(.ml3d-avatar-v3-active) #avatarCustomizerV3{display:none!important}

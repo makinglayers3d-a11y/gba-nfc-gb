@@ -1,1 +1,10 @@
-@import url('./avatar-customizer-v2.css?v=3');
+html.ml3d-avatar-base-only #avatarCustomizerV2,
+html.ml3d-avatar-base-only #avatarCustomizerV3,
+html.ml3d-avatar-base-only .avatar-custom-skin-canvas,
+html.ml3d-avatar-base-only .avatar-custom-layer-canvas,
+html.ml3d-avatar-base-only .avatar-custom-skin-preview,
+html.ml3d-avatar-base-only .avatar-custom-layer-preview,
+html.ml3d-avatar-base-only .avatar-v3-skin-canvas,
+html.ml3d-avatar-base-only .avatar-v3-layer-canvas,
+html.ml3d-avatar-base-only .avatar-v3-skin-preview,
+html.ml3d-avatar-base-only .avatar-v3-layer-preview{display:none!important}

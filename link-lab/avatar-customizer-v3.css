@@ -5,11 +5,11 @@
 .avatar-v3-tabs button{min-height:40px;padding:7px 4px!important;border:1px solid #2a5069!important;background:#091721!important;color:#a8c9dc!important;font-size:10px!important;font-weight:800!important;letter-spacing:.02em!important}
 .avatar-v3-tabs button.active{outline:2px solid #55c7ff;background:#123b55!important;color:#fff!important}
 .avatar-v3-options{display:flex;gap:7px;overflow-x:auto;padding:3px 2px 9px;scrollbar-width:thin;touch-action:pan-x}
-.avatar-v3-option{position:relative;flex:0 0 72px;min-height:86px;padding:5px 4px!important;display:flex!important;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;border:1px solid #29465d!important;border-radius:10px!important;background:#08141e!important;overflow:hidden}
+.avatar-v3-option{position:relative;flex:0 0 72px;min-height:92px;padding:5px 4px!important;display:flex!important;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;border:1px solid #29465d!important;border-radius:10px!important;background:#08141e!important;overflow:hidden}
 .avatar-v3-option.selected{outline:2px solid #55c7ff!important;background:#123750!important}
-.avatar-v3-option canvas{display:block;width:54px!important;height:68px!important;object-fit:contain;image-rendering:pixelated;image-rendering:crisp-edges;pointer-events:none}
+.avatar-v3-option canvas{display:block;width:48px!important;height:72px!important;object-fit:contain;image-rendering:pixelated;image-rendering:crisp-edges;pointer-events:none}
 .avatar-v3-option small{font-size:9px;color:#b9d8e9;white-space:nowrap;pointer-events:none}
-.avatar-v3-none{display:grid;place-items:center;width:54px;height:64px;font-size:36px;line-height:1;color:#7d95a5}
+.avatar-v3-none{display:grid;place-items:center;width:48px;height:72px;font-size:36px;line-height:1;color:#7d95a5}
 .avatar-v3-skin,.avatar-v3-colors{display:grid;gap:8px}
 .avatar-v3-skin{margin-bottom:7px;padding-bottom:8px;border-bottom:1px solid rgba(83,166,214,.18)}
 .avatar-v3-color-control{display:grid;gap:6px;padding:7px 8px;border:1px solid rgba(52,96,126,.58);border-radius:10px;background:rgba(6,18,27,.78)}
@@ -23,16 +23,18 @@
 .avatar-v3-status{margin:9px 2px 0;color:#7295aa;font-size:10px;text-align:center}
 .avatar-v3-skin-canvas,.avatar-v3-layer-canvas{position:absolute;left:50%;bottom:0;width:56px;height:84px;transform:translateX(-50%);image-rendering:pixelated;image-rendering:crisp-edges;pointer-events:none}
 .avatar-v3-skin-canvas{z-index:6}.avatar-v3-layer-canvas{z-index:7}
-.player.local .avatar-v3-layer-canvas{filter:drop-shadow(0 0 4px rgba(88,190,255,.35))}
-#avatarFinalPreview>canvas.avatar-v3-skin-preview,#avatarFinalPreview>canvas.avatar-v3-layer-preview{display:block!important;visibility:visible!important;opacity:1!important;position:absolute!important;left:0!important;top:0!important;width:128px!important;height:168px!important;image-rendering:pixelated;image-rendering:crisp-edges;pointer-events:none!important}
+.player.local .avatar-v3-layer-canvas{filter:drop-shadow(0 0 4px rgba(88,190,255,.25))}
+#avatarFinalPreview{position:relative!important}
+#avatarFinalPreview>canvas.avatar-v3-skin-preview,#avatarFinalPreview>canvas.avatar-v3-layer-preview{display:block!important;visibility:visible!important;opacity:1!important;position:absolute!important;left:50%!important;top:50%!important;width:112px!important;height:147px!important;margin:0!important;transform:translate(-50%,-50%)!important;image-rendering:pixelated;image-rendering:crisp-edges;pointer-events:none!important}
 #avatarFinalPreview>canvas.avatar-v3-skin-preview{z-index:7!important}
 #avatarFinalPreview>canvas.avatar-v3-layer-preview{z-index:8!important}
 .avatar-custom-skin-canvas,.avatar-custom-layer-canvas,.avatar-custom-skin-preview,.avatar-custom-layer-preview{display:none!important}
 @media(max-width:560px){
   #avatarCustomizerV3{padding:8px}
   .avatar-v3-tabs{grid-template-columns:repeat(3,1fr)}
-  .avatar-v3-option{flex-basis:66px;min-height:80px}
-  .avatar-v3-option canvas{width:48px!important;height:62px!important}
+  .avatar-v3-option{flex-basis:66px;min-height:86px}
+  .avatar-v3-option canvas{width:44px!important;height:66px!important}
+  .avatar-v3-none{width:44px;height:66px}
   .avatar-v3-skin-canvas,.avatar-v3-layer-canvas{width:48px;height:72px}
-  #avatarFinalPreview>canvas.avatar-v3-skin-preview,#avatarFinalPreview>canvas.avatar-v3-layer-preview{width:128px!important;height:168px!important}
+  #avatarFinalPreview>canvas.avatar-v3-skin-preview,#avatarFinalPreview>canvas.avatar-v3-layer-preview{width:96px!important;height:126px!important}
 }

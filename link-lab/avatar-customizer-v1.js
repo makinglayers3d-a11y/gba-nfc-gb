@@ -4,7 +4,7 @@
   window.__ml3dAvatarCustomizerV3Loader = true;
 
   const root=document.documentElement;
-  let loading=false,loaded=false,compositorLoading=false,thumbsLoading=false,thumbsLoaded=false;
+  let loading=false,loaded=false,compositorLoading=false,thumbsLoading=false,thumbsLoaded=false,stableLoading=false,stableLoaded=false;
 
   function ensureStyle(){
     if(document.querySelector('link[data-ml3d-avatar-unified]'))return;
@@ -15,17 +15,27 @@
     if(loading||loaded||!document.getElementById('avatarFinalBase'))return;
     if(!window.ML3DAvatarCompositor){loadCompositor();return;}
     if(!thumbsLoaded){loadThumbs();return;}
+    if(!stableLoaded){loadStableBaseSelector();return;}
     ensureStyle();loading=true;root.classList.remove('ml3d-avatar-base-only');root.classList.add('ml3d-avatar-v3-active');window.__ML3DAvatarCustomizerMode='unified-v3-loading';
     const s=document.createElement('script');s.src='./avatar-customizer-v3.js?v=8';s.defer=true;
     s.onload=()=>{loading=false;loaded=true;window.__ML3DAvatarCustomizerMode='unified-v3';window.ML3DAvatarCustomizerV3?.refresh?.(true)};
     s.onerror=e=>{loading=false;fallback(e)};document.head.appendChild(s);
   }
+  function loadStableBaseSelector(){
+    if(window.__ml3dAvatarBaseSelectorStableV1){stableLoaded=true;loadV3();return;}
+    if(stableLoading)return;
+    stableLoading=true;
+    const s=document.createElement('script');s.src='./avatar-base-selector-stable-v1.js?v=1';s.defer=true;
+    s.onload=()=>{stableLoading=false;stableLoaded=true;loadV3()};
+    s.onerror=e=>{stableLoading=false;fallback(e)};
+    document.head.appendChild(s);
+  }
   function loadThumbs(){
-    if(window.__ml3dAvatarAssetThumbsV1){thumbsLoaded=true;loadV3();return;}
+    if(window.__ml3dAvatarAssetThumbsV2){thumbsLoaded=true;loadStableBaseSelector();return;}
     if(thumbsLoading)return;
     thumbsLoading=true;
-    const s=document.createElement('script');s.src='./avatar-asset-thumbs-v1.js?v=1';s.defer=true;
-    s.onload=()=>{thumbsLoading=false;thumbsLoaded=true;loadV3()};
+    const s=document.createElement('script');s.src='./avatar-asset-thumbs-v1.js?v=2';s.defer=true;
+    s.onload=()=>{thumbsLoading=false;thumbsLoaded=true;loadStableBaseSelector()};
     s.onerror=e=>{thumbsLoading=false;fallback(e)};
     document.head.appendChild(s);
   }

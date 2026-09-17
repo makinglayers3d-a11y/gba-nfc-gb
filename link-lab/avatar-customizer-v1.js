@@ -4,7 +4,7 @@
   window.__ml3dAvatarCustomizerV3Loader = true;
 
   const root=document.documentElement;
-  let loading=false,loaded=false,compositorLoading=false;
+  let loading=false,loaded=false,compositorLoading=false,thumbsLoading=false,thumbsLoaded=false;
 
   function ensureStyle(){
     if(document.querySelector('link[data-ml3d-avatar-unified]'))return;
@@ -14,14 +14,24 @@
   function loadV3(){
     if(loading||loaded||!document.getElementById('avatarFinalBase'))return;
     if(!window.ML3DAvatarCompositor){loadCompositor();return;}
+    if(!thumbsLoaded){loadThumbs();return;}
     ensureStyle();loading=true;root.classList.remove('ml3d-avatar-base-only');root.classList.add('ml3d-avatar-v3-active');window.__ML3DAvatarCustomizerMode='unified-v3-loading';
     const s=document.createElement('script');s.src='./avatar-customizer-v3.js?v=8';s.defer=true;
     s.onload=()=>{loading=false;loaded=true;window.__ML3DAvatarCustomizerMode='unified-v3';window.ML3DAvatarCustomizerV3?.refresh?.(true)};
     s.onerror=e=>{loading=false;fallback(e)};document.head.appendChild(s);
   }
+  function loadThumbs(){
+    if(window.__ml3dAvatarAssetThumbsV1){thumbsLoaded=true;loadV3();return;}
+    if(thumbsLoading)return;
+    thumbsLoading=true;
+    const s=document.createElement('script');s.src='./avatar-asset-thumbs-v1.js?v=1';s.defer=true;
+    s.onload=()=>{thumbsLoading=false;thumbsLoaded=true;loadV3()};
+    s.onerror=e=>{thumbsLoading=false;fallback(e)};
+    document.head.appendChild(s);
+  }
   function loadCompositor(){
-    if(window.ML3DAvatarCompositor){loadV3();return;}if(compositorLoading)return;compositorLoading=true;ensureStyle();
-    const s=document.createElement('script');s.src='./avatar-compositor-v1.js?v=2';s.defer=true;s.onload=()=>{compositorLoading=false;loadV3()};s.onerror=e=>{compositorLoading=false;fallback(e)};document.head.appendChild(s);
+    if(window.ML3DAvatarCompositor){loadThumbs();return;}if(compositorLoading)return;compositorLoading=true;ensureStyle();
+    const s=document.createElement('script');s.src='./avatar-compositor-v1.js?v=2';s.defer=true;s.onload=()=>{compositorLoading=false;loadThumbs()};s.onerror=e=>{compositorLoading=false;fallback(e)};document.head.appendChild(s);
   }
   function wait(){
     if(document.getElementById('avatarFinalBase')){requestAnimationFrame(()=>setTimeout(loadCompositor,80));return;}

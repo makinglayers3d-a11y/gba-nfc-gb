@@ -5,6 +5,7 @@
 
   const B64_URL = './assets/avatar-modular/avatar-modular-atlas-v1.png.b64?v=3';
   const V3_URL = './avatar-customizer-v3.js?v=3';
+  const V3_SYNC_URL = './avatar-customizer-v3-sync.js?v=1';
   const V2_URL = './avatar-customizer-v2.js?v=2';
 
   function injectScript(src, onload, onerror) {
@@ -43,10 +44,15 @@
       if (!source.includes(needle)) throw new Error('No se encontró el punto de montaje del atlas');
       source = source.replace(needle, 'const ATLAS_SRC = window.__ML3DAvatarAtlasUrl;');
 
+      const ending = /\n\}\)\(\);\s*$/;
+      if (!ending.test(source)) throw new Error('No se pudo exponer el compositor v3');
+      source = source.replace(ending, `\n  window.ML3DAvatarCustomizerV3 = {\n    drawComposite, skinMask, ensureCanvas, parsePaintKey,\n    defaults:{...DEFAULTS}, accessories:[...ACCESSORIES]\n  };\n})();`);
+
       const runtimeUrl = URL.createObjectURL(new Blob([source], { type:'text/javascript' }));
       injectScript(runtimeUrl, () => {
         document.documentElement.classList.add('ml3d-avatar-v3-active');
         URL.revokeObjectURL(runtimeUrl);
+        injectScript(V3_SYNC_URL);
       }, () => {
         URL.revokeObjectURL(runtimeUrl);
         URL.revokeObjectURL(atlasUrl);

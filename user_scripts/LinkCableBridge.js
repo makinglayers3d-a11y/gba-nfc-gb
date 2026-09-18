@@ -12,8 +12,6 @@
   let localSequence = 0;
   let localReady = false;
   let remoteReady = false;
-  let transferFrozen = false;
-  let transferWasRunning = false;
   let config = loadConfig();
   const bus = typeof BroadcastChannel === "function"
     ? new BroadcastChannel(CHANNEL_NAME)
@@ -90,31 +88,6 @@
     });
   }
 
-  function freezeForTransfer() {
-    if (!emulator || transferFrozen) return;
-    transferWasRunning = (emulator.emulatorStatus | 0) < 0x10;
-    if (!transferWasRunning) return;
-    transferFrozen = true;
-    // Freeze without calling pause(), because pause() exports the save. The
-    // normal timer sees the pause bit and stops executing CPU cycles.
-    emulator.emulatorStatus = emulator.emulatorStatus | 0x10;
-    emitStatus("transfer-freeze");
-  }
-
-  function thawAfterTransfer() {
-    if (!transferFrozen) return;
-    transferFrozen = false;
-    if (transferWasRunning && emulator) {
-      transferWasRunning = false;
-      try {
-        emulator.play();
-      } catch {
-        emulator.emulatorStatus = emulator.emulatorStatus & 0xF;
-      }
-    }
-    emitStatus("transfer-thaw");
-  }
-
   const adapter = {
     get playerNumber() {
       return config.playerNumber;
@@ -152,7 +125,6 @@
         word: Number(info.word) & 0xFFFF,
         baud: Number(info.baud) & 0x3
       });
-      freezeForTransfer();
       emitStatus("transfer-request", { seq });
       return true;
     }
@@ -179,7 +151,6 @@
     try {
       serial?.detachLinkCable?.();
     } catch {}
-    thawAfterTransfer();
     localReady = false;
     remoteReady = false;
     publishLocalReady();
@@ -225,7 +196,6 @@
       if (serial?.beginExternalMultiplayerTransfer) {
         serial.beginExternalMultiplayerTransfer(playerNumber);
       }
-      freezeForTransfer();
       sendLocal({
         type: "gba:link:reply",
         seq: String(packet.seq || ""),
@@ -248,7 +218,6 @@
         sanitizePlayerNumber(packet.playerNumber ?? config.playerNumber),
         Boolean(packet.error)
       );
-      thawAfterTransfer();
       emitStatus("transfer-complete", {
         seq: packet.seq,
         error: Boolean(packet.error)
@@ -258,7 +227,6 @@
 
     if (packet.type === "gba:link:disconnect") {
       remoteReady = false;
-      thawAfterTransfer();
       emitStatus("remote-disconnect");
     }
   }
@@ -291,8 +259,7 @@
         remoteReady,
         cableReady: adapter.isReady(),
         remoteReady,
-        ready: adapter.canTransfer(),
-        frozen: transferFrozen
+        ready: adapter.canTransfer()
       };
     }
   };

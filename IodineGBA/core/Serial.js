@@ -143,6 +143,17 @@ GameBoyAdvanceSerial.prototype.getLinkPlayerNumber = function () {
 GameBoyAdvanceSerial.prototype.getLinkSendData = function () {
     return this.SIODATA8 & 0xFFFF;
 };
+GameBoyAdvanceSerial.prototype.notifyLinkSendDataChange = function () {
+    if (
+        this.linkCable &&
+        typeof this.linkCable.onSendDataChange == "function"
+    ) {
+        try {
+            this.linkCable.onSendDataChange(this.getLinkSendData() | 0);
+        }
+        catch (error) {}
+    }
+};
 GameBoyAdvanceSerial.prototype.beginExternalMultiplayerTransfer = function (playerNumber) {
     this.setLinkPlayerNumber(playerNumber | 0);
     this.SIOTransferStarted = true;
@@ -572,6 +583,11 @@ GameBoyAdvanceSerial.prototype.readSIODATA8_0 = function () {
 GameBoyAdvanceSerial.prototype.writeSIODATA8_1 = function (data) {
     data = data | 0;
     this.SIODATA8 = (this.SIODATA8 & 0xFF) | (data << 8);
+    if ((this.SIOCNT_MODE | 0) == 0x2) {
+        // A 16-bit SIOMLT_SEND write reaches low then high. Notify only after
+        // the high byte so the Link bridge sees one complete prepared word.
+        this.notifyLinkSendDataChange();
+    }
 }
 GameBoyAdvanceSerial.prototype.readSIODATA8_1 = function () {
     return this.SIODATA8 >> 8;

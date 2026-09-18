@@ -372,6 +372,23 @@
       return;
     }
 
+    if (packet.type === "gba:link:prepared-transfer" && hostSession) {
+      for (const peer of hostSession.peers.values()) {
+        if (peer.channel?.readyState !== "open") continue;
+        safeSend(peer.channel, {
+          type: "gba:link:prepared-transfer",
+          roomId,
+          seq: String(packet.seq || ""),
+          words: Array.isArray(packet.words) ? packet.words : [],
+          playerNumber: Math.max(1, Math.min(3, Number(peer.linkSlot) | 0)),
+          connectedCount: Math.max(0, Math.min(3, Number(packet.connectedCount) | 0)),
+          baud: Number(packet.baud) & 0x3,
+          time: Date.now()
+        });
+      }
+      return;
+    }
+
     if (packet.type === "gba:link:request" && hostSession) {
       startHostLinkTransfer(packet);
       return;
@@ -396,6 +413,18 @@
         seq: String(packet.seq || ""),
         playerNumber: Math.max(1, Math.min(3, Number(packet.playerNumber) | 0)),
         error: Boolean(packet.error),
+        time: Date.now()
+      });
+      return;
+    }
+
+    if (packet.type === "gba:link:prepared-word" && joinSession) {
+      safeSend(joinSession.channel, {
+        type: "gba:link:prepared-word",
+        roomId,
+        playerNumber: Math.max(1, Math.min(3, Number(packet.playerNumber) | 0)),
+        word: Number(packet.word) & 0xFFFF,
+        reason: String(packet.reason || ""),
         time: Date.now()
       });
       return;
@@ -697,6 +726,17 @@
       return;
     }
 
+    if (packet.type === "gba:link:prepared-word") {
+      postLocalLink({
+        type: "gba:link:remote-prepared-word",
+        roomId: hostSession.room.id,
+        playerNumber: Math.max(1, Math.min(3, Number(peer.linkSlot) | 0)),
+        word: Number(packet.word) & 0xFFFF,
+        reason: String(packet.reason || "")
+      });
+      return;
+    }
+
     if (packet.type === "gba:link:next-word-ready") {
       postLocalLink({
         type: "gba:link:remote-next-word-ready",
@@ -761,6 +801,19 @@
       const slot = Math.max(1, Math.min(3, Number(packet.playerNumber) | 0));
       if (joinSession) joinSession.linkSlot = slot;
       rememberLocalLinkSession(packet.roomId || joinSession?.room?.id || "", slot, "guest");
+      return;
+    }
+
+    if (packet.type === "gba:link:prepared-transfer") {
+      postLocalLink({
+        type: "gba:link:prepared-transfer",
+        roomId: packet.roomId || joinSession?.room?.id || "",
+        seq: String(packet.seq || ""),
+        words: Array.isArray(packet.words) ? packet.words : [],
+        playerNumber: Math.max(1, Math.min(3, Number(packet.playerNumber) | 0)),
+        connectedCount: Math.max(0, Math.min(3, Number(packet.connectedCount) | 0)),
+        baud: Number(packet.baud) & 0x3
+      });
       return;
     }
 

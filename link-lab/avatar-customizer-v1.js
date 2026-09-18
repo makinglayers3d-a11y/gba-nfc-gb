@@ -8,7 +8,7 @@
 
   function ensureStyle(){
     if(document.querySelector('link[data-ml3d-avatar-unified]'))return;
-    const l=document.createElement('link');l.rel='stylesheet';l.href='./avatar-customizer-v3.css?v=9';l.dataset.ml3dAvatarUnified='1';document.head.appendChild(l);
+    const l=document.createElement('link');l.rel='stylesheet';l.href='./avatar-customizer-v3.css?v=10';l.dataset.ml3dAvatarUnified='1';document.head.appendChild(l);
   }
   function fallback(error){console.error('[ML3D avatar] Fallo al cargar personalizador modular.',error||'unknown');root.classList.remove('ml3d-avatar-v3-active');root.classList.add('ml3d-avatar-base-only');window.__ML3DAvatarCustomizerMode='base-only-safe';}
   function loadV3(){

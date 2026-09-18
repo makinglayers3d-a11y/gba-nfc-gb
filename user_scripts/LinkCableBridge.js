@@ -233,12 +233,15 @@
     // being in MULTI mode, otherwise the secondary GBA can never enter the
     // Multiplayer menu.
     isReady() {
-      // Visible GBA READY state: in MULTI mode this reflects that the remote
-      // console is also stably in MULTI. It must not be repurposed for our
-      // internal hardware-ACK barrier.
-      return this.isConnected() && remoteReady;
+      // Cable-visible readiness must be present as soon as the WebRTC-backed
+      // cable exists. Super Mario probes this state while the secondary GBA is
+      // still entering Multiplayer, so tying it to remoteReady creates a
+      // circular entry deadlock.
+      return this.isConnected();
     },
     canTransfer() {
+      // Actual serial transfers remain gated until the remote core is stably
+      // in MULTI mode. This is independent from the visible cable state.
       return this.isConnected() && remoteReady;
     },
     onHardwareTransferComplete(info = {}) {

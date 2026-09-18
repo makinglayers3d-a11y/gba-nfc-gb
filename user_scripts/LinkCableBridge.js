@@ -10,6 +10,10 @@
   let emulator = null;
   let serial = null;
   let localSequence = 0;
+  let localReady = false;
+  let remoteReady = false;
+  let transferFrozen = false;
+  let transferWasRunning = false;
   let config = loadConfig();
   const bus = typeof BroadcastChannel === "function"
     ? new BroadcastChannel(CHANNEL_NAME)
@@ -47,10 +51,15 @@
 
   function saveConfig(next) {
     config = normalizeConfig(next);
+    remoteReady = false;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
     } catch {}
-    if (serial) serial.setLinkPlayerNumber(config.playerNumber);
+    if (serial) {
+      serial.setLinkPlayerNumber(config.playerNumber);
+      localReady = (serial.SIOCNT_MODE | 0) === 2;
+    }
+    publishLocalReady();
     emitStatus("configured");
   }
 
@@ -73,6 +82,39 @@
     return true;
   }
 
+  function publishLocalReady() {
+    if (!config.roomId) return false;
+    return sendLocal({
+      type: "gba:link:ready",
+      ready: Boolean(localReady)
+    });
+  }
+
+  function freezeForTransfer() {
+    if (!emulator || transferFrozen) return;
+    transferWasRunning = (emulator.emulatorStatus | 0) < 0x10;
+    if (!transferWasRunning) return;
+    transferFrozen = true;
+    // Freeze without calling pause(), because pause() exports the save. The
+    // normal timer sees the pause bit and stops executing CPU cycles.
+    emulator.emulatorStatus = emulator.emulatorStatus | 0x10;
+    emitStatus("transfer-freeze");
+  }
+
+  function thawAfterTransfer() {
+    if (!transferFrozen) return;
+    transferFrozen = false;
+    if (transferWasRunning && emulator) {
+      transferWasRunning = false;
+      try {
+        emulator.play();
+      } catch {
+        emulator.emulatorStatus = emulator.emulatorStatus & 0xF;
+      }
+    }
+    emitStatus("transfer-thaw");
+  }
+
   const adapter = {
     get playerNumber() {
       return config.playerNumber;
@@ -80,8 +122,18 @@
     isConnected() {
       return Boolean(bus && config.roomId);
     },
+    isReady() {
+      return this.isConnected() && remoteReady;
+    },
+    onSerialModeChange(mode) {
+      const nextReady = (Number(mode) | 0) === 2;
+      if (nextReady === localReady) return;
+      localReady = nextReady;
+      publishLocalReady();
+      emitStatus("local-ready", { ready: localReady });
+    },
     startMultiplayerTransfer(info = {}) {
-      if (!this.isConnected()) return false;
+      if (!this.isReady()) return false;
       localSequence = (localSequence + 1) >>> 0;
       const seq = `${Date.now().toString(36)}-${localSequence.toString(36)}`;
       sendLocal({
@@ -91,6 +143,7 @@
         word: Number(info.word) & 0xFFFF,
         baud: Number(info.baud) & 0x3
       });
+      freezeForTransfer();
       emitStatus("transfer-request", { seq });
       return true;
     }
@@ -106,7 +159,9 @@
     }
     serial.attachLinkCable(adapter);
     serial.setLinkPlayerNumber(config.playerNumber);
-    emitStatus("attached");
+    localReady = (serial.SIOCNT_MODE | 0) === 2;
+    publishLocalReady();
+    emitStatus("attached", { localReady, remoteReady });
     return true;
   }
 
@@ -115,6 +170,10 @@
     try {
       serial?.detachLinkCable?.();
     } catch {}
+    thawAfterTransfer();
+    localReady = false;
+    remoteReady = false;
+    publishLocalReady();
     serial = null;
     emulator = null;
     emitStatus("detached");
@@ -145,12 +204,19 @@
 
     if (!config.roomId || packet.roomId !== config.roomId) return;
 
+    if (packet.type === "gba:link:remote-ready") {
+      remoteReady = Boolean(packet.ready);
+      emitStatus("remote-ready", { ready: remoteReady });
+      return;
+    }
+
     if (packet.type === "gba:link:poll") {
       const playerNumber = sanitizePlayerNumber(packet.playerNumber);
       config.playerNumber = playerNumber;
       if (serial?.beginExternalMultiplayerTransfer) {
         serial.beginExternalMultiplayerTransfer(playerNumber);
       }
+      freezeForTransfer();
       sendLocal({
         type: "gba:link:reply",
         seq: String(packet.seq || ""),
@@ -173,6 +239,7 @@
         sanitizePlayerNumber(packet.playerNumber ?? config.playerNumber),
         Boolean(packet.error)
       );
+      thawAfterTransfer();
       emitStatus("transfer-complete", {
         seq: packet.seq,
         error: Boolean(packet.error)
@@ -181,6 +248,8 @@
     }
 
     if (packet.type === "gba:link:disconnect") {
+      remoteReady = false;
+      thawAfterTransfer();
       emitStatus("remote-disconnect");
     }
   }
@@ -208,7 +277,11 @@
       return {
         ...config,
         attached: Boolean(serial),
-        connected: adapter.isConnected()
+        connected: adapter.isConnected(),
+        localReady,
+        remoteReady,
+        ready: adapter.isReady(),
+        frozen: transferFrozen
       };
     }
   };

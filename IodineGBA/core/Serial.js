@@ -21,6 +21,11 @@ GameBoyAdvanceSerial.prototype.initialize = function () {
     this.SIOCNT0_DATA = 0x0C;
     this.SIOTransferStarted = false;
     this.SIOMULT_PLAYER_NUMBER = 0;
+    // Physical position on the emulated cable is known before the first
+    // multiplayer transfer. The hardware multiplayer ID (SIOCNT bits 4-5)
+    // is only valid after a successful transfer.
+    this.linkPlayerNumber = 0;
+    this.linkPlayerIdValid = false;
     this.SIOCOMMERROR = false;
     this.SIOBaudRate = 0;
     this.SIOCNT_UART_CTS = false;
@@ -62,12 +67,17 @@ GameBoyAdvanceSerial.prototype.SIOMultiplayerBaudRate = [
 
 GameBoyAdvanceSerial.prototype.attachLinkCable = function (adapter) {
     this.linkCable = adapter || null;
+    this.linkPlayerIdValid = false;
+    this.SIOMULT_PLAYER_NUMBER = 0;
     if (this.linkCable && typeof this.linkCable.playerNumber === "number") {
-        this.SIOMULT_PLAYER_NUMBER = this.linkCable.playerNumber & 0x3;
+        this.linkPlayerNumber = this.linkCable.playerNumber & 0x3;
     }
 };
 GameBoyAdvanceSerial.prototype.detachLinkCable = function () {
     this.linkCable = null;
+    this.linkPlayerNumber = 0;
+    this.linkPlayerIdValid = false;
+    this.SIOMULT_PLAYER_NUMBER = 0;
     this.SIOTransferStarted = false;
     this.SIOCOMMERROR = false;
 };
@@ -86,7 +96,16 @@ GameBoyAdvanceSerial.prototype.linkCableConnected = function () {
     return true;
 };
 GameBoyAdvanceSerial.prototype.setLinkPlayerNumber = function (playerNumber) {
-    this.SIOMULT_PLAYER_NUMBER = (playerNumber | 0) & 0x3;
+    this.linkPlayerNumber = (playerNumber | 0) & 0x3;
+    if (this.linkPlayerIdValid) {
+        this.SIOMULT_PLAYER_NUMBER = this.linkPlayerNumber;
+    }
+};
+GameBoyAdvanceSerial.prototype.getLinkPlayerNumber = function () {
+    if (this.linkCableConnected()) {
+        return this.linkPlayerNumber & 0x3;
+    }
+    return this.SIOMULT_PLAYER_NUMBER & 0x3;
 };
 GameBoyAdvanceSerial.prototype.getLinkSendData = function () {
     return this.SIODATA8 & 0xFFFF;
@@ -102,6 +121,8 @@ GameBoyAdvanceSerial.prototype.beginExternalMultiplayerTransfer = function (play
 GameBoyAdvanceSerial.prototype.completeExternalMultiplayerTransfer = function (words, playerNumber, commError) {
     words = words || [];
     this.setLinkPlayerNumber(playerNumber | 0);
+    this.linkPlayerIdValid = true;
+    this.SIOMULT_PLAYER_NUMBER = this.linkPlayerNumber & 0x3;
     this.SIODATA_A = (words[0] === undefined ? 0xFFFF : words[0]) & 0xFFFF;
     this.SIODATA_B = (words[1] === undefined ? 0xFFFF : words[1]) & 0xFFFF;
     this.SIODATA_C = (words[2] === undefined ? 0xFFFF : words[2]) & 0xFFFF;
@@ -129,7 +150,7 @@ GameBoyAdvanceSerial.prototype.addClocks = function (clocks) {
                 }
                 break;
             case 2:
-                if (this.SIOTransferStarted && (this.SIOMULT_PLAYER_NUMBER | 0) == 0) {
+                if (this.SIOTransferStarted && (this.getLinkPlayerNumber() | 0) == 0) {
                     this.shiftClocks = ((this.shiftClocks | 0) + (clocks | 0)) | 0;
                     while ((this.shiftClocks | 0) >= (this.SIOShiftClockDivider | 0)) {
                         this.shiftClocks = ((this.shiftClocks | 0) - (this.SIOShiftClockDivider | 0)) | 0;
@@ -302,7 +323,7 @@ GameBoyAdvanceSerial.prototype.writeSIOCNT0 = function (data) {
                 if ((data & 0x80) != 0) {
                     if (!this.SIOTransferStarted) {
                         this.SIOTransferStarted = true;
-                        if ((this.SIOMULT_PLAYER_NUMBER | 0) == 0) {
+                        if ((this.getLinkPlayerNumber() | 0) == 0) {
                             this.SIODATA_A = 0xFFFF;
                             this.SIODATA_B = 0xFFFF;
                             this.SIODATA_C = 0xFFFF;
@@ -312,7 +333,7 @@ GameBoyAdvanceSerial.prototype.writeSIOCNT0 = function (data) {
                         this.shiftClocks = 0;
 
                         if (
-                            (this.SIOMULT_PLAYER_NUMBER | 0) == 0 &&
+                            (this.getLinkPlayerNumber() | 0) == 0 &&
                             this.linkCableConnected() &&
                             this.linkCable &&
                             typeof this.linkCable.startMultiplayerTransfer == "function"
@@ -359,7 +380,7 @@ GameBoyAdvanceSerial.prototype.readSIOCNT0 = function () {
                 // bit 3 = SD terminal (1 when the connected GBAs are ready).
                 // Some commercial games check these before enabling multiplayer.
                 var linkReady = this.linkCableConnected();
-                var terminalState = (linkReady && (this.SIOMULT_PLAYER_NUMBER | 0) != 0) ? 0x4 : 0;
+                var terminalState = (linkReady && (this.getLinkPlayerNumber() | 0) != 0) ? 0x4 : 0;
                 var readyState = linkReady ? 0x8 : 0;
                 return ((this.SIOTransferStarted) ? 0x80 : 0) |
                     ((this.SIOCOMMERROR) ? 0x40 : 0) |
@@ -511,7 +532,7 @@ GameBoyAdvanceSerial.prototype.readJOYBUS_STAT = function () {
                     return 0x7FFFFFFF;
                 }
             case 2:
-                if (this.SIOTransferStarted && this.SIOMULT_PLAYER_NUMBER == 0) {
+                if (this.SIOTransferStarted && this.getLinkPlayerNumber() == 0) {
                     return this.SIOShiftClockDivider - this.shiftClocks;
                 }
                 else {

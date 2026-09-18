@@ -126,10 +126,10 @@ function baseBounds(base){
 function drawHairFixed(ctx,piece,base){
   if(!piece)return;
   const b=baseBounds(base);
-  const size=Math.max(1,Math.round(Math.min(b.w*.70,b.h*.30)));
+  const size=Math.max(1,Math.round(Math.min(b.w*.90,b.h*.38)));
   const cx=b.x+b.w/2;
   const dx=Math.round(cx-size/2);
-  const dy=Math.round(b.y-1);
+  const dy=Math.round(b.y-2);
   ctx.drawImage(piece,0,0,HAIR_W,HAIR_H,dx,dy,size,size);
 }
 
@@ -157,6 +157,7 @@ function paintLobby(){
   if(!ready)return;const p=profile();
   document.querySelectorAll('#playersLayer .player.local').forEach(pl=>{
     const h=pl.querySelector(':scope > .avatar-base-host'),b=h&&visBase(h);if(!h||!b)return;
+    pl.classList.add('avatar-v3-runtime');
     const st=state(b),fin=compose(b,p,st.dir,st.frame),c=ensure(h,'avatar-v3-final-canvas',64,96),x=c.getContext('2d');
     x.imageSmoothingEnabled=false;x.clearRect(0,0,c.width,c.height);x.drawImage(fin,0,0,64,96);
     h.classList.add('avatar-v3-composed');

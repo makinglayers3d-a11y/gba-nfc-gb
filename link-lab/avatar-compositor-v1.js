@@ -4,8 +4,9 @@ if(window.__ml3dAvatarCompositorV1)return;window.__ml3dAvatarCompositorV1=true;
 
 const HAIR_W=32,HAIR_H=32;
 const HAIR_ATLAS='./assets/avatar-modular/hair-atlas-v1.png?v=3';
-const PILOT_HAIR_ATLAS='./assets/avatar-modular/hair-pilot-v2.png?v=1';
+const PILOT_HAIR_ATLAS='./assets/avatar-modular/hair-pilot-v3-base-exact.png?v=1';
 const PILOT_GRID=4;
+const PILOT_DIR_ROW={down:0,up:1,left:2,right:3};
 const HAIR_DR={down:0,left:1,right:2,up:3};
 const DEF={skin:'#efc3a1',hair:1,hairColor:'#4a3024',hairOffsetX:0,hairOffsetY:0,hairScale:1};
 const api=()=>window.ML3DAvatarFinal;
@@ -57,7 +58,7 @@ function hairRect(v,d,f){
 }
 function pilotRect(d,f){
   if(!pilotReady||!pilotHairAtlas)return null;
-  const row=HAIR_DR[d]??0;
+  const row=PILOT_DIR_ROW[d]??0;
   const col=Math.max(0,Math.min(PILOT_GRID-1,+f||0));
   const sx=Math.round(pilotHairAtlas.naturalWidth*col/PILOT_GRID);
   const ex=Math.round(pilotHairAtlas.naturalWidth*(col+1)/PILOT_GRID);
@@ -100,17 +101,19 @@ function rawHair(v,d='down',f=0){
   const key=[v,d,f,pilotReady&&n===1?'pilot':'main'].join('|');
   if(raw.has(key))return raw.get(key);
   const c=document.createElement('canvas');
-  c.width=HAIR_W;c.height=HAIR_H;
+  const pilot=n===1&&pilotReady;
+  c.width=pilot?64:HAIR_W;
+  c.height=pilot?96:HAIR_H;
   const x=c.getContext('2d',{willReadFrequently:true});
   x.imageSmoothingEnabled=false;
-  if(n===1&&pilotReady){
+  if(pilot){
     const pr=pilotRect(d,f);if(!pr)return null;
-    x.drawImage(pilotHairAtlas,pr.x,pr.y,pr.w,pr.h,0,0,HAIR_W,HAIR_H);
+    x.drawImage(pilotHairAtlas,pr.x,pr.y,pr.w,pr.h,0,0,64,96);
   }else{
     const r=hairRect(v,d,f);if(!r)return null;
     x.drawImage(hairAtlas,r.x,r.y,HAIR_W,HAIR_H,0,0,HAIR_W,HAIR_H);
+    keepMainComponent(c);
   }
-  keepMainComponent(c);
   raw.set(key,c);
   return c;
 }
@@ -119,9 +122,9 @@ function tintHair(v,d,f,pri,acc){
   const key=[v,d,f,pri,acc].join('|');
   if(tinted.has(key))return tinted.get(key);
   const s=rawHair(v,d,f);if(!s)return null;
-  const c=document.createElement('canvas');c.width=HAIR_W;c.height=HAIR_H;
+  const c=document.createElement('canvas');c.width=s.width;c.height=s.height;
   const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(s,0,0);
-  const im=x.getImageData(0,0,HAIR_W,HAIR_H),dd=im.data,p=rgb(pri),a=rgb(acc||light(pri));
+  const im=x.getImageData(0,0,c.width,c.height),dd=im.data,p=rgb(pri),a=rgb(acc||light(pri));
   for(let i=0;i<dd.length;i+=4){
     if(dd[i+3]<8)continue;
     const lum=(dd[i]+dd[i+1]+dd[i+2])/3;
@@ -160,13 +163,17 @@ function baseBounds(base){
 
 function drawHairFixed(ctx,piece,base,p=profile(),override=null){
   if(!piece)return;
+  if(Number(p.hair)===1&&pilotReady&&piece.width===64&&piece.height===96){
+    ctx.drawImage(piece,0,0,64,96,0,0,64,96);
+    return;
+  }
   const b=baseBounds(base),adj=hairAdjust(p,override);
   const baseSize=Math.max(1,Math.round(Math.min(b.w*1.32,b.h*.58)));
   const size=Math.max(1,Math.round(baseSize*adj.scale));
   const cx=b.x+b.w/2;
   const dx=Math.round(cx-size/2+adj.x);
   const dy=Math.round(b.y-2+adj.y);
-  ctx.drawImage(piece,0,0,HAIR_W,HAIR_H,dx,dy,size,size);
+  ctx.drawImage(piece,0,0,piece.width,piece.height,dx,dy,size,size);
 }
 
 function compose(base,p=profile(),d='down',f=0,override=null){
@@ -212,7 +219,13 @@ function thumbFor(k,v){
   const c=document.createElement('canvas');c.width=96;c.height=96;
   if(k!=='hair'||!ready)return c;
   const p=profile(),piece=tintHair(v,'down',0,p.hairColor,light(p.hairColor,.42));if(!piece)return c;
-  const x=c.getContext('2d');x.imageSmoothingEnabled=false;x.drawImage(piece,0,0,32,32,8,8,80,80);return c;
+  const x=c.getContext('2d');x.imageSmoothingEnabled=false;
+  if(Number(v)===1&&pilotReady&&piece.width===64&&piece.height===96){
+    x.drawImage(piece,0,0,64,96,20,4,56,84);
+  }else{
+    x.drawImage(piece,0,0,piece.width,piece.height,8,8,80,80);
+  }
+  return c;
 }
 
 window.ML3DAvatarCompositor={

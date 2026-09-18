@@ -17,6 +17,7 @@
   let transferInFlight = false;
   let activeTransferSeq = "";
   let localHardwareComplete = false;
+  let hostCompletionReleaseRequested = false;
   let expectedRemoteHardwareAcks = 0;
   const remoteHardwareAcks = new Set();
   const remoteNextWordAcks = new Set();
@@ -200,10 +201,23 @@
 
   function maybeReleaseHostTransfer() {
     if (config.role !== "host" || !transferInFlight) return;
-    if (!localHardwareComplete) return;
     if (expectedRemoteHardwareAcks < 1) return;
     if (remoteHardwareAcks.size < expectedRemoteHardwareAcks) return;
     if (remoteNextWordAcks.size < expectedRemoteHardwareAcks) return;
+
+    if (!hostCompletionReleaseRequested && !localHardwareComplete) {
+      hostCompletionReleaseRequested = true;
+      const released = serial?.releaseExternalMultiplayerTransfer?.(false);
+      emitStatus("host-sio-release", {
+        seq: activeTransferSeq,
+        released: Boolean(released),
+        remoteAcks: remoteHardwareAcks.size,
+        nextWordAcks: remoteNextWordAcks.size
+      });
+      return;
+    }
+
+    if (!localHardwareComplete) return;
 
     transferInFlight = false;
     emitStatus("transfer-synced", {
@@ -214,6 +228,7 @@
     });
     activeTransferSeq = "";
     localHardwareComplete = false;
+    hostCompletionReleaseRequested = false;
     expectedRemoteHardwareAcks = 0;
     remoteHardwareAcks.clear();
     remoteNextWordAcks.clear();
@@ -303,6 +318,7 @@
         transferInFlight = false;
         activeTransferSeq = "";
         localHardwareComplete = false;
+        hostCompletionReleaseRequested = false;
         expectedRemoteHardwareAcks = 0;
         remoteHardwareAcks.clear();
         remoteNextWordAcks.clear();
@@ -385,6 +401,7 @@
 
       transferInFlight = true;
       localHardwareComplete = false;
+      hostCompletionReleaseRequested = false;
       expectedRemoteHardwareAcks = connectedCount;
       remoteHardwareAcks.clear();
       remoteNextWordAcks.clear();
@@ -412,7 +429,8 @@
         words,
         0,
         false,
-        connectedCount
+        connectedCount,
+        true
       );
 
       emitStatus("transfer-buffered-start", {
@@ -456,6 +474,7 @@
     transferInFlight = false;
     activeTransferSeq = "";
     localHardwareComplete = false;
+    hostCompletionReleaseRequested = false;
     expectedRemoteHardwareAcks = 0;
     remoteHardwareAcks.clear();
     remoteNextWordAcks.clear();
@@ -565,11 +584,9 @@
         error: Boolean(packet.error)
       });
       if (packet.error) {
-        transferInFlight = false;
-        activeTransferSeq = "";
-        localHardwareComplete = false;
-        expectedRemoteHardwareAcks = 0;
-        remoteHardwareAcks.clear();
+        hostCompletionReleaseRequested = true;
+        serial?.releaseExternalMultiplayerTransfer?.(true);
+        emitStatus("remote-hw-error", { seq, playerNumber: sanitizePlayerNumber(packet.playerNumber), error: true });
         return;
       }
       maybeReleaseHostTransfer();
@@ -724,6 +741,7 @@
         transferInFlight,
         activeTransferSeq,
         localHardwareComplete,
+        hostCompletionReleaseRequested,
         expectedRemoteHardwareAcks,
         remoteHardwareAcks: [...remoteHardwareAcks],
         remoteNextWordAcks: [...remoteNextWordAcks],

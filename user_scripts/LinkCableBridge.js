@@ -113,6 +113,7 @@
       `${String(elapsed).padStart(5, " ")} ${flags} TX${transferCount} ${state}` +
       ` s:${shortSeq(extra.seq)}` +
       dataTag +
+      (extra.reason ? ` r:${String(extra.reason)}` : "") +
       (wait === null ? "" : ` t:${wait}ms`) +
       errorTag
     );
@@ -275,7 +276,7 @@
         clearTimeout(guestNextWordFallbackTimer);
         guestNextWordFallbackTimer = setTimeout(() => {
           publishGuestNextWordReady("post-irq-fallback");
-        }, 0);
+        }, 17);
         return;
       }
 

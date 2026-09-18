@@ -158,8 +158,11 @@ function paintLobby(){
   document.querySelectorAll('#playersLayer .player.local').forEach(pl=>{
     const h=pl.querySelector(':scope > .avatar-base-host'),b=h&&visBase(h);if(!h||!b)return;
     pl.classList.add('avatar-v3-runtime');
-    const st=state(b),fin=compose(b,p,st.dir,st.frame),c=ensure(h,'avatar-v3-final-canvas',64,96),x=c.getContext('2d');
-    x.imageSmoothingEnabled=false;x.clearRect(0,0,c.width,c.height);x.drawImage(fin,0,0,64,96);
+    h.querySelector(':scope > .avatar-v3-final-canvas')?.remove();
+    const st=state(b),c=ensure(h,'avatar-v3-overlay-canvas',64,96),x=c.getContext('2d');
+    x.imageSmoothingEnabled=false;x.clearRect(0,0,c.width,c.height);
+    x.drawImage(skin(b,p.skin),0,0,64,96);
+    drawHairFixed(x,tintHair(p.hair,st.dir,st.frame,p.hairColor,light(p.hairColor,.34)),b);
     h.classList.add('avatar-v3-composed');
   });
 }

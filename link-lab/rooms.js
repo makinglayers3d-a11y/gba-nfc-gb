@@ -280,8 +280,8 @@
       seq,
       words,
       waiting,
-      // WebRTC/mobile latency is far higher than the electrical cable. The
-      // emulator is frozen in lockstep while this timer is pending.
+      // Allow realistic mobile/WebRTC latency while keeping only the serial
+      // peripheral busy. The emulator itself continues running normally.
       timer: setTimeout(() => completeHostLinkTransfer(true), 1500)
     };
 
@@ -1494,6 +1494,7 @@
     }
     document.body.classList.add("link-emulator-open");
     shell.hidden = false;
+    stopMoveTimer();
     frame.src = url.toString();
   }
 
@@ -1503,6 +1504,7 @@
     if (frame) frame.src = "about:blank";
     if (shell) shell.hidden = true;
     document.body.classList.remove("link-emulator-open");
+    if (!lobbyShell.hidden) ensureMoveTimer();
     window.setTimeout(() => $("#lobbyStage")?.focus({ preventScroll: true }), 50);
   }
 

@@ -17,7 +17,7 @@
     if(!thumbsLoaded){loadThumbs();return;}
     if(!stableLoaded){loadStableBaseSelector();return;}
     ensureStyle();loading=true;root.classList.remove('ml3d-avatar-base-only');root.classList.add('ml3d-avatar-v3-active');window.__ML3DAvatarCustomizerMode='unified-v3-loading';
-    const s=document.createElement('script');s.src='./avatar-customizer-v3.js?v=8';s.defer=true;
+    const s=document.createElement('script');s.src='./avatar-customizer-v3.js?v=9';s.defer=true;
     s.onload=()=>{loading=false;loaded=true;window.__ML3DAvatarCustomizerMode='unified-v3';window.ML3DAvatarCustomizerV3?.refresh?.(true)};
     s.onerror=e=>{loading=false;fallback(e)};document.head.appendChild(s);
   }
@@ -34,14 +34,14 @@
     if(window.__ml3dAvatarAssetThumbsV2){thumbsLoaded=true;loadStableBaseSelector();return;}
     if(thumbsLoading)return;
     thumbsLoading=true;
-    const s=document.createElement('script');s.src='./avatar-asset-thumbs-v1.js?v=2';s.defer=true;
+    const s=document.createElement('script');s.src='./avatar-asset-thumbs-v1.js?v=3';s.defer=true;
     s.onload=()=>{thumbsLoading=false;thumbsLoaded=true;loadStableBaseSelector()};
     s.onerror=e=>{thumbsLoading=false;fallback(e)};
     document.head.appendChild(s);
   }
   function loadCompositor(){
     if(window.ML3DAvatarCompositor){loadThumbs();return;}if(compositorLoading)return;compositorLoading=true;ensureStyle();
-    const s=document.createElement('script');s.src='./avatar-compositor-v1.js?v=2';s.defer=true;s.onload=()=>{compositorLoading=false;loadThumbs()};s.onerror=e=>{compositorLoading=false;fallback(e)};document.head.appendChild(s);
+    const s=document.createElement('script');s.src='./avatar-compositor-v1.js?v=3';s.defer=true;s.onload=()=>{compositorLoading=false;loadThumbs()};s.onerror=e=>{compositorLoading=false;fallback(e)};document.head.appendChild(s);
   }
   function wait(){
     if(document.getElementById('avatarFinalBase')){requestAnimationFrame(()=>setTimeout(loadCompositor,80));return;}

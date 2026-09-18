@@ -7,9 +7,92 @@ const PALETTES={
 skin:['#f6d6bc','#efc3a1','#d89c73','#b8754c','#8b5537','#5b3425'],
 hairColor:['#2b211c','#4a3024','#7c4d31','#8b3441','#e4b842','#dfe4ea','#40558d','#c33d49']
 };
-let lastProfile='',readyOnce=false,lastPaint=0;
+let lastProfile='',readyOnce=false,lastPaint=0,hairDraft=null;
 const profile=()=>C()?.profile?.()||{};
 function apply(patch){C()?.setProfile?.(patch);lastProfile='';setTimeout(()=>{C()?.paintPreview?.();C()?.paintLobby?.();refresh(true)},0)}
+const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+function savedHairAdjust(){
+  const p=profile();
+  return{
+    x:clamp(Number(p.hairOffsetX)||0,-24,24),
+    y:clamp(Number(p.hairOffsetY)||0,-24,24),
+    scale:clamp(Number(p.hairScale)||1,.45,2)
+  };
+}
+function ensureHairDraft(){if(!hairDraft)hairDraft=savedHairAdjust();return hairDraft}
+function updateHairCalibratorLabels(root){
+  const d=ensureHairDraft();
+  root.querySelector('[data-hair-x]').textContent=`X ${d.x>0?'+':''}${d.x}`;
+  root.querySelector('[data-hair-y]').textContent=`Y ${d.y>0?'+':''}${d.y}`;
+  root.querySelector('[data-hair-scale]').textContent=`${Math.round(d.scale*100)}%`;
+}
+function previewHairChange(dx=0,dy=0,ds=0){
+  const d=ensureHairDraft();
+  d.x=clamp(d.x+dx,-24,24);
+  d.y=clamp(d.y+dy,-24,24);
+  d.scale=Math.round(clamp(d.scale+ds,.45,2)*100)/100;
+  C()?.setPreviewHairAdjust?.(d);
+  C()?.paintPreview?.();
+  const root=document.querySelector('.avatar-hair-calibrator');if(root)updateHairCalibratorLabels(root);
+}
+function ensureHairCalibrator(){
+  const preview=document.getElementById('avatarFinalPreview');if(!preview)return null;
+  let root=preview.querySelector(':scope > .avatar-hair-calibrator');
+  if(root){updateHairCalibratorLabels(root);return root}
+  root=document.createElement('div');root.className='avatar-hair-calibrator';
+  root.innerHTML=`
+    <div class="avatar-hair-calibrator-title">AJUSTAR PELO</div>
+    <div class="avatar-hair-calibrator-values">
+      <span data-hair-x>X 0</span><span data-hair-y>Y 0</span><span data-hair-scale>100%</span>
+    </div>
+    <div class="avatar-hair-calibrator-dpad">
+      <button type="button" data-hair-move="up" aria-label="Subir pelo">▲</button>
+      <button type="button" data-hair-move="left" aria-label="Mover pelo a la izquierda">◀</button>
+      <button type="button" data-hair-center aria-label="Centro">•</button>
+      <button type="button" data-hair-move="right" aria-label="Mover pelo a la derecha">▶</button>
+      <button type="button" data-hair-move="down" aria-label="Bajar pelo">▼</button>
+    </div>
+    <div class="avatar-hair-calibrator-size">
+      <button type="button" data-hair-size="-">−</button>
+      <span>TAMAÑO</span>
+      <button type="button" data-hair-size="+">+</button>
+    </div>
+    <div class="avatar-hair-calibrator-actions">
+      <button type="button" data-hair-reset>RESET</button>
+      <button type="button" data-hair-apply>CLONAR AL PERSONAJE</button>
+    </div>`;
+  preview.append(root);
+  root.addEventListener('click',e=>{
+    const move=e.target.closest('[data-hair-move]');
+    if(move){
+      const dir=move.dataset.hairMove;
+      if(dir==='up')previewHairChange(0,-1,0);
+      if(dir==='down')previewHairChange(0,1,0);
+      if(dir==='left')previewHairChange(-1,0,0);
+      if(dir==='right')previewHairChange(1,0,0);
+      return;
+    }
+    const size=e.target.closest('[data-hair-size]');
+    if(size){previewHairChange(0,0,size.dataset.hairSize==='+'?.05:-.05);return}
+    if(e.target.closest('[data-hair-center]')){
+      hairDraft={x:0,y:0,scale:ensureHairDraft().scale};
+      C()?.setPreviewHairAdjust?.(hairDraft);C()?.paintPreview?.();updateHairCalibratorLabels(root);return;
+    }
+    if(e.target.closest('[data-hair-reset]')){
+      hairDraft={x:0,y:0,scale:1};
+      C()?.setPreviewHairAdjust?.(hairDraft);C()?.paintPreview?.();updateHairCalibratorLabels(root);return;
+    }
+    if(e.target.closest('[data-hair-apply]')){
+      const d=ensureHairDraft();
+      C()?.setPreviewHairAdjust?.(null);
+      apply({hairOffsetX:d.x,hairOffsetY:d.y,hairScale:d.scale});
+      hairDraft=null;
+      return;
+    }
+  });
+  updateHairCalibratorLabels(root);
+  return root;
+}
 function ensureEditor(){
   const base=document.getElementById('avatarFinalBase');if(!base||!base.parentElement)return null;
   let panel=document.getElementById('avatarCustomizerV3');if(panel)return panel;
@@ -42,7 +125,7 @@ function renderOptions(host){
   }
 }
 function refresh(rebuild=false){
-  const panel=ensureEditor();if(!panel)return;const p=profile();
+  const panel=ensureEditor();if(!panel)return;const p=profile();ensureHairCalibrator();
   if(rebuild){
     const skin=panel.querySelector('.avatar-v3-skin');skin.textContent='';colorControl(skin,'TONO DE PIEL','skin',PALETTES.skin);
     renderOptions(panel.querySelector('.avatar-v3-options'));
@@ -60,7 +143,7 @@ function loop(ts){
   }else ensureEditor();
   requestAnimationFrame(loop);
 }
-function boot(){ensureEditor();refresh(true);wire();requestAnimationFrame(loop)}
+function boot(){ensureEditor();ensureHairCalibrator();refresh(true);wire();requestAnimationFrame(loop)}
 window.ML3DAvatarCustomizerV3={profile,setProfile:apply,refresh};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();

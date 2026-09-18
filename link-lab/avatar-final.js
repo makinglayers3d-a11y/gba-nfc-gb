@@ -12,7 +12,7 @@
 
   const CATALOG = {
     base: ["male", "female"],
-    hair: [1,2,3,4,5,6,7,8],
+    hair: [0,1,2,3,4,5,6,7,8,9],
     top: [1,2,3,4,5,6,7,8],
     bottom: [1,2,3,4,5,6,7,8],
     shoes: [1,2,3,4,5,6],
@@ -97,6 +97,7 @@
   function shadow(ctx){ctx.fillStyle="rgba(0,0,0,.28)";ctx.fillRect(8,36,16,2);ctx.fillStyle="rgba(0,0,0,.16)";ctx.fillRect(11,38,10,1);}
 
   function drawHair(ctx,p,dir) {
+    if (Number(p.hair) === 0) return;
     const c=p.hairColor, hi=lighten(c,.16), lo=darken(c,.28), back=dir==="back", side=dir==="left"||dir==="right";
     if (p.base==="female" && [2,5,7].includes(p.hair)) {
       if (side) { outlineRect(ctx,19,7,6,16,c); px(ctx,21,21,5,6,lo); }
@@ -110,7 +111,8 @@
       5:[[9,3,4,5],[13,5,5,4],[18,2,5,6],[6,8,20,8]],
       6:[[6,5,20,6],[5,10,22,6],[6,16,5,5],[21,16,5,5]],
       7:[[8,4,17,6],[6,9,21,7],[5,15,7,5],[20,14,7,6]],
-      8:[[7,4,18,5],[5,8,22,8],[6,15,4,6],[22,15,4,6]]
+      8:[[7,4,18,5],[5,8,22,8],[6,15,4,6],[22,15,4,6]],
+      9:[[7,4,18,5],[5,8,22,8],[6,15,4,6],[22,15,4,6]]
     };
     const arr=patterns[p.hair]||patterns[1];
     arr.forEach((r,i)=>outlineRect(ctx,r[0],r[1],r[2],r[3],i===0?hi:c,lo));

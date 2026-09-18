@@ -122,7 +122,13 @@
     isConnected() {
       return Boolean(bus && config.roomId);
     },
+    // Physical cable presence/readiness: this must be true as soon as the
+    // WebRTC-backed cable is connected so games can enter their Multiplayer
+    // menus. Remote SIO readiness is a separate condition.
     isReady() {
+      return this.isConnected();
+    },
+    canTransfer() {
       return this.isConnected() && remoteReady;
     },
     onSerialModeChange(mode) {
@@ -133,7 +139,10 @@
       emitStatus("local-ready", { ready: localReady });
     },
     startMultiplayerTransfer(info = {}) {
-      if (!this.isReady()) return false;
+      if (!this.canTransfer()) {
+        emitStatus("transfer-waiting-remote", { remoteReady });
+        return false;
+      }
       localSequence = (localSequence + 1) >>> 0;
       const seq = `${Date.now().toString(36)}-${localSequence.toString(36)}`;
       sendLocal({
@@ -280,7 +289,9 @@
         connected: adapter.isConnected(),
         localReady,
         remoteReady,
-        ready: adapter.isReady(),
+        cableReady: adapter.isReady(),
+        remoteReady,
+        ready: adapter.canTransfer(),
         frozen: transferFrozen
       };
     }

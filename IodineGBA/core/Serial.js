@@ -361,11 +361,18 @@ GameBoyAdvanceSerial.prototype.writeSIOCNT0 = function (data) {
                             ) {
                                 this.linkTransferSequence = ((this.linkTransferSequence | 0) + 1) | 0;
                                 try {
-                                    this.linkCable.startMultiplayerTransfer({
+                                    var linkStarted = this.linkCable.startMultiplayerTransfer({
                                         sequence: this.linkTransferSequence | 0,
                                         word: this.getLinkSendData() | 0,
                                         baud: this.SIOBaudRate | 0
                                     });
+                                    if (linkStarted === false) {
+                                        // Cable is present but the remote game is not yet in
+                                        // multiplayer mode. Hardware remains connected; just
+                                        // leave BUSY clear so the game can retry naturally.
+                                        this.SIOTransferStarted = false;
+                                        this.SIOCOMMERROR = false;
+                                    }
                                 }
                                 catch (error) {
                                     this.SIOCOMMERROR = true;

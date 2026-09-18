@@ -11,7 +11,9 @@
   let serial = null;
   let localSequence = 0;
   let localReady = false;
+  let localModeMulti = false;
   let remoteReady = false;
+  let readyTimer = 0;
   let transferCount = 0;
   let lastState = "boot";
   let waitStartedAt = 0;
@@ -59,7 +61,9 @@
     } catch {}
     if (serial) {
       serial.setLinkPlayerNumber(config.playerNumber);
-      localReady = (serial.SIOCNT_MODE | 0) === 2;
+      localModeMulti = (serial.SIOCNT_MODE | 0) === 2;
+      localReady = false;
+      if (localModeMulti) adapter.onSerialModeChange(2);
     }
     publishLocalReady();
     emitStatus("configured");
@@ -86,7 +90,7 @@
     const waitText = Number.isFinite(lastWaitMs) ? Math.round(lastWaitMs) + "ms" : "--";
     el.textContent =
       `LINK ${config.role === "host" ? "H" : "G"} P${config.playerNumber}\n` +
-      `L:${localReady ? 1 : 0} R:${remoteReady ? 1 : 0} WAIT:${waiting ? 1 : 0}\n` +
+      `M:${localModeMulti ? 1 : 0} L:${localReady ? 1 : 0} R:${remoteReady ? 1 : 0} WAIT:${waiting ? 1 : 0}\n` +
       `TX:${transferCount} T:${waitText} ${lastState}`;
   }
 
@@ -118,22 +122,44 @@
     isConnected() {
       return Boolean(bus && config.roomId);
     },
-    // Physical cable presence/readiness: this must be true as soon as the
-    // WebRTC-backed cable is connected so games can enter their Multiplayer
-    // menus. Remote SIO readiness is a separate condition.
+    // Physical cable detection must not depend on the other game already
+    // being in MULTI mode, otherwise the secondary GBA can never enter the
+    // Multiplayer menu.
     isReady() {
-      // SIOCNT bit 3 is high only when the remote core is also in MULTI mode.
-      return this.isConnected() && remoteReady;
+      return this.isConnected();
     },
     canTransfer() {
-      return this.isReady();
+      return this.isConnected() && remoteReady;
     },
     onSerialModeChange(mode) {
-      const nextReady = (Number(mode) | 0) === 2;
-      if (nextReady === localReady) return;
-      localReady = nextReady;
-      publishLocalReady();
-      emitStatus("local-ready", { ready: localReady });
+      const nextModeMulti = (Number(mode) | 0) === 2;
+      localModeMulti = nextModeMulti;
+      clearTimeout(readyTimer);
+      readyTimer = 0;
+
+      if (!nextModeMulti) {
+        if (localReady) {
+          localReady = false;
+          publishLocalReady();
+        }
+        emitStatus("local-mode", { modeMulti: false, ready: localReady });
+        return;
+      }
+
+      // Games can touch MULTI briefly while probing the cable. Do not advertise
+      // transfer readiness until the mode has remained stable long enough to
+      // represent an actual multiplayer session.
+      readyTimer = setTimeout(() => {
+        readyTimer = 0;
+        if (!serial || (serial.SIOCNT_MODE | 0) !== 2) return;
+        localModeMulti = true;
+        if (!localReady) {
+          localReady = true;
+          publishLocalReady();
+        }
+        emitStatus("local-ready", { modeMulti: true, ready: true });
+      }, 250);
+      emitStatus("local-mode", { modeMulti: true, ready: localReady });
     },
     startMultiplayerTransfer(info = {}) {
       if (!this.canTransfer()) {
@@ -165,9 +191,11 @@
     }
     serial.attachLinkCable(adapter);
     serial.setLinkPlayerNumber(config.playerNumber);
-    localReady = (serial.SIOCNT_MODE | 0) === 2;
+    localModeMulti = (serial.SIOCNT_MODE | 0) === 2;
+    localReady = false;
     publishLocalReady();
-    emitStatus("attached", { localReady, remoteReady });
+    if (localModeMulti) adapter.onSerialModeChange(2);
+    emitStatus("attached", { localModeMulti, localReady, remoteReady });
     return true;
   }
 
@@ -176,6 +204,9 @@
     try {
       serial?.detachLinkCable?.();
     } catch {}
+    clearTimeout(readyTimer);
+    readyTimer = 0;
+    localModeMulti = false;
     localReady = false;
     remoteReady = false;
     publishLocalReady();
@@ -288,6 +319,7 @@
         ...config,
         attached: Boolean(serial),
         connected: adapter.isConnected(),
+        localModeMulti,
         localReady,
         remoteReady,
         cableReady: adapter.isReady(),

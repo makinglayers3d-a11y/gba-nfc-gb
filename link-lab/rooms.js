@@ -40,6 +40,13 @@
   let lastMoveSentAt = 0;
   const heldMoves = new Set();
   const chatTimers = new Map();
+  const GBA_LINK_LOCAL_CHANNEL = "ml3d-gba-link-v1";
+  const GBA_LINK_STORAGE_KEY = "ml3d-gba-link-session-v1";
+  const gbaLinkBus = typeof BroadcastChannel === "function"
+    ? new BroadcastChannel(GBA_LINK_LOCAL_CHANNEL)
+    : null;
+  let gbaLinkPending = null;
+  let gbaLinkSequence = 0;
 
   function log(message) {
     const t = new Date().toLocaleTimeString();
@@ -161,6 +168,152 @@
     }
     return joinSession?.channel?.readyState === "open" ? [joinSession.channel] : [];
   }
+
+  function currentLinkRoomId() {
+    return String(hostSession?.room?.id || joinSession?.room?.id || "");
+  }
+
+  function rememberLocalLinkSession(roomId, playerNumber, role) {
+    const next = {
+      roomId: String(roomId || ""),
+      playerNumber: Math.max(0, Math.min(3, Number(playerNumber) | 0)),
+      role: role === "host" ? "host" : "guest",
+      updatedAt: Date.now()
+    };
+    try {
+      localStorage.setItem(GBA_LINK_STORAGE_KEY, JSON.stringify(next));
+    } catch {}
+    if (gbaLinkBus) {
+      gbaLinkBus.postMessage({
+        type: "gba:link:configure",
+        source: "lobby",
+        ...next
+      });
+    }
+    return next;
+  }
+
+  function clearLocalLinkSession(roomId = "") {
+    let stored = null;
+    try {
+      stored = JSON.parse(localStorage.getItem(GBA_LINK_STORAGE_KEY) || "null");
+    } catch {}
+    if (!roomId || stored?.roomId === roomId) {
+      try { localStorage.removeItem(GBA_LINK_STORAGE_KEY); } catch {}
+      if (gbaLinkBus) {
+        gbaLinkBus.postMessage({
+          type: "gba:link:disconnect",
+          source: "lobby",
+          roomId: roomId || stored?.roomId || "",
+          time: Date.now()
+        });
+      }
+    }
+  }
+
+  function postLocalLink(packet) {
+    if (!gbaLinkBus) return false;
+    gbaLinkBus.postMessage({
+      ...packet,
+      source: "lobby",
+      roomId: packet.roomId || currentLinkRoomId(),
+      time: Date.now()
+    });
+    return true;
+  }
+
+  function completeHostLinkTransfer(error = false) {
+    const pending = gbaLinkPending;
+    if (!pending || !hostSession) return;
+    clearTimeout(pending.timer);
+    gbaLinkPending = null;
+
+    const words = pending.words.map((word) => Number(word) & 0xFFFF);
+    postLocalLink({
+      type: "gba:link:complete",
+      roomId: hostSession.room.id,
+      seq: pending.seq,
+      words,
+      playerNumber: 0,
+      error: Boolean(error)
+    });
+
+    for (const peer of hostSession.peers.values()) {
+      if (peer.channel?.readyState !== "open") continue;
+      safeSend(peer.channel, {
+        type: "gba:link:complete",
+        roomId: hostSession.room.id,
+        seq: pending.seq,
+        words,
+        playerNumber: Math.max(1, Math.min(3, Number(peer.linkSlot) | 0)),
+        error: Boolean(error),
+        time: Date.now()
+      });
+    }
+  }
+
+  function startHostLinkTransfer(packet) {
+    if (!hostSession) return;
+    if (gbaLinkPending) completeHostLinkTransfer(true);
+
+    const seq = String(packet.seq || `host-${Date.now()}-${++gbaLinkSequence}`);
+    const words = [Number(packet.word) & 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF];
+    const waiting = new Set();
+
+    for (const [joinId, peer] of hostSession.peers) {
+      if (peer.channel?.readyState !== "open") continue;
+      const slot = Math.max(1, Math.min(3, Number(peer.linkSlot) | 0));
+      waiting.add(joinId);
+      safeSend(peer.channel, {
+        type: "gba:link:poll",
+        roomId: hostSession.room.id,
+        seq,
+        playerNumber: slot,
+        baud: Number(packet.baud) & 0x3,
+        hostWord: words[0],
+        time: Date.now()
+      });
+    }
+
+    gbaLinkPending = {
+      seq,
+      words,
+      waiting,
+      timer: setTimeout(() => completeHostLinkTransfer(true), 240)
+    };
+
+    if (!waiting.size) {
+      completeHostLinkTransfer(true);
+    }
+  }
+
+  function handleLocalGbaLinkMessage(event) {
+    const packet = event.data;
+    if (!packet || packet.source !== "emulator") return;
+    const roomId = currentLinkRoomId();
+    if (!roomId || packet.roomId !== roomId) return;
+
+    if (packet.type === "gba:link:request" && hostSession) {
+      startHostLinkTransfer(packet);
+      return;
+    }
+
+    if (packet.type === "gba:link:reply" && joinSession) {
+      safeSend(joinSession.channel, {
+        type: "gba:link:reply",
+        roomId,
+        seq: String(packet.seq || ""),
+        word: Number(packet.word) & 0xFFFF,
+        baud: Number(packet.baud) & 0x3,
+        time: Date.now()
+      });
+    }
+  }
+
+  if (gbaLinkBus) {
+    gbaLinkBus.addEventListener("message", handleLocalGbaLinkMessage);
+  }
+
 
   function updateChannelButtons() {
     const ready = openChannels().length > 0;
@@ -407,6 +560,15 @@
     const player = players.get(joinId);
     if (!peer) return;
 
+    if (packet.type === "gba:link:reply") {
+      if (!gbaLinkPending || String(packet.seq || "") !== gbaLinkPending.seq) return;
+      const slot = Math.max(1, Math.min(3, Number(peer.linkSlot) | 0));
+      gbaLinkPending.words[slot] = Number(packet.word) & 0xFFFF;
+      gbaLinkPending.waiting.delete(joinId);
+      if (!gbaLinkPending.waiting.size) completeHostLinkTransfer(false);
+      return;
+    }
+
     if (packet.type === "lobby:profile") {
       const incoming = normalizeProfile(packet.profile || {});
       if (player) {
@@ -445,6 +607,37 @@
   }
 
   function handleGuestPacket(packet) {
+    if (packet.type === "gba:link:configure") {
+      const slot = Math.max(1, Math.min(3, Number(packet.playerNumber) | 0));
+      if (joinSession) joinSession.linkSlot = slot;
+      rememberLocalLinkSession(packet.roomId || joinSession?.room?.id || "", slot, "guest");
+      return;
+    }
+
+    if (packet.type === "gba:link:poll") {
+      postLocalLink({
+        type: "gba:link:poll",
+        roomId: packet.roomId || joinSession?.room?.id || "",
+        seq: String(packet.seq || ""),
+        playerNumber: Math.max(1, Math.min(3, Number(packet.playerNumber) | 0)),
+        baud: Number(packet.baud) & 0x3,
+        hostWord: Number(packet.hostWord) & 0xFFFF
+      });
+      return;
+    }
+
+    if (packet.type === "gba:link:complete") {
+      postLocalLink({
+        type: "gba:link:complete",
+        roomId: packet.roomId || joinSession?.room?.id || "",
+        seq: String(packet.seq || ""),
+        words: Array.isArray(packet.words) ? packet.words : [],
+        playerNumber: Math.max(1, Math.min(3, Number(packet.playerNumber) | 0)),
+        error: Boolean(packet.error)
+      });
+      return;
+    }
+
     if (packet.type === "lobby:snapshot") {
       const next = new Map();
       for (const raw of Array.isArray(packet.players) ? packet.players : []) {
@@ -591,6 +784,7 @@
       });
       players = new Map();
       hostSession = { room: data.room, token: data.hostToken, peers: new Map(), pollBusy: false, joins: [] };
+      rememberLocalLinkSession(data.room.id, 0, "host");
       ensureLocalPlayer("host", true, spawnPoint(0));
       updateToolbar(data.room);
       setLobbyVisible(true);
@@ -664,6 +858,7 @@
       pc: null,
       channel: null,
       answerApplied: false,
+      linkSlot: index,
       metrics: { pending: new Map(), rtt: null, jitter: null, lastRtt: null, missed: 0, quality: "unknown" }
     };
     const pc = makePeer(`Host↔${join.displayName}`, () => {});
@@ -699,6 +894,13 @@
         log(`Confirmación connected: ${e.message}`);
       }
       safeSend(channel, lobbySnapshot());
+      safeSend(channel, {
+        type: "gba:link:configure",
+        roomId: hostSession.room.id,
+        playerNumber: peerInfo.linkSlot,
+        role: "guest",
+        time: Date.now()
+      });
       safeSend(channel, { type: "lobby:request-profile" });
       safeSend(channel, { type: "lobby:quality", playerId: "host", quality: "good", rtt: 0, jitter: 0 });
       renderManagePlayers();
@@ -781,6 +983,7 @@
     for (const peer of peers.values()) {
       try { peer.pc.close(); } catch {}
     }
+    clearLocalLinkSession(room.id);
     hostSession = null;
     players = new Map();
     localPlayerId = null;
@@ -954,6 +1157,7 @@
       }
     }
     try { session.pc?.close(); } catch {}
+    clearLocalLinkSession(session.room?.id || "");
     joinSession = null;
     players = new Map();
     localPlayerId = null;
@@ -1190,8 +1394,45 @@
     }
   }
 
+  function openLinkEmulator() {
+    const room = hostSession?.room || joinSession?.room;
+    if (!room) return;
+
+    const role = hostSession ? "host" : "guest";
+    const playerNumber = hostSession ? 0 : Number(joinSession?.linkSlot);
+    if (!hostSession && !Number.isFinite(playerNumber)) {
+      showSessionBanner("ESPERANDO ASIGNACIÓN LINK", 1800);
+      return;
+    }
+
+    rememberLocalLinkSession(room.id, playerNumber, role);
+    const url = new URL("../", location.href);
+    url.searchParams.set("menu", "1");
+    url.searchParams.set("linkRoom", room.id);
+    url.searchParams.set("linkPlayer", String(playerNumber));
+    url.searchParams.set("linkRole", role);
+
+    const opened = window.open(url.toString(), "_blank", "noopener");
+    if (!opened) {
+      showSessionBanner("PERMITE VENTANAS EMERGENTES", 2200);
+    } else {
+      showSessionBanner(`GBA LINK · JUGADOR ${playerNumber}`, 1400);
+    }
+  }
+
   function startSessionCountdown() {
     if (!hostSession) return;
+    rememberLocalLinkSession(hostSession.room.id, 0, "host");
+    for (const peer of hostSession.peers.values()) {
+      if (peer.channel?.readyState !== "open") continue;
+      safeSend(peer.channel, {
+        type: "gba:link:configure",
+        roomId: hostSession.room.id,
+        playerNumber: peer.linkSlot,
+        role: "guest",
+        time: Date.now()
+      });
+    }
     sendAll({ type: "session:start", game: hostSession.room.game || "", time: Date.now() });
     showSessionBanner("3", 550);
     setTimeout(() => showSessionBanner("2", 550), 600);
@@ -1279,6 +1520,9 @@
   $("#closeRoom").addEventListener("click", closeRoom);
   $("#leaveRoom").addEventListener("click", () => leaveRoom(true));
   $("#startSession").addEventListener("click", startSessionCountdown);
+  document.querySelectorAll("[data-open-link-emulator]").forEach((button) => {
+    button.addEventListener("click", openLinkEmulator);
+  });
   $("#chatForm").addEventListener("submit", (event) => {
     event.preventDefault();
     sendChat($("#chatInput").value);
@@ -1309,11 +1553,15 @@
     stopHostTimers();
     stopJoinTimers();
     stopMoveTimer();
+    if (gbaLinkPending) {
+      clearTimeout(gbaLinkPending.timer);
+      gbaLinkPending = null;
+    }
   });
 
   $("#apiBase").value = localStorage.getItem(API_KEY) || DEFAULT_API_BASE;
   $("#playerName").value = profile.name;
   buildEditorChoices();
   bindControls();
-  log("ML3D Link Lobby v3 listo.");
+  log("ML3D Link Lobby v4 · bus GBA Cable Link listo.");
 })();

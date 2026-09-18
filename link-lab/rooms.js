@@ -257,7 +257,10 @@
 
   function startHostLinkTransfer(packet) {
     if (!hostSession) return;
-    if (gbaLinkPending) completeHostLinkTransfer(true);
+    if (gbaLinkPending) {
+      log(`GBA Link: transferencia solapada ignorada (${String(packet.seq || "sin-seq")}).`);
+      return;
+    }
 
     const seq = String(packet.seq || `host-${Date.now()}-${++gbaLinkSequence}`);
     const words = [Number(packet.word) & 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF];

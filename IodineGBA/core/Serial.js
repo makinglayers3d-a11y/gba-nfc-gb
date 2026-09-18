@@ -50,6 +50,8 @@ GameBoyAdvanceSerial.prototype.initialize = function () {
     this.JOYBUS_STAT = 0;
     this.shiftClocks = 0;
     this.serialBitsShifted = 0;
+    this.linkCable = null;
+    this.linkTransferSequence = 0;
 }
 GameBoyAdvanceSerial.prototype.SIOMultiplayerBaudRate = [
       9600,
@@ -57,6 +59,61 @@ GameBoyAdvanceSerial.prototype.SIOMultiplayerBaudRate = [
      57600,
     115200
 ];
+
+GameBoyAdvanceSerial.prototype.attachLinkCable = function (adapter) {
+    this.linkCable = adapter || null;
+    if (this.linkCable && typeof this.linkCable.playerNumber === "number") {
+        this.SIOMULT_PLAYER_NUMBER = this.linkCable.playerNumber & 0x3;
+    }
+};
+GameBoyAdvanceSerial.prototype.detachLinkCable = function () {
+    this.linkCable = null;
+    this.SIOTransferStarted = false;
+    this.SIOCOMMERROR = false;
+};
+GameBoyAdvanceSerial.prototype.linkCableConnected = function () {
+    if (!this.linkCable) {
+        return false;
+    }
+    if (typeof this.linkCable.isConnected == "function") {
+        try {
+            return !!this.linkCable.isConnected();
+        }
+        catch (error) {
+            return false;
+        }
+    }
+    return true;
+};
+GameBoyAdvanceSerial.prototype.setLinkPlayerNumber = function (playerNumber) {
+    this.SIOMULT_PLAYER_NUMBER = (playerNumber | 0) & 0x3;
+};
+GameBoyAdvanceSerial.prototype.getLinkSendData = function () {
+    return this.SIODATA8 & 0xFFFF;
+};
+GameBoyAdvanceSerial.prototype.beginExternalMultiplayerTransfer = function (playerNumber) {
+    this.setLinkPlayerNumber(playerNumber | 0);
+    this.SIOTransferStarted = true;
+    this.SIOCOMMERROR = false;
+    this.serialBitsShifted = 0;
+    this.shiftClocks = 0;
+    return this.getLinkSendData() | 0;
+};
+GameBoyAdvanceSerial.prototype.completeExternalMultiplayerTransfer = function (words, playerNumber, commError) {
+    words = words || [];
+    this.setLinkPlayerNumber(playerNumber | 0);
+    this.SIODATA_A = (words[0] === undefined ? 0xFFFF : words[0]) & 0xFFFF;
+    this.SIODATA_B = (words[1] === undefined ? 0xFFFF : words[1]) & 0xFFFF;
+    this.SIODATA_C = (words[2] === undefined ? 0xFFFF : words[2]) & 0xFFFF;
+    this.SIODATA_D = (words[3] === undefined ? 0xFFFF : words[3]) & 0xFFFF;
+    this.SIOTransferStarted = false;
+    this.SIOCOMMERROR = !!commError;
+    this.serialBitsShifted = 0;
+    this.shiftClocks = 0;
+    if ((this.SIOCNT_IRQ | 0) != 0 && this.IOCore && this.IOCore.irq) {
+        this.IOCore.irq.requestIRQ(0x80);
+    }
+};
 GameBoyAdvanceSerial.prototype.addClocks = function (clocks) {
     clocks = clocks | 0;
     if ((this.RCNTMode | 0) < 2) {
@@ -121,15 +178,20 @@ GameBoyAdvanceSerial.prototype.clockSerial = function () {
     }
 }
 GameBoyAdvanceSerial.prototype.clockMultiplayer = function () {
-    //Emulate as if no slaves connected:
+    // When an external Link adapter is active, completion is driven by the
+    // remote bus. Keep the hardware busy until the adapter supplies A/B/C/D.
+    if (this.linkCableConnected()) {
+        return;
+    }
+    // Fallback: emulate as if no slaves were connected.
     this.SIODATA_A = this.SIODATA8 | 0;
     this.SIODATA_B = 0xFFFF;
     this.SIODATA_C = 0xFFFF;
     this.SIODATA_D = 0xFFFF;
     this.SIOTransferStarted = false;
     this.SIOCOMMERROR = true;
-    if ((this.SIOCNT_IRQ | 0) != 0) {
-        //this.IOCore.irq.requestIRQ(0x80);
+    if ((this.SIOCNT_IRQ | 0) != 0 && this.IOCore && this.IOCore.irq) {
+        this.IOCore.irq.requestIRQ(0x80);
     }
 }
 GameBoyAdvanceSerial.prototype.clockUART = function () {
@@ -233,7 +295,9 @@ GameBoyAdvanceSerial.prototype.writeSIOCNT0 = function (data) {
             case 2:
                 this.SIOBaudRate = data & 0x3;
                 this.SIOShiftClockDivider = this.SIOMultiplayerBaudRate[this.SIOBaudRate | 0] | 0;
-                this.SIOMULT_PLAYER_NUMBER = (data >> 4) & 0x3;
+                if (!this.linkCableConnected()) {
+                    this.SIOMULT_PLAYER_NUMBER = (data >> 4) & 0x3;
+                }
                 this.SIOCOMMERROR = ((data & 0x40) != 0);
                 if ((data & 0x80) != 0) {
                     if (!this.SIOTransferStarted) {
@@ -246,6 +310,25 @@ GameBoyAdvanceSerial.prototype.writeSIOCNT0 = function (data) {
                         }
                         this.serialBitsShifted = 0;
                         this.shiftClocks = 0;
+
+                        if (
+                            (this.SIOMULT_PLAYER_NUMBER | 0) == 0 &&
+                            this.linkCableConnected() &&
+                            this.linkCable &&
+                            typeof this.linkCable.startMultiplayerTransfer == "function"
+                        ) {
+                            this.linkTransferSequence = ((this.linkTransferSequence | 0) + 1) | 0;
+                            try {
+                                this.linkCable.startMultiplayerTransfer({
+                                    sequence: this.linkTransferSequence | 0,
+                                    word: this.getLinkSendData() | 0,
+                                    baud: this.SIOBaudRate | 0
+                                });
+                            }
+                            catch (error) {
+                                this.SIOCOMMERROR = true;
+                            }
+                        }
                     }
                 }
                 else {

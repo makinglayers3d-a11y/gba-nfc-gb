@@ -179,6 +179,14 @@
     canTransfer() {
       return this.isConnected() && remoteReady;
     },
+    onHardwareTransferComplete(info = {}) {
+      transferCount += 1;
+      emitStatus("transfer-hw-complete", {
+        words: Array.isArray(info.words) ? info.words.slice(0, 2) : undefined,
+        error: Boolean(info.error),
+        waitMs: lastWaitMs
+      });
+    },
     onSerialModeChange(mode) {
       const nextModeMulti = (Number(mode) | 0) === 2;
       localModeMulti = nextModeMulti;
@@ -327,12 +335,6 @@
 
       while (words.length < 4) words.push(0xFFFF);
 
-      serial?.completeExternalMultiplayerTransfer?.(
-        words,
-        sanitizePlayerNumber(packet.playerNumber ?? config.playerNumber),
-        Boolean(packet.error)
-      );
-      transferCount += 1;
       if (waitStartedAt > 0) {
         lastWaitMs = Math.max(0, performance.now() - waitStartedAt);
         waitSamples += 1;
@@ -340,11 +342,20 @@
         waitMaxMs = Math.max(waitMaxMs, lastWaitMs);
       }
       waitStartedAt = 0;
-      emitStatus("transfer-complete", {
+
+      serial?.completeExternalMultiplayerTransfer?.(
+        words,
+        sanitizePlayerNumber(packet.playerNumber ?? config.playerNumber),
+        Boolean(packet.error),
+        Math.max(0, Math.min(3, Number(packet.connectedCount) | 0))
+      );
+
+      emitStatus("transfer-staged", {
         seq: packet.seq,
         error: Boolean(packet.error),
         waitMs: lastWaitMs,
-        words: words.slice(0, 2)
+        words: words.slice(0, 2),
+        connectedCount: Math.max(0, Math.min(3, Number(packet.connectedCount) | 0))
       });
       return;
     }

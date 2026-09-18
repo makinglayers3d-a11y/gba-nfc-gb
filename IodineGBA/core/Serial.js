@@ -95,6 +95,20 @@ GameBoyAdvanceSerial.prototype.linkCableConnected = function () {
     }
     return true;
 };
+GameBoyAdvanceSerial.prototype.linkCableReady = function () {
+    if (!this.linkCableConnected()) {
+        return false;
+    }
+    if (this.linkCable && typeof this.linkCable.isReady == "function") {
+        try {
+            return !!this.linkCable.isReady();
+        }
+        catch (error) {
+            return false;
+        }
+    }
+    return true;
+};
 GameBoyAdvanceSerial.prototype.setLinkPlayerNumber = function (playerNumber) {
     this.linkPlayerNumber = (playerNumber | 0) & 0x3;
     if (this.linkPlayerIdValid) {
@@ -387,8 +401,9 @@ GameBoyAdvanceSerial.prototype.readSIOCNT0 = function () {
                 // bit 2 = SI terminal (0 parent, 1 child)
                 // bit 3 = SD terminal (1 when the connected GBAs are ready).
                 // Some commercial games check these before enabling multiplayer.
-                var linkReady = this.linkCableConnected();
-                var terminalState = (linkReady && (this.getLinkPlayerNumber() | 0) != 0) ? 0x4 : 0;
+                var linkConnected = this.linkCableConnected();
+                var linkReady = this.linkCableReady();
+                var terminalState = (linkConnected && (this.getLinkPlayerNumber() | 0) != 0) ? 0x4 : 0;
                 var readyState = linkReady ? 0x8 : 0;
                 return ((this.SIOTransferStarted) ? 0x80 : 0) |
                     ((this.SIOCOMMERROR) ? 0x40 : 0) |
@@ -405,7 +420,18 @@ GameBoyAdvanceSerial.prototype.readSIOCNT0 = function () {
 }
 GameBoyAdvanceSerial.prototype.writeSIOCNT1 = function (data) {
     this.SIOCNT_IRQ = data & 0x40;
+    var oldMode = this.SIOCNT_MODE | 0;
     this.SIOCNT_MODE = (data >> 4) & 0x3;
+    if (
+        (oldMode | 0) != (this.SIOCNT_MODE | 0) &&
+        this.linkCable &&
+        typeof this.linkCable.onSerialModeChange == "function"
+    ) {
+        try {
+            this.linkCable.onSerialModeChange(this.SIOCNT_MODE | 0);
+        }
+        catch (error) {}
+    }
     this.SIOCNT_UART_RECV_ENABLE = ((data & 0x8) != 0);
     this.SIOCNT_UART_SEND_ENABLE = ((data & 0x4) != 0);
     this.SIOCNT_UART_PARITY_ENABLE = ((data & 0x2) != 0);
@@ -459,7 +485,9 @@ GameBoyAdvanceSerial.prototype.readRCNT0 = function () {
 
         if (!busy) {
             pins |= 0x1; // SC high while idle.
-            pins |= 0x2; // SD high: all connected GBAs ready.
+            if (this.linkCableReady()) {
+                pins |= 0x2; // SD high only when every linked GBA is actually ready.
+            }
             pins |= 0x8; // SO high while idle.
             if (playerNumber != 0) {
                 pins |= 0x4; // Child SI sees previous unit SO high while idle.

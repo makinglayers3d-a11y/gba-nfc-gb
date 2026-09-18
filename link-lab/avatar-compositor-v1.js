@@ -30,7 +30,9 @@ function load(){
 }
 
 function hairRect(v,d,f){
-  const i=Math.max(0,Math.min(8,+v-1));
+  const n=Number(v);
+  if(!Number.isFinite(n)||n<=0)return null;
+  const i=Math.max(0,Math.min(8,n-1));
   const frame=Math.max(0,Math.min(3,+f||0));
   return{x:(i*4+frame)*HAIR_W,y:(HAIR_DR[d]??0)*HAIR_H};
 }
@@ -64,10 +66,11 @@ function keepMainComponent(canvas){
 }
 
 function rawHair(v,d='down',f=0){
-  if(!ready||!v)return null;
+  if(!ready)return null;
+  const r=hairRect(v,d,f);if(!r)return null;
   const key=[v,d,f].join('|');
   if(raw.has(key))return raw.get(key);
-  const r=hairRect(v,d,f),c=document.createElement('canvas');
+  const c=document.createElement('canvas');
   c.width=HAIR_W;c.height=HAIR_H;
   const x=c.getContext('2d',{willReadFrequently:true});
   x.imageSmoothingEnabled=false;
@@ -123,11 +126,10 @@ function baseBounds(base){
 function drawHairFixed(ctx,piece,base){
   if(!piece)return;
   const b=baseBounds(base);
-  const scale=Math.max(.25,b.h/88);
-  const size=Math.max(1,Math.round(HAIR_H*scale));
+  const size=Math.max(1,Math.round(Math.min(b.w*.70,b.h*.30)));
   const cx=b.x+b.w/2;
   const dx=Math.round(cx-size/2);
-  const dy=Math.round(b.y-3*scale);
+  const dy=Math.round(b.y-1);
   ctx.drawImage(piece,0,0,HAIR_W,HAIR_H,dx,dy,size,size);
 }
 

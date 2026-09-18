@@ -398,6 +398,19 @@
         error: Boolean(packet.error),
         time: Date.now()
       });
+      return;
+    }
+
+    if (packet.type === "gba:link:next-word-ready" && joinSession) {
+      safeSend(joinSession.channel, {
+        type: "gba:link:next-word-ready",
+        roomId,
+        seq: String(packet.seq || ""),
+        playerNumber: Math.max(1, Math.min(3, Number(packet.playerNumber) | 0)),
+        word: Number(packet.word) & 0xFFFF,
+        reason: String(packet.reason || ""),
+        time: Date.now()
+      });
     }
   }
 
@@ -680,6 +693,18 @@
         seq: String(packet.seq || ""),
         playerNumber: Math.max(1, Math.min(3, Number(peer.linkSlot) | 0)),
         error: Boolean(packet.error)
+      });
+      return;
+    }
+
+    if (packet.type === "gba:link:next-word-ready") {
+      postLocalLink({
+        type: "gba:link:remote-next-word-ready",
+        roomId: hostSession.room.id,
+        seq: String(packet.seq || ""),
+        playerNumber: Math.max(1, Math.min(3, Number(peer.linkSlot) | 0)),
+        word: Number(packet.word) & 0xFFFF,
+        reason: String(packet.reason || "")
       });
       return;
     }

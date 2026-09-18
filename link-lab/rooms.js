@@ -1406,42 +1406,39 @@
     }
 
     rememberLocalLinkSession(room.id, playerNumber, role);
+
     const url = new URL("../", location.href);
     url.searchParams.set("menu", "1");
     url.searchParams.set("linkRoom", room.id);
     url.searchParams.set("linkPlayer", String(playerNumber));
     url.searchParams.set("linkRole", role);
+    // Unique launch value avoids reusing an older cached emulator document.
+    url.searchParams.set("linkLaunch", String(Date.now()));
 
-    const targetUrl = url.toString();
-    let opened = null;
-    try {
-      // Keep the lobby alive in its current tab and open the emulator from the
-      // user's tap. Passing "noopener" as a window feature can return null on
-      // mobile browsers even when the tab opens, so open first and detach the
-      // opener afterwards.
-      opened = window.open(targetUrl, "_blank");
-      if (opened) {
-        try { opened.opener = null; } catch {}
-      }
-    } catch (error) {
-      opened = null;
+    const shell = $("#linkEmulatorShell");
+    const frame = $("#linkEmulatorFrame");
+    const status = $("#linkEmulatorStatus");
+    if (!shell || !frame) {
+      fail(new Error("No está disponible la vista integrada del emulador."), "Error Link");
+      return;
     }
 
-    if (!opened) {
-      // Mobile fallback: a real target=_blank link is handled more reliably
-      // by Chrome/WebView popup policies when invoked from the button tap.
-      const link = document.createElement("a");
-      link.href = targetUrl;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.style.display = "none";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      showSessionBanner(`GBA LINK · JUGADOR ${playerNumber}`, 1400);
-    } else {
-      showSessionBanner(`GBA LINK · JUGADOR ${playerNumber}`, 1400);
+    closeModal("selectModal");
+    if (status) {
+      status.textContent = `${room.name || "Sala"} · jugador ${playerNumber} · ${role === "host" ? "HOST" : "INVITADO"}`;
     }
+    document.body.classList.add("link-emulator-open");
+    shell.hidden = false;
+    frame.src = url.toString();
+  }
+
+  function closeLinkEmulator() {
+    const shell = $("#linkEmulatorShell");
+    const frame = $("#linkEmulatorFrame");
+    if (frame) frame.src = "about:blank";
+    if (shell) shell.hidden = true;
+    document.body.classList.remove("link-emulator-open");
+    window.setTimeout(() => $("#lobbyStage")?.focus({ preventScroll: true }), 50);
   }
 
   function startSessionCountdown() {
@@ -1547,6 +1544,7 @@
   document.querySelectorAll("[data-open-link-emulator]").forEach((button) => {
     button.addEventListener("click", openLinkEmulator);
   });
+  $("#closeLinkEmulator")?.addEventListener("click", closeLinkEmulator);
   $("#chatForm").addEventListener("submit", (event) => {
     event.preventDefault();
     sendChat($("#chatInput").value);

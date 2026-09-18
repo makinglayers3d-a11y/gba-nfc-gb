@@ -12,6 +12,12 @@
   let localSequence = 0;
   let localReady = false;
   let remoteReady = false;
+  let remoteWord = 0xFFFF;
+  let remoteWordValid = false;
+  let pendingWord = 0xFFFF;
+  let wordPublishQueued = false;
+  let transferCount = 0;
+  let lastLinkState = "boot";
   let config = loadConfig();
   const bus = typeof BroadcastChannel === "function"
     ? new BroadcastChannel(CHANNEL_NAME)
@@ -62,9 +68,26 @@
   }
 
   function emitStatus(state, extra = {}) {
+    lastLinkState = state;
+    updateDebug();
     window.dispatchEvent(new CustomEvent("ml3d-link-cable-status", {
       detail: { state, ...config, ...extra }
     }));
+  }
+
+  function updateDebug() {
+    if (params.get("linkDebug") !== "1") return;
+    let el = document.getElementById("ml3d-link-debug");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "ml3d-link-debug";
+      el.style.cssText = "position:fixed;right:6px;bottom:6px;z-index:2147483647;padding:5px 7px;background:rgba(0,0,0,.78);color:#fff;font:10px/1.25 monospace;border:1px solid rgba(255,255,255,.25);border-radius:5px;pointer-events:none;white-space:pre";
+      document.documentElement.appendChild(el);
+    }
+    el.textContent =
+      `LINK ${config.role === "host" ? "H" : "G"} P${config.playerNumber}\n` +
+      `L:${localReady ? 1 : 0} R:${remoteReady ? 1 : 0} W:${remoteWordValid ? remoteWord.toString(16).padStart(4, "0") : "----"}\n` +
+      `TX:${transferCount} ${lastLinkState}`;
   }
 
   function sendLocal(packet) {
@@ -85,6 +108,26 @@
     return sendLocal({
       type: "gba:link:ready",
       ready: Boolean(localReady)
+    });
+  }
+
+  function publishSendWord(word = currentWord(), reason = "update", requestSeq = "") {
+    word = Number(word) & 0xFFFF;
+    return sendLocal({
+      type: "gba:link:word",
+      word,
+      reason,
+      requestSeq: String(requestSeq || "")
+    });
+  }
+
+  function scheduleSendWord(word) {
+    pendingWord = Number(word) & 0xFFFF;
+    if (wordPublishQueued) return;
+    wordPublishQueued = true;
+    Promise.resolve().then(() => {
+      wordPublishQueued = false;
+      publishSendWord(pendingWord, "register");
     });
   }
 
@@ -109,23 +152,57 @@
       if (nextReady === localReady) return;
       localReady = nextReady;
       publishLocalReady();
+      if (localReady) scheduleSendWord(currentWord());
       emitStatus("local-ready", { ready: localReady });
+    },
+    onSendDataChange(word) {
+      scheduleSendWord(word);
     },
     startMultiplayerTransfer(info = {}) {
       if (!this.canTransfer()) {
         emitStatus("transfer-waiting-remote", { remoteReady });
         return false;
       }
+
       localSequence = (localSequence + 1) >>> 0;
       const seq = `${Date.now().toString(36)}-${localSequence.toString(36)}`;
+      const hostWord = Number(info.word) & 0xFFFF;
+      const baud = Number(info.baud) & 0x3;
+
+      if (!remoteWordValid) {
+        sendLocal({
+          type: "gba:link:word-request",
+          seq,
+          hostWord,
+          baud
+        });
+        emitStatus("transfer-awaiting-word", { seq });
+        return false;
+      }
+
+      const guestWord = remoteWord & 0xFFFF;
+      remoteWordValid = false;
+      transferCount += 1;
+
       sendLocal({
-        type: "gba:link:request",
+        type: "gba:link:fast-transfer",
         seq,
         coreSequence: Number(info.sequence) || 0,
-        word: Number(info.word) & 0xFFFF,
-        baud: Number(info.baud) & 0x3
+        hostWord,
+        guestWord,
+        baud
       });
-      emitStatus("transfer-request", { seq });
+
+      Promise.resolve().then(() => {
+        if (!serial?.completeExternalMultiplayerTransfer) return;
+        serial.completeExternalMultiplayerTransfer(
+          [hostWord, guestWord, 0xFFFF, 0xFFFF],
+          0,
+          false
+        );
+        emitStatus("transfer-fast-complete", { seq, hostWord, guestWord });
+      });
+      emitStatus("transfer-fast", { seq, hostWord, guestWord });
       return true;
     }
   };
@@ -142,6 +219,7 @@
     serial.setLinkPlayerNumber(config.playerNumber);
     localReady = (serial.SIOCNT_MODE | 0) === 2;
     publishLocalReady();
+    scheduleSendWord(currentWord());
     emitStatus("attached", { localReady, remoteReady });
     return true;
   }
@@ -153,6 +231,7 @@
     } catch {}
     localReady = false;
     remoteReady = false;
+    remoteWordValid = false;
     publishLocalReady();
     serial = null;
     emulator = null;
@@ -187,6 +266,51 @@
     if (packet.type === "gba:link:remote-ready") {
       remoteReady = Boolean(packet.ready);
       emitStatus("remote-ready", { ready: remoteReady });
+      return;
+    }
+
+    if (packet.type === "gba:link:remote-word") {
+      remoteWord = Number(packet.word) & 0xFFFF;
+      remoteWordValid = true;
+      emitStatus("remote-word", {
+        word: remoteWord,
+        requestSeq: String(packet.requestSeq || "")
+      });
+      return;
+    }
+
+    if (packet.type === "gba:link:word-request") {
+      publishSendWord(
+        currentWord(),
+        "request",
+        String(packet.seq || packet.requestSeq || "")
+      );
+      emitStatus("word-request-reply", { seq: packet.seq });
+      return;
+    }
+
+    if (packet.type === "gba:link:fast-transfer") {
+      const playerNumber = sanitizePlayerNumber(packet.playerNumber ?? config.playerNumber);
+      const hostWord = Number(packet.hostWord) & 0xFFFF;
+      const guestWord = Number(packet.guestWord) & 0xFFFF;
+      if (serial?.beginExternalMultiplayerTransfer) {
+        serial.beginExternalMultiplayerTransfer(playerNumber);
+      }
+      serial?.completeExternalMultiplayerTransfer?.(
+        [hostWord, guestWord, 0xFFFF, 0xFFFF],
+        playerNumber,
+        false
+      );
+      transferCount += 1;
+      emitStatus("transfer-fast-remote", {
+        seq: packet.seq,
+        hostWord,
+        guestWord
+      });
+      // Give the guest CPU a chance to process the serial IRQ and prepare the
+      // next SIOMLT_SEND word, then publish it ahead of the next host transfer.
+      setTimeout(() => publishSendWord(currentWord(), "post-transfer", packet.seq), 0);
+      setTimeout(() => publishSendWord(currentWord(), "post-transfer-late", packet.seq), 16);
       return;
     }
 
@@ -259,7 +383,10 @@
         remoteReady,
         cableReady: adapter.isReady(),
         remoteReady,
-        ready: adapter.canTransfer()
+        ready: adapter.canTransfer(),
+        remoteWord: remoteWordValid ? remoteWord : null,
+        transferCount,
+        lastState: lastLinkState
       };
     }
   };

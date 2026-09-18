@@ -236,6 +236,7 @@
       seq: pending.seq,
       words,
       playerNumber: 0,
+      connectedCount: Math.max(0, Math.min(3, Number(pending.connectedCount) | 0)),
       error: Boolean(error)
     });
 
@@ -247,6 +248,7 @@
         seq: pending.seq,
         words,
         playerNumber: Math.max(1, Math.min(3, Number(peer.linkSlot) | 0)),
+        connectedCount: Math.max(0, Math.min(3, Number(pending.connectedCount) | 0)),
         error: Boolean(error),
         time: Date.now()
       });
@@ -287,6 +289,7 @@
       seq,
       words,
       waiting,
+      connectedCount: Math.max(0, Math.min(3, waiting.size | 0)),
       timeoutMs,
       // Keep a lost packet from freezing GBA virtual time for seconds. Scale
       // the watchdog to the measured WebRTC RTT, with a bounded mobile-safe

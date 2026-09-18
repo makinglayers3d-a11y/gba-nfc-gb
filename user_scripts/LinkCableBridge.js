@@ -12,18 +12,10 @@
   let localSequence = 0;
   let localReady = false;
   let remoteReady = false;
-  let remoteWord = 0xFFFF;
-  let remoteWordValid = false;
-  let remoteWordGeneration = 0;
-  let consumedRemoteWordGeneration = 0;
-  let localWordGeneration = 0;
-  let lastConsumedLocalGeneration = 0;
-  let pendingWord = 0xFFFF;
-  let pendingWordReason = "register";
-  let wordPublishQueued = false;
-  let wordRequestPending = false;
   let transferCount = 0;
-  let lastLinkState = "boot";
+  let lastState = "boot";
+  let waitStartedAt = 0;
+  let lastWaitMs = null;
   let config = loadConfig();
   const bus = typeof BroadcastChannel === "function"
     ? new BroadcastChannel(CHANNEL_NAME)
@@ -74,7 +66,7 @@
   }
 
   function emitStatus(state, extra = {}) {
-    lastLinkState = state;
+    lastState = state;
     updateDebug();
     window.dispatchEvent(new CustomEvent("ml3d-link-cable-status", {
       detail: { state, ...config, ...extra }
@@ -90,10 +82,12 @@
       el.style.cssText = "position:fixed;right:6px;bottom:6px;z-index:2147483647;padding:5px 7px;background:rgba(0,0,0,.78);color:#fff;font:10px/1.25 monospace;border:1px solid rgba(255,255,255,.25);border-radius:5px;pointer-events:none;white-space:pre";
       document.documentElement.appendChild(el);
     }
+    const waiting = Boolean(emulator?.IOCore?.linkCableWait);
+    const waitText = Number.isFinite(lastWaitMs) ? Math.round(lastWaitMs) + "ms" : "--";
     el.textContent =
       `LINK ${config.role === "host" ? "H" : "G"} P${config.playerNumber}\n` +
-      `L:${localReady ? 1 : 0} R:${remoteReady ? 1 : 0} W:${remoteWordValid ? remoteWord.toString(16).padStart(4, "0") : "----"} G:${remoteWordGeneration}/${consumedRemoteWordGeneration}\n` +
-      `TX:${transferCount} ${lastLinkState}`;
+      `L:${localReady ? 1 : 0} R:${remoteReady ? 1 : 0} WAIT:${waiting ? 1 : 0}\n` +
+      `TX:${transferCount} T:${waitText} ${lastState}`;
   }
 
   function sendLocal(packet) {
@@ -117,48 +111,6 @@
     });
   }
 
-  function nextLocalWordGeneration() {
-    localWordGeneration = (localWordGeneration + 1) >>> 0;
-    if (!localWordGeneration) localWordGeneration = 1;
-    return localWordGeneration;
-  }
-
-  function publishSendWord(
-    word = currentWord(),
-    reason = "update",
-    requestSeq = "",
-    advanceGeneration = true
-  ) {
-    word = Number(word) & 0xFFFF;
-    if (advanceGeneration || !localWordGeneration) {
-      nextLocalWordGeneration();
-    }
-    return sendLocal({
-      type: "gba:link:word",
-      word,
-      generation: localWordGeneration >>> 0,
-      reason,
-      requestSeq: String(requestSeq || "")
-    });
-  }
-
-  function scheduleSendWord(word, reason = "register") {
-    pendingWord = Number(word) & 0xFFFF;
-    pendingWordReason = String(reason || "register");
-    if (wordPublishQueued) return;
-    wordPublishQueued = true;
-    Promise.resolve().then(() => {
-      wordPublishQueued = false;
-      publishSendWord(pendingWord, pendingWordReason, "", true);
-    });
-  }
-
-  function transferDelayMs(baud) {
-    // Two-player MULTI moves 32 serial bits. Approximate the real cable
-    // duration at 9600/38400/57600/115200 bps without stalling the CPU.
-    return [4, 1, 1, 1][Number(baud) & 0x3];
-  }
-
   const adapter = {
     get playerNumber() {
       return config.playerNumber;
@@ -170,82 +122,35 @@
     // WebRTC-backed cable is connected so games can enter their Multiplayer
     // menus. Remote SIO readiness is a separate condition.
     isReady() {
-      return this.isConnected();
+      // SIOCNT bit 3 is high only when the remote core is also in MULTI mode.
+      return this.isConnected() && remoteReady;
     },
     canTransfer() {
-      return this.isConnected() && remoteReady;
+      return this.isReady();
     },
     onSerialModeChange(mode) {
       const nextReady = (Number(mode) | 0) === 2;
       if (nextReady === localReady) return;
       localReady = nextReady;
       publishLocalReady();
-      if (localReady) scheduleSendWord(currentWord(), "mode-ready");
       emitStatus("local-ready", { ready: localReady });
-    },
-    onSendDataChange(word) {
-      scheduleSendWord(word);
     },
     startMultiplayerTransfer(info = {}) {
       if (!this.canTransfer()) {
         emitStatus("transfer-waiting-remote", { remoteReady });
         return false;
       }
-
       localSequence = (localSequence + 1) >>> 0;
       const seq = `${Date.now().toString(36)}-${localSequence.toString(36)}`;
-      const hostWord = Number(info.word) & 0xFFFF;
-      const baud = Number(info.baud) & 0x3;
-
-      if (
-        !remoteWordValid ||
-        (remoteWordGeneration >>> 0) <= (consumedRemoteWordGeneration >>> 0)
-      ) {
-        if (!wordRequestPending) {
-          wordRequestPending = true;
-          sendLocal({
-            type: "gba:link:word-request",
-            seq,
-            hostWord,
-            baud
-          });
-        }
-        emitStatus("transfer-awaiting-word", { seq });
-        return false;
-      }
-
-      const guestWord = remoteWord & 0xFFFF;
-      const guestGeneration = remoteWordGeneration >>> 0;
-      consumedRemoteWordGeneration = guestGeneration;
-      remoteWordValid = false;
-      wordRequestPending = false;
-      transferCount += 1;
-
+      waitStartedAt = performance.now();
       sendLocal({
-        type: "gba:link:fast-transfer",
+        type: "gba:link:request",
         seq,
         coreSequence: Number(info.sequence) || 0,
-        hostWord,
-        guestWord,
-        guestGeneration,
-        baud
+        word: Number(info.word) & 0xFFFF,
+        baud: Number(info.baud) & 0x3
       });
-
-      setTimeout(() => {
-        if (!serial?.completeExternalMultiplayerTransfer) return;
-        serial.completeExternalMultiplayerTransfer(
-          [hostWord, guestWord, 0xFFFF, 0xFFFF],
-          0,
-          false
-        );
-        emitStatus("transfer-fast-complete", {
-          seq,
-          hostWord,
-          guestWord,
-          guestGeneration
-        });
-      }, transferDelayMs(baud));
-      emitStatus("transfer-fast", { seq, hostWord, guestWord, guestGeneration });
+      emitStatus("transfer-request", { seq });
       return true;
     }
   };
@@ -262,7 +167,6 @@
     serial.setLinkPlayerNumber(config.playerNumber);
     localReady = (serial.SIOCNT_MODE | 0) === 2;
     publishLocalReady();
-    scheduleSendWord(currentWord(), "attach");
     emitStatus("attached", { localReady, remoteReady });
     return true;
   }
@@ -274,12 +178,6 @@
     } catch {}
     localReady = false;
     remoteReady = false;
-    remoteWordValid = false;
-    remoteWordGeneration = 0;
-    consumedRemoteWordGeneration = 0;
-    localWordGeneration = 0;
-    lastConsumedLocalGeneration = 0;
-    wordRequestPending = false;
     publishLocalReady();
     serial = null;
     emulator = null;
@@ -317,100 +215,10 @@
       return;
     }
 
-    if (packet.type === "gba:link:remote-word") {
-      const generation = Number(packet.generation) >>> 0;
-      if (
-        generation &&
-        generation <= (consumedRemoteWordGeneration >>> 0)
-      ) {
-        emitStatus("remote-word-stale", { generation });
-        return;
-      }
-      if (
-        generation &&
-        remoteWordValid &&
-        generation <= (remoteWordGeneration >>> 0)
-      ) {
-        emitStatus("remote-word-duplicate", { generation });
-        return;
-      }
-      remoteWord = Number(packet.word) & 0xFFFF;
-      remoteWordGeneration = generation || ((remoteWordGeneration + 1) >>> 0) || 1;
-      remoteWordValid = true;
-      wordRequestPending = false;
-      emitStatus("remote-word", {
-        word: remoteWord,
-        generation: remoteWordGeneration,
-        requestSeq: String(packet.requestSeq || "")
-      });
-      return;
-    }
-
-    if (packet.type === "gba:link:word-request") {
-      const consumed = (localWordGeneration >>> 0) <= (lastConsumedLocalGeneration >>> 0);
-      publishSendWord(
-        currentWord(),
-        "request",
-        String(packet.seq || packet.requestSeq || ""),
-        consumed
-      );
-      emitStatus("word-request-reply", {
-        seq: packet.seq,
-        generation: localWordGeneration
-      });
-      return;
-    }
-
-    if (packet.type === "gba:link:fast-transfer") {
-      const playerNumber = sanitizePlayerNumber(packet.playerNumber ?? config.playerNumber);
-      const hostWord = Number(packet.hostWord) & 0xFFFF;
-      const guestWord = Number(packet.guestWord) & 0xFFFF;
-      const guestGeneration = Number(packet.guestGeneration) >>> 0;
-      const baud = Number(packet.baud) & 0x3;
-      if (guestGeneration) {
-        lastConsumedLocalGeneration = Math.max(
-          lastConsumedLocalGeneration >>> 0,
-          guestGeneration
-        ) >>> 0;
-      }
-      if (serial?.beginExternalMultiplayerTransfer) {
-        serial.beginExternalMultiplayerTransfer(playerNumber);
-      }
-
-      setTimeout(() => {
-        serial?.completeExternalMultiplayerTransfer?.(
-          [hostWord, guestWord, 0xFFFF, 0xFFFF],
-          playerNumber,
-          false
-        );
-        transferCount += 1;
-        emitStatus("transfer-fast-remote", {
-          seq: packet.seq,
-          hostWord,
-          guestWord,
-          guestGeneration
-        });
-
-        // If the game writes a fresh SIOMLT_SEND while handling the IRQ,
-        // onSendDataChange publishes it. Only synthesize a new generation when
-        // the register remains unchanged, because hardware reuses its current
-        // send word on the next transfer.
-        const generationAfterComplete = localWordGeneration >>> 0;
-        setTimeout(() => {
-          if (
-            (localWordGeneration >>> 0) === generationAfterComplete &&
-            (localWordGeneration >>> 0) <= (lastConsumedLocalGeneration >>> 0)
-          ) {
-            publishSendWord(currentWord(), "reuse-after-transfer", packet.seq, true);
-          }
-        }, 17);
-      }, transferDelayMs(baud));
-      return;
-    }
-
     if (packet.type === "gba:link:poll") {
       const playerNumber = sanitizePlayerNumber(packet.playerNumber);
       config.playerNumber = playerNumber;
+      waitStartedAt = performance.now();
       if (serial?.beginExternalMultiplayerTransfer) {
         serial.beginExternalMultiplayerTransfer(playerNumber);
       }
@@ -436,15 +244,22 @@
         sanitizePlayerNumber(packet.playerNumber ?? config.playerNumber),
         Boolean(packet.error)
       );
+      transferCount += 1;
+      if (waitStartedAt > 0) {
+        lastWaitMs = Math.max(0, performance.now() - waitStartedAt);
+      }
+      waitStartedAt = 0;
       emitStatus("transfer-complete", {
         seq: packet.seq,
-        error: Boolean(packet.error)
+        error: Boolean(packet.error),
+        waitMs: lastWaitMs
       });
       return;
     }
 
     if (packet.type === "gba:link:disconnect") {
       remoteReady = false;
+      waitStartedAt = 0;
       emitStatus("remote-disconnect");
     }
   }
@@ -476,15 +291,11 @@
         localReady,
         remoteReady,
         cableReady: adapter.isReady(),
-        remoteReady,
         ready: adapter.canTransfer(),
-        remoteWord: remoteWordValid ? remoteWord : null,
-        remoteWordGeneration,
-        consumedRemoteWordGeneration,
-        localWordGeneration,
-        lastConsumedLocalGeneration,
+        waiting: Boolean(emulator?.IOCore?.linkCableWait),
         transferCount,
-        lastState: lastLinkState
+        lastWaitMs,
+        lastState
       };
     }
   };

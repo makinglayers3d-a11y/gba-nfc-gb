@@ -276,13 +276,22 @@
       });
     }
 
+    const measuredRtts = [...hostSession.peers.values()]
+      .map((peer) => Number(peer.metrics?.rtt))
+      .filter(Number.isFinite);
+    const timeoutMs = measuredRtts.length
+      ? Math.max(250, Math.min(900, Math.ceil(Math.max(...measuredRtts) * 4 + 120)))
+      : 600;
+
     gbaLinkPending = {
       seq,
       words,
       waiting,
-      // Allow realistic mobile/WebRTC latency while keeping only the serial
-      // peripheral busy. The emulator itself continues running normally.
-      timer: setTimeout(() => completeHostLinkTransfer(true), 1500)
+      timeoutMs,
+      // Keep a lost packet from freezing GBA virtual time for seconds. Scale
+      // the watchdog to the measured WebRTC RTT, with a bounded mobile-safe
+      // fallback when no quality sample exists yet.
+      timer: setTimeout(() => completeHostLinkTransfer(true), timeoutMs)
     };
 
     if (!waiting.size) {

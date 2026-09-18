@@ -15,6 +15,9 @@
   let remoteReady = false;
   let readyTimer = 0;
   let transferInFlight = false;
+  let lastGuestPollSeq = "";
+  let lastGuestReplyWord = 0xFFFF;
+  let lastGuestReplyBaud = 0;
   let transferCount = 0;
   let lastState = "boot";
   let waitStartedAt = 0;
@@ -283,6 +286,9 @@
     localReady = false;
     remoteReady = false;
     transferInFlight = false;
+    lastGuestPollSeq = "";
+    lastGuestReplyWord = 0xFFFF;
+    lastGuestReplyBaud = 0;
     publishLocalReady();
     serial = null;
     emulator = null;
@@ -321,23 +327,48 @@
     }
 
     if (packet.type === "gba:link:poll") {
+      const seq = String(packet.seq || "");
+      const baud = Number(packet.baud) & 0x3;
+
+      // Reliable DataChannel retries use the same transfer sequence. Re-send
+      // the original word without restarting the emulated hardware transfer.
+      if (seq && seq === lastGuestPollSeq) {
+        sendLocal({
+          type: "gba:link:reply",
+          seq,
+          word: lastGuestReplyWord,
+          baud: lastGuestReplyBaud,
+          retry: true
+        });
+        emitStatus("transfer-reply-repeat", {
+          seq,
+          word: lastGuestReplyWord,
+          baud: lastGuestReplyBaud
+        });
+        return;
+      }
+
       const playerNumber = sanitizePlayerNumber(packet.playerNumber);
       config.playerNumber = playerNumber;
       waitStartedAt = performance.now();
+      transferInFlight = true;
       if (serial?.beginExternalMultiplayerTransfer) {
         serial.beginExternalMultiplayerTransfer(playerNumber);
       }
       const replyWord = currentWord();
+      lastGuestPollSeq = seq;
+      lastGuestReplyWord = replyWord;
+      lastGuestReplyBaud = baud;
       sendLocal({
         type: "gba:link:reply",
-        seq: String(packet.seq || ""),
+        seq,
         word: replyWord,
-        baud: Number(packet.baud) & 0x3
+        baud
       });
       emitStatus("transfer-reply", {
-        seq: packet.seq,
+        seq,
         word: replyWord,
-        baud: Number(packet.baud) & 0x3
+        baud
       });
       return;
     }

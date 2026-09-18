@@ -386,6 +386,18 @@
         baud: Number(packet.baud) & 0x3,
         time: Date.now()
       });
+      return;
+    }
+
+    if (packet.type === "gba:link:hw-complete" && joinSession) {
+      safeSend(joinSession.channel, {
+        type: "gba:link:hw-complete",
+        roomId,
+        seq: String(packet.seq || ""),
+        playerNumber: Math.max(1, Math.min(3, Number(packet.playerNumber) | 0)),
+        error: Boolean(packet.error),
+        time: Date.now()
+      });
     }
   }
 
@@ -658,6 +670,17 @@
       gbaLinkPending.words[slot] = Number(packet.word) & 0xFFFF;
       gbaLinkPending.waiting.delete(joinId);
       if (!gbaLinkPending.waiting.size) completeHostLinkTransfer(false);
+      return;
+    }
+
+    if (packet.type === "gba:link:hw-complete") {
+      postLocalLink({
+        type: "gba:link:remote-hw-complete",
+        roomId: hostSession.room.id,
+        seq: String(packet.seq || ""),
+        playerNumber: Math.max(1, Math.min(3, Number(peer.linkSlot) | 0)),
+        error: Boolean(packet.error)
+      });
       return;
     }
 

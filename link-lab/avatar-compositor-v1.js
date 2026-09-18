@@ -4,7 +4,7 @@ if(window.__ml3dAvatarCompositorV1)return;window.__ml3dAvatarCompositorV1=true;
 
 const HAIR_W=32,HAIR_H=32;
 const HAIR_ATLAS='./assets/avatar-modular/hair-atlas-v1.png?v=3';
-const PILOT_HAIR_ATLAS='./assets/avatar-modular/hair-pilot-v1.png?v=1';
+const PILOT_HAIR_ATLAS='./assets/avatar-modular/hair-pilot-v2.png?v=1';
 const PILOT_GRID=4;
 const HAIR_DR={down:0,left:1,right:2,up:3};
 const DEF={skin:'#efc3a1',hair:1,hairColor:'#4a3024',hairOffsetX:0,hairOffsetY:0,hairScale:1};

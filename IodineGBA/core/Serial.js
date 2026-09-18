@@ -21,9 +21,8 @@ GameBoyAdvanceSerial.prototype.initialize = function () {
     this.SIOCNT0_DATA = 0x0C;
     this.SIOTransferStarted = false;
     this.SIOMULT_PLAYER_NUMBER = 0;
-    // Physical position on the emulated cable is known before the first
-    // multiplayer transfer. The hardware multiplayer ID (SIOCNT bits 4-5)
-    // is only valid after a successful transfer.
+    // Physical position on the emulated cable. When MULTI mode is selected,
+    // hardware exposes this ID immediately in SIOCNT bits 4-5.
     this.linkPlayerNumber = 0;
     this.linkPlayerIdValid = false;
     this.SIOCOMMERROR = false;
@@ -535,6 +534,12 @@ GameBoyAdvanceSerial.prototype.writeSIOCNT1 = function (data) {
     this.SIOCNT_IRQ = data & 0x40;
     var oldMode = this.SIOCNT_MODE | 0;
     this.SIOCNT_MODE = (data >> 4) & 0x3;
+
+    if (this.linkCableConnected() && (this.SIOCNT_MODE | 0) == 0x2) {
+        this.linkPlayerIdValid = true;
+        this.SIOMULT_PLAYER_NUMBER = this.linkPlayerNumber & 0x3;
+    }
+
     if (
         (oldMode | 0) != (this.SIOCNT_MODE | 0) &&
         this.linkCable &&

@@ -17,11 +17,11 @@ function GameBoyAdvanceIO(SKIPBoot, coreExposed, BIOS, ROM) {
     this.graphicsClocks = 0;
     this.timerClocks = 0;
     this.serialClocks = 0;
-    // Distributed GBA Link barrier. This stops only emulated CPU time while
-    // WebRTC completes a serial transfer; browser/UI/network timers keep running.
+    // Link network rendezvous state. This is diagnostic only: GBA virtual time
+    // keeps running while WebRTC carries the remote word. The SIO peripheral
+    // itself stays BUSY until the response arrives and hardware timing elapses.
     this.linkCableWait = false;
     this.linkCableWaitStartedAt = 0;
-    this.linkCableCatchUpCycles = 0;
     this.nextEventClocks = 0;
     this.BIOSFound = false;
     //Do we skip the BIOS Boot Intro?
@@ -82,27 +82,8 @@ GameBoyAdvanceIO.prototype.assignInstructionCoreReferences = function (ARM, THUM
     this.THUMB = THUMB;
 }
 GameBoyAdvanceIO.prototype.enter = function (CPUCyclesTotal) {
-    // A real Link transfer is synchronous. While the remote word is in flight,
-    // do not advance GBA virtual time. Browser/UI/WebRTC stay alive.
-    if (this.linkCableWait) {
-        this.cyclesToIterate = 0;
-        this.cyclesOveriteratedPreviously = 0;
-        return;
-    }
-
-    // Gradually recover wall-time lost to the network rendezvous. Cap recovery
-    // to +100% of a normal iteration so the emulator never bursts arbitrarily
-    // fast after a latency spike.
-    var linkCatchUp = Math.min(
-        this.linkCableCatchUpCycles | 0,
-        Math.max(CPUCyclesTotal | 0, 0) | 0
-    ) | 0;
-    this.linkCableCatchUpCycles =
-        ((this.linkCableCatchUpCycles | 0) - (linkCatchUp | 0)) | 0;
-
     //Find out how many clocks to iterate through this run:
-    this.cyclesToIterate =
-        ((CPUCyclesTotal | 0) + (linkCatchUp | 0) + (this.cyclesOveriteratedPreviously | 0)) | 0;
+    this.cyclesToIterate = ((CPUCyclesTotal | 0) + (this.cyclesOveriteratedPreviously | 0)) | 0;
     //An extra check to make sure we don't do stuff if we did too much last run:
     if ((this.cyclesToIterate | 0) > 0) {
         //Update our core event prediction:
@@ -114,17 +95,8 @@ GameBoyAdvanceIO.prototype.enter = function (CPUCyclesTotal) {
         //Ensure audio buffers at least once per iteration:
         this.sound.audioJIT();
     }
-    // If a Link barrier was raised during this iteration, discard the wall-time
-    // budget that remained. Catching it up later would advance virtual time by
-    // the network latency and defeat the barrier.
-    if (this.linkCableWait) {
-        this.cyclesToIterate = 0;
-        this.cyclesOveriteratedPreviously = 0;
-    }
-    else {
-        //If we clocked just a little too much, subtract the extra from the next run:
-        this.cyclesOveriteratedPreviously = this.cyclesToIterate | 0;
-    }
+    //If we clocked just a little too much, subtract the extra from the next run:
+    this.cyclesOveriteratedPreviously = this.cyclesToIterate | 0;
 }
 GameBoyAdvanceIO.prototype.beginLinkCableWait = function () {
     if (!this.linkCableWait) {
@@ -133,32 +105,11 @@ GameBoyAdvanceIO.prototype.beginLinkCableWait = function () {
             (typeof performance != "undefined" && performance.now)
                 ? performance.now()
                 : Date.now();
-        // Exit the current CPU run as soon as the MMIO write finishes.
-        this.flagIterationEnd();
     }
 }
-GameBoyAdvanceIO.prototype.endLinkCableWait = function (catchUp) {
-    if (this.linkCableWait && catchUp) {
-        var now =
-            (typeof performance != "undefined" && performance.now)
-                ? performance.now()
-                : Date.now();
-        var waitedMs = Math.max(0, now - (this.linkCableWaitStartedAt || now));
-        // GBA clock: 16.777216 MHz. Only bank at most 120 ms so a pathological
-        // stall cannot cause a long turbo burst afterwards.
-        var recoveredCycles = Math.min(
-            Math.round(waitedMs * 16777.216),
-            2013266
-        ) | 0;
-        this.linkCableCatchUpCycles = Math.min(
-            ((this.linkCableCatchUpCycles | 0) + (recoveredCycles | 0)) | 0,
-            2013266
-        ) | 0;
-    }
+GameBoyAdvanceIO.prototype.endLinkCableWait = function () {
     this.linkCableWait = false;
     this.linkCableWaitStartedAt = 0;
-    this.cyclesToIterate = 0;
-    this.cyclesOveriteratedPreviously = 0;
 }
 GameBoyAdvanceIO.prototype.run = function () {
     //Clock through the state machine:

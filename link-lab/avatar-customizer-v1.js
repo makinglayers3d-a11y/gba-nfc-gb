@@ -8,7 +8,7 @@
 
   function ensureStyle(){
     if(document.querySelector('link[data-ml3d-avatar-unified]'))return;
-    const l=document.createElement('link');l.rel='stylesheet';l.href='./avatar-customizer-v3.css?v=12';l.dataset.ml3dAvatarUnified='1';document.head.appendChild(l);
+    const l=document.createElement('link');l.rel='stylesheet';l.href='./avatar-customizer-v3.css?v=13';l.dataset.ml3dAvatarUnified='1';document.head.appendChild(l);
   }
   function fallback(error){console.error('[ML3D avatar] Fallo al cargar personalizador modular.',error||'unknown');root.classList.remove('ml3d-avatar-v3-active');root.classList.add('ml3d-avatar-base-only');window.__ML3DAvatarCustomizerMode='base-only-safe';}
   function loadV3(){
@@ -41,7 +41,7 @@
   }
   function loadCompositor(){
     if(window.ML3DAvatarCompositor){loadThumbs();return;}if(compositorLoading)return;compositorLoading=true;ensureStyle();
-    const s=document.createElement('script');s.src='./avatar-compositor-v1.js?v=8';s.defer=true;s.onload=()=>{compositorLoading=false;loadThumbs()};s.onerror=e=>{compositorLoading=false;fallback(e)};document.head.appendChild(s);
+    const s=document.createElement('script');s.src='./avatar-compositor-v1.js?v=9';s.defer=true;s.onload=()=>{compositorLoading=false;loadThumbs()};s.onerror=e=>{compositorLoading=false;fallback(e)};document.head.appendChild(s);
   }
   function wait(){
     if(document.getElementById('avatarFinalBase')){requestAnimationFrame(()=>setTimeout(loadCompositor,80));return;}

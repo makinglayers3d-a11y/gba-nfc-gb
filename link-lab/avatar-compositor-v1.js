@@ -126,10 +126,10 @@ function baseBounds(base){
 function drawHairFixed(ctx,piece,base){
   if(!piece)return;
   const b=baseBounds(base);
-  const size=Math.max(1,Math.round(Math.min(b.w*1.10,b.h*.48)));
+  const size=Math.max(1,Math.round(Math.min(b.w*1.32,b.h*.58)));
   const cx=b.x+b.w/2;
   const dx=Math.round(cx-size/2);
-  const dy=Math.round(b.y+1);
+  const dy=Math.round(b.y+2);
   ctx.drawImage(piece,0,0,HAIR_W,HAIR_H,dx,dy,size,size);
 }
 

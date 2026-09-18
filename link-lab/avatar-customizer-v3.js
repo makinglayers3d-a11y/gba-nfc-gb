@@ -2,7 +2,7 @@
 'use strict';
 if(window.__ml3dAvatarCustomizerV3Unified)return;window.__ml3dAvatarCustomizerV3Unified=true;
 const C=()=>window.ML3DAvatarCompositor;
-const COUNTS={hair:9};
+const HAIR_OPTIONS=[0,1,2,3,4,5,6,7,8,9];
 const PALETTES={
 skin:['#f6d6bc','#efc3a1','#d89c73','#b8754c','#8b5537','#5b3425'],
 hairColor:['#2b211c','#4a3024','#7c4d31','#8b3441','#e4b842','#dfe4ea','#40558d','#c33d49']
@@ -30,10 +30,15 @@ function colorControl(host,label,field,palette){
 }
 function renderOptions(host){
   host.textContent='';const p=profile();
-  for(let v=1;v<=COUNTS.hair;v++){
+  for(const v of HAIR_OPTIONS){
     const b=document.createElement('button');b.type='button';b.dataset.kind='hair';b.className='avatar-v3-option'+(String(p.hair)===String(v)?' selected':'');
-    const thumb=C()?.thumbFor?.('hair',v);if(thumb){thumb.className='avatar-v3-thumb';b.append(thumb)}
-    const s=document.createElement('small');s.textContent=String(v);b.append(s);b.onclick=()=>apply({hair:v});host.append(b);
+    if(v===0){
+      b.dataset.noHair='1';
+      const empty=document.createElement('div');empty.className='avatar-v3-no-hair';empty.textContent='Ø';b.append(empty);
+    }else{
+      const thumb=C()?.thumbFor?.('hair',v);if(thumb){thumb.className='avatar-v3-thumb';b.append(thumb)}
+    }
+    const s=document.createElement('small');s.textContent=v===0?'SIN PELO':String(v);b.append(s);b.onclick=()=>apply({hair:v});host.append(b);
   }
 }
 function refresh(rebuild=false){

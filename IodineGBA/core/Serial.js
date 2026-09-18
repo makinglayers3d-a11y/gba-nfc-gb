@@ -473,7 +473,13 @@ GameBoyAdvanceSerial.prototype.writeSIOCNT0 = function (data) {
                         }
                     }
                     else {
-                        this.SIOTransferStarted = false;
+                        // In Multi-Player mode BUSY is hardware-owned once a
+                        // transfer has started. Software writes with bit 7 clear
+                        // must not abort an in-flight transfer; hardware clears
+                        // BUSY only when the transfer actually completes.
+                        if (!this.SIOTransferStarted) {
+                            this.SIOTransferStarted = false;
+                        }
                     }
                 }
                 break;

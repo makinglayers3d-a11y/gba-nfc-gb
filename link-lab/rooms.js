@@ -47,6 +47,7 @@
     : null;
   let gbaLinkPending = null;
   let gbaLinkSequence = 0;
+  let localGbaReady = false;
 
   function log(message) {
     const t = new Date().toLocaleTimeString();
@@ -279,7 +280,9 @@
       seq,
       words,
       waiting,
-      timer: setTimeout(() => completeHostLinkTransfer(true), 240)
+      // WebRTC/mobile latency is far higher than the electrical cable. The
+      // emulator is frozen in lockstep while this timer is pending.
+      timer: setTimeout(() => completeHostLinkTransfer(true), 1500)
     };
 
     if (!waiting.size) {
@@ -292,6 +295,30 @@
     if (!packet || packet.source !== "emulator") return;
     const roomId = currentLinkRoomId();
     if (!roomId || packet.roomId !== roomId) return;
+
+    if (packet.type === "gba:link:ready") {
+      localGbaReady = Boolean(packet.ready);
+      if (hostSession) {
+        for (const peer of hostSession.peers.values()) {
+          if (peer.channel?.readyState !== "open") continue;
+          safeSend(peer.channel, {
+            type: "gba:link:ready",
+            roomId,
+            ready: localGbaReady,
+            time: Date.now()
+          });
+        }
+      } else if (joinSession) {
+        safeSend(joinSession.channel, {
+          type: "gba:link:ready",
+          roomId,
+          ready: localGbaReady,
+          time: Date.now()
+        });
+      }
+      log(`GBA local: ${localGbaReady ? "MULTIPLAYER LISTO" : "fuera de multiplayer"}.`);
+      return;
+    }
 
     if (packet.type === "gba:link:request" && hostSession) {
       startHostLinkTransfer(packet);
@@ -560,6 +587,19 @@
     const player = players.get(joinId);
     if (!peer) return;
 
+    if (packet.type === "gba:link:ready") {
+      peer.linkReady = Boolean(packet.ready);
+      const activePeers = [...hostSession.peers.values()].filter((item) => item.channel?.readyState === "open");
+      const remoteReady = activePeers.length > 0 && activePeers.every((item) => Boolean(item.linkReady));
+      postLocalLink({
+        type: "gba:link:remote-ready",
+        roomId: hostSession.room.id,
+        ready: remoteReady
+      });
+      log(`${peer.join.displayName}: GBA ${peer.linkReady ? "MULTIPLAYER LISTA" : "no lista"}.`);
+      return;
+    }
+
     if (packet.type === "gba:link:reply") {
       if (!gbaLinkPending || String(packet.seq || "") !== gbaLinkPending.seq) return;
       const slot = Math.max(1, Math.min(3, Number(peer.linkSlot) | 0));
@@ -607,6 +647,16 @@
   }
 
   function handleGuestPacket(packet) {
+    if (packet.type === "gba:link:ready") {
+      postLocalLink({
+        type: "gba:link:remote-ready",
+        roomId: packet.roomId || joinSession?.room?.id || "",
+        ready: Boolean(packet.ready)
+      });
+      log(`Host: GBA ${packet.ready ? "MULTIPLAYER LISTA" : "no lista"}.`);
+      return;
+    }
+
     if (packet.type === "gba:link:configure") {
       const slot = Math.max(1, Math.min(3, Number(packet.playerNumber) | 0));
       if (joinSession) joinSession.linkSlot = slot;
@@ -859,6 +909,7 @@
       channel: null,
       answerApplied: false,
       linkSlot: index,
+      linkReady: false,
       metrics: { pending: new Map(), rtt: null, jitter: null, lastRtt: null, missed: 0, quality: "unknown" }
     };
     const pc = makePeer(`Host↔${join.displayName}`, () => {});
@@ -899,6 +950,12 @@
         roomId: hostSession.room.id,
         playerNumber: peerInfo.linkSlot,
         role: "guest",
+        time: Date.now()
+      });
+      safeSend(channel, {
+        type: "gba:link:ready",
+        roomId: hostSession.room.id,
+        ready: localGbaReady,
         time: Date.now()
       });
       safeSend(channel, { type: "lobby:request-profile" });
@@ -1125,6 +1182,12 @@
         log(`Confirmación connected: ${e.message}`);
       }
       safeSend(channel, { type: "lobby:profile", profile, time: Date.now() });
+      safeSend(channel, {
+        type: "gba:link:ready",
+        roomId: joinSession.room.id,
+        ready: localGbaReady,
+        time: Date.now()
+      });
     });
     channel.addEventListener("close", () => {
       log("Jugador: canal cerrado.");

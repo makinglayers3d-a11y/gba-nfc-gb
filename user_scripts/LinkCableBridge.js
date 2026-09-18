@@ -18,6 +18,13 @@
   let lastState = "boot";
   let waitStartedAt = 0;
   let lastWaitMs = null;
+  let waitSamples = 0;
+  let waitTotalMs = 0;
+  let waitMaxMs = 0;
+  let errorCount = 0;
+  let debugFrozen = false;
+  let debugStartedAt = performance.now();
+  const debugHistory = [];
   let config = loadConfig();
   const bus = typeof BroadcastChannel === "function"
     ? new BroadcastChannel(CHANNEL_NAME)
@@ -69,8 +76,38 @@
     emitStatus("configured");
   }
 
+  function shortSeq(value) {
+    const seq = String(value || "");
+    return seq ? seq.slice(-7) : "-";
+  }
+
+  function recordDebugState(state, extra = {}) {
+    if (params.get("linkDebug") !== "1" || debugFrozen) return;
+    const waiting = Boolean(emulator?.IOCore?.linkCableWait);
+    const elapsed = Math.max(0, Math.round(performance.now() - debugStartedAt));
+    const wait = Number.isFinite(extra.waitMs)
+      ? Math.round(extra.waitMs)
+      : (Number.isFinite(lastWaitMs) ? Math.round(lastWaitMs) : null);
+    const flags =
+      `M${localModeMulti ? 1 : 0}L${localReady ? 1 : 0}R${remoteReady ? 1 : 0}W${waiting ? 1 : 0}`;
+    const errorTag = extra.error ? " ERR" : "";
+    debugHistory.push(
+      `${String(elapsed).padStart(5, " ")} ${flags} TX${transferCount} ${state}` +
+      ` s:${shortSeq(extra.seq)}` +
+      (wait === null ? "" : ` t:${wait}ms`) +
+      errorTag
+    );
+    while (debugHistory.length > 8) debugHistory.shift();
+    if (extra.error) {
+      errorCount += 1;
+      debugFrozen = true;
+      lastState = "ERROR-SNAPSHOT";
+    }
+  }
+
   function emitStatus(state, extra = {}) {
-    lastState = state;
+    if (!debugFrozen) lastState = state;
+    recordDebugState(state, extra);
     updateDebug();
     window.dispatchEvent(new CustomEvent("ml3d-link-cable-status", {
       detail: { state, ...config, ...extra }
@@ -83,15 +120,18 @@
     if (!el) {
       el = document.createElement("div");
       el.id = "ml3d-link-debug";
-      el.style.cssText = "position:fixed;right:6px;bottom:6px;z-index:2147483647;padding:5px 7px;background:rgba(0,0,0,.78);color:#fff;font:10px/1.25 monospace;border:1px solid rgba(255,255,255,.25);border-radius:5px;pointer-events:none;white-space:pre";
+      el.style.cssText = "position:fixed;right:6px;bottom:6px;z-index:2147483647;max-width:min(96vw,470px);padding:7px 9px;background:rgba(0,0,0,.88);color:#fff;font:10px/1.3 monospace;border:1px solid rgba(255,255,255,.32);border-radius:6px;pointer-events:none;white-space:pre;overflow:hidden";
       document.documentElement.appendChild(el);
     }
     const waiting = Boolean(emulator?.IOCore?.linkCableWait);
     const waitText = Number.isFinite(lastWaitMs) ? Math.round(lastWaitMs) + "ms" : "--";
+    const avgWait = waitSamples ? Math.round(waitTotalMs / waitSamples) : 0;
+    const title = debugFrozen ? "LINK ERROR SNAPSHOT" : "LINK TRACE";
     el.textContent =
-      `LINK ${config.role === "host" ? "H" : "G"} P${config.playerNumber}\n` +
+      `${title} ${config.role === "host" ? "H" : "G"} P${config.playerNumber}\n` +
       `M:${localModeMulti ? 1 : 0} L:${localReady ? 1 : 0} R:${remoteReady ? 1 : 0} WAIT:${waiting ? 1 : 0}\n` +
-      `TX:${transferCount} T:${waitText} ${lastState}`;
+      `TX:${transferCount} last:${waitText} avg:${avgWait}ms max:${Math.round(waitMaxMs)}ms err:${errorCount}\n` +
+      (debugHistory.length ? debugHistory.join("\n") : lastState);
   }
 
   function sendLocal(packet) {
@@ -278,6 +318,9 @@
       transferCount += 1;
       if (waitStartedAt > 0) {
         lastWaitMs = Math.max(0, performance.now() - waitStartedAt);
+        waitSamples += 1;
+        waitTotalMs += lastWaitMs;
+        waitMaxMs = Math.max(waitMaxMs, lastWaitMs);
       }
       waitStartedAt = 0;
       emitStatus("transfer-complete", {
@@ -327,6 +370,12 @@
         waiting: Boolean(emulator?.IOCore?.linkCableWait),
         transferCount,
         lastWaitMs,
+        waitSamples,
+        waitTotalMs,
+        waitMaxMs,
+        errorCount,
+        debugFrozen,
+        debugHistory: debugHistory.slice(),
         lastState
       };
     }

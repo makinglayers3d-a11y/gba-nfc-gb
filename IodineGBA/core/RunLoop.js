@@ -17,6 +17,9 @@ function GameBoyAdvanceIO(SKIPBoot, coreExposed, BIOS, ROM) {
     this.graphicsClocks = 0;
     this.timerClocks = 0;
     this.serialClocks = 0;
+    // Distributed GBA Link barrier. This stops only emulated CPU time while
+    // WebRTC completes a serial transfer; browser/UI/network timers keep running.
+    this.linkCableWait = false;
     this.nextEventClocks = 0;
     this.BIOSFound = false;
     //Do we skip the BIOS Boot Intro?
@@ -77,6 +80,14 @@ GameBoyAdvanceIO.prototype.assignInstructionCoreReferences = function (ARM, THUM
     this.THUMB = THUMB;
 }
 GameBoyAdvanceIO.prototype.enter = function (CPUCyclesTotal) {
+    // A real Link transfer is synchronous. While the remote word is in flight,
+    // do not advance GBA virtual time. This is intentionally separate from the
+    // emulator pause flag so rendering/UI/WebRTC remain alive.
+    if (this.linkCableWait) {
+        this.cyclesToIterate = 0;
+        this.cyclesOveriteratedPreviously = 0;
+        return;
+    }
     //Find out how many clocks to iterate through this run:
     this.cyclesToIterate = ((CPUCyclesTotal | 0) + (this.cyclesOveriteratedPreviously | 0)) | 0;
     //An extra check to make sure we don't do stuff if we did too much last run:
@@ -90,8 +101,29 @@ GameBoyAdvanceIO.prototype.enter = function (CPUCyclesTotal) {
         //Ensure audio buffers at least once per iteration:
         this.sound.audioJIT();
     }
-    //If we clocked just a little too much, subtract the extra from the next run:
-    this.cyclesOveriteratedPreviously = this.cyclesToIterate | 0;
+    // If a Link barrier was raised during this iteration, discard the wall-time
+    // budget that remained. Catching it up later would advance virtual time by
+    // the network latency and defeat the barrier.
+    if (this.linkCableWait) {
+        this.cyclesToIterate = 0;
+        this.cyclesOveriteratedPreviously = 0;
+    }
+    else {
+        //If we clocked just a little too much, subtract the extra from the next run:
+        this.cyclesOveriteratedPreviously = this.cyclesToIterate | 0;
+    }
+}
+GameBoyAdvanceIO.prototype.beginLinkCableWait = function () {
+    if (!this.linkCableWait) {
+        this.linkCableWait = true;
+        // Exit the current CPU run as soon as the MMIO write finishes.
+        this.flagIterationEnd();
+    }
+}
+GameBoyAdvanceIO.prototype.endLinkCableWait = function () {
+    this.linkCableWait = false;
+    this.cyclesToIterate = 0;
+    this.cyclesOveriteratedPreviously = 0;
 }
 GameBoyAdvanceIO.prototype.run = function () {
     //Clock through the state machine:

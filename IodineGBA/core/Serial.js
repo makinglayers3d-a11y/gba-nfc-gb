@@ -318,42 +318,50 @@ GameBoyAdvanceSerial.prototype.writeSIOCNT0 = function (data) {
                 this.SIOShiftClockDivider = this.SIOMultiplayerBaudRate[this.SIOBaudRate | 0] | 0;
                 if (!this.linkCableConnected()) {
                     this.SIOMULT_PLAYER_NUMBER = (data >> 4) & 0x3;
+                    this.SIOCOMMERROR = ((data & 0x40) != 0);
                 }
-                this.SIOCOMMERROR = ((data & 0x40) != 0);
-                if ((data & 0x80) != 0) {
-                    if (!this.SIOTransferStarted) {
-                        this.SIOTransferStarted = true;
-                        if ((this.getLinkPlayerNumber() | 0) == 0) {
-                            this.SIODATA_A = 0xFFFF;
-                            this.SIODATA_B = 0xFFFF;
-                            this.SIODATA_C = 0xFFFF;
-                            this.SIODATA_D = 0xFFFF;
-                        }
-                        this.serialBitsShifted = 0;
-                        this.shiftClocks = 0;
 
-                        if (
-                            (this.getLinkPlayerNumber() | 0) == 0 &&
-                            this.linkCableConnected() &&
-                            this.linkCable &&
-                            typeof this.linkCable.startMultiplayerTransfer == "function"
-                        ) {
-                            this.linkTransferSequence = ((this.linkTransferSequence | 0) + 1) | 0;
-                            try {
-                                this.linkCable.startMultiplayerTransfer({
-                                    sequence: this.linkTransferSequence | 0,
-                                    word: this.getLinkSendData() | 0,
-                                    baud: this.SIOBaudRate | 0
-                                });
+                var linkPlayerNumber = this.getLinkPlayerNumber() | 0;
+                var linkChild = this.linkCableConnected() && linkPlayerNumber != 0;
+
+                // In real MULTI mode bit 7 is read-only on secondary GBAs.
+                // A child becomes busy only when the parent clocks a transfer.
+                if (!linkChild) {
+                    if ((data & 0x80) != 0) {
+                        if (!this.SIOTransferStarted) {
+                            this.SIOTransferStarted = true;
+                            if ((linkPlayerNumber | 0) == 0) {
+                                this.SIODATA_A = 0xFFFF;
+                                this.SIODATA_B = 0xFFFF;
+                                this.SIODATA_C = 0xFFFF;
+                                this.SIODATA_D = 0xFFFF;
                             }
-                            catch (error) {
-                                this.SIOCOMMERROR = true;
+                            this.serialBitsShifted = 0;
+                            this.shiftClocks = 0;
+
+                            if (
+                                (linkPlayerNumber | 0) == 0 &&
+                                this.linkCableConnected() &&
+                                this.linkCable &&
+                                typeof this.linkCable.startMultiplayerTransfer == "function"
+                            ) {
+                                this.linkTransferSequence = ((this.linkTransferSequence | 0) + 1) | 0;
+                                try {
+                                    this.linkCable.startMultiplayerTransfer({
+                                        sequence: this.linkTransferSequence | 0,
+                                        word: this.getLinkSendData() | 0,
+                                        baud: this.SIOBaudRate | 0
+                                    });
+                                }
+                                catch (error) {
+                                    this.SIOCOMMERROR = true;
+                                }
                             }
                         }
                     }
-                }
-                else {
-                    this.SIOTransferStarted = false;
+                    else {
+                        this.SIOTransferStarted = false;
+                    }
                 }
                 break;
             //UART:
@@ -437,6 +445,30 @@ GameBoyAdvanceSerial.prototype.writeRCNT0 = function (data) {
     }
 }
 GameBoyAdvanceSerial.prototype.readRCNT0 = function () {
+    // RCNT bits 0-3 expose the live SC/SD/SI/SO pin states even while
+    // Normal/Multiplayer mode is selected. Several Nintendo games poll SC
+    // through RCNT bit 0 before accepting a secondary GBA.
+    if (
+        (this.RCNTMode | 0) < 0x2 &&
+        (this.SIOCNT_MODE | 0) == 0x2 &&
+        this.linkCableConnected()
+    ) {
+        var busy = !!this.SIOTransferStarted;
+        var playerNumber = this.getLinkPlayerNumber() | 0;
+        var pins = 0;
+
+        if (!busy) {
+            pins |= 0x1; // SC high while idle.
+            pins |= 0x2; // SD high: all connected GBAs ready.
+            pins |= 0x8; // SO high while idle.
+            if (playerNumber != 0) {
+                pins |= 0x4; // Child SI sees previous unit SO high while idle.
+            }
+        }
+        // During a transfer the parent pulls SC low and the chained
+        // start condition propagates low through the child inputs.
+        return (this.RCNTDataBitFlow << 4) | pins;
+    }
     return (this.RCNTDataBitFlow << 4) | this.RCNTDataBits;
 }
 GameBoyAdvanceSerial.prototype.writeRCNT1 = function (data) {

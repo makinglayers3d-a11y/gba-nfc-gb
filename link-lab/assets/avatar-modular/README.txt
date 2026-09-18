@@ -1,4 +1,1 @@
-ML3D Link avatar modular assets.
-Runtime atlas: avatar-modular-atlas-v1.png
-Layout per category: 64x96 logical frames, 4 frames x 4 directions per variant.
-Directions: down, up, left, right.
+ML3D Link avatar modular assets.\nRuntime hair atlas: hair-atlas-v1.png\nLayout: 9 hairstyles, 4 frames x 4 directions, 32x32 per cell.\nDirections: down, left, right, up.\n

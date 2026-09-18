@@ -11,6 +11,8 @@
 .avatar-v3-option canvas.avatar-v3-thumb{display:block!important;visibility:visible!important;opacity:1!important;width:58px!important;height:76px!important;object-fit:contain;image-rendering:pixelated;image-rendering:crisp-edges;pointer-events:none}
 .avatar-v3-option[data-kind="hair"]{justify-content:center!important;padding-bottom:20px!important}
 .avatar-v3-option[data-kind="hair"] canvas.avatar-v3-thumb{width:60px!important;height:60px!important;margin:auto!important}
+.avatar-v3-no-hair{display:flex;align-items:center;justify-content:center;width:60px;height:60px;margin:auto;color:#9fdcff;font-size:28px;font-weight:800;line-height:1}
+.avatar-v3-option[data-no-hair="1"] small{font-size:8px}
 .avatar-v3-option[data-kind="hair"] small{position:absolute;left:0;right:0;bottom:6px;text-align:center}
 .avatar-v3-option small{font-size:9px;color:#b9d8e9;white-space:nowrap;pointer-events:none}
 .avatar-v3-skin,.avatar-v3-colors{display:grid;gap:8px}.avatar-v3-skin{margin-bottom:7px;padding-bottom:8px;border-bottom:1px solid rgba(83,166,214,.18)}

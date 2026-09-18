@@ -571,6 +571,7 @@ window.addEventListener(
 
     if (emulator) {
       try {
+        window.ML3DLinkCable?.detachEmulator?.(emulator);
         emulator.exportSave();
         emulator.pause();
       } catch (error) {
@@ -679,6 +680,7 @@ window.addEventListener(
         console.error("Error cargando partida guardada:", error);
       }
       window.__gba = emulator;
+      window.ML3DLinkCable?.attachEmulator?.(emulator);
       startGbaTimers();
     }
 

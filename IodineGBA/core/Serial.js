@@ -57,12 +57,26 @@ GameBoyAdvanceSerial.prototype.initialize = function () {
     this.serialBitsShifted = 0;
     this.linkCable = null;
     this.linkTransferSequence = 0;
+    this.linkExternalTransferPending = false;
+    this.linkExternalTransferWords = [0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF];
+    this.linkExternalTransferPlayer = 0;
+    this.linkExternalTransferError = false;
+    this.linkExternalTransferClocks = 0;
+    this.linkExternalTransferCycles = 0;
 }
 GameBoyAdvanceSerial.prototype.SIOMultiplayerBaudRate = [
       9600,
      38400,
      57600,
     115200
+];
+// Measured/derived Multi-Player transfer durations used by mGBA, indexed by
+// baud (0-3) and number of connected secondary GBAs (0-3).
+GameBoyAdvanceSerial.prototype.LinkMultiplayerTransferCycles = [
+    [31976, 63427, 94884, 125829],
+    [ 8378, 16241, 24104,  31457],
+    [ 5750, 10998, 16241,  20972],
+    [ 3140,  5755,  8376,  10486]
 ];
 
 GameBoyAdvanceSerial.prototype.attachLinkCable = function (adapter) {
@@ -80,8 +94,11 @@ GameBoyAdvanceSerial.prototype.detachLinkCable = function () {
     this.SIOMULT_PLAYER_NUMBER = 0;
     this.SIOTransferStarted = false;
     this.SIOCOMMERROR = false;
+    this.linkExternalTransferPending = false;
+    this.linkExternalTransferClocks = 0;
+    this.linkExternalTransferCycles = 0;
     if (this.IOCore && typeof this.IOCore.endLinkCableWait == "function") {
-        this.IOCore.endLinkCableWait();
+        this.IOCore.endLinkCableWait(false);
     }
 };
 GameBoyAdvanceSerial.prototype.linkCableConnected = function () {
@@ -131,31 +148,75 @@ GameBoyAdvanceSerial.prototype.beginExternalMultiplayerTransfer = function (play
     this.setLinkPlayerNumber(playerNumber | 0);
     this.SIOTransferStarted = true;
     this.SIOCOMMERROR = false;
+    // Hardware clears all receive registers to FFFF at transfer start on every
+    // participating GBA, not only on the parent.
+    this.SIODATA_A = 0xFFFF;
+    this.SIODATA_B = 0xFFFF;
+    this.SIODATA_C = 0xFFFF;
+    this.SIODATA_D = 0xFFFF;
     this.serialBitsShifted = 0;
     this.shiftClocks = 0;
+    this.linkExternalTransferPending = false;
+    this.linkExternalTransferClocks = 0;
+    this.linkExternalTransferCycles = 0;
     if (this.IOCore && typeof this.IOCore.beginLinkCableWait == "function") {
         this.IOCore.beginLinkCableWait();
     }
     return this.getLinkSendData() | 0;
 };
-GameBoyAdvanceSerial.prototype.completeExternalMultiplayerTransfer = function (words, playerNumber, commError) {
+GameBoyAdvanceSerial.prototype.completeExternalMultiplayerTransfer = function (words, playerNumber, commError, connectedCount) {
     words = words || [];
+    connectedCount = Math.max(0, Math.min(3, connectedCount | 0)) | 0;
     this.setLinkPlayerNumber(playerNumber | 0);
+    this.linkExternalTransferWords = [
+        (words[0] === undefined ? 0xFFFF : words[0]) & 0xFFFF,
+        (words[1] === undefined ? 0xFFFF : words[1]) & 0xFFFF,
+        (words[2] === undefined ? 0xFFFF : words[2]) & 0xFFFF,
+        (words[3] === undefined ? 0xFFFF : words[3]) & 0xFFFF
+    ];
+    this.linkExternalTransferPlayer = this.linkPlayerNumber & 0x3;
+    this.linkExternalTransferError = !!commError;
+    this.linkExternalTransferClocks = 0;
+    this.linkExternalTransferCycles =
+        this.LinkMultiplayerTransferCycles[this.SIOBaudRate & 0x3][connectedCount] | 0;
+    this.linkExternalTransferPending = true;
+
+    // Network rendezvous is complete. Resume virtual time, but keep SIO BUSY
+    // until the emulated hardware transfer duration has elapsed.
+    if (this.IOCore && typeof this.IOCore.endLinkCableWait == "function") {
+        this.IOCore.endLinkCableWait(!commError);
+    }
+};
+GameBoyAdvanceSerial.prototype.finishExternalMultiplayerTransfer = function () {
+    var words = this.linkExternalTransferWords || [0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF];
     this.linkPlayerIdValid = true;
-    this.SIOMULT_PLAYER_NUMBER = this.linkPlayerNumber & 0x3;
-    this.SIODATA_A = (words[0] === undefined ? 0xFFFF : words[0]) & 0xFFFF;
-    this.SIODATA_B = (words[1] === undefined ? 0xFFFF : words[1]) & 0xFFFF;
-    this.SIODATA_C = (words[2] === undefined ? 0xFFFF : words[2]) & 0xFFFF;
-    this.SIODATA_D = (words[3] === undefined ? 0xFFFF : words[3]) & 0xFFFF;
+    this.SIOMULT_PLAYER_NUMBER = this.linkExternalTransferPlayer & 0x3;
+    this.SIODATA_A = words[0] & 0xFFFF;
+    this.SIODATA_B = words[1] & 0xFFFF;
+    this.SIODATA_C = words[2] & 0xFFFF;
+    this.SIODATA_D = words[3] & 0xFFFF;
     this.SIOTransferStarted = false;
-    this.SIOCOMMERROR = !!commError;
+    this.SIOCOMMERROR = !!this.linkExternalTransferError;
     this.serialBitsShifted = 0;
     this.shiftClocks = 0;
-    if (this.IOCore && typeof this.IOCore.endLinkCableWait == "function") {
-        this.IOCore.endLinkCableWait();
-    }
+    this.linkExternalTransferPending = false;
+    this.linkExternalTransferClocks = 0;
+    this.linkExternalTransferCycles = 0;
     if ((this.SIOCNT_IRQ | 0) != 0 && this.IOCore && this.IOCore.irq) {
         this.IOCore.irq.requestIRQ(0x80);
+    }
+    if (
+        this.linkCable &&
+        typeof this.linkCable.onHardwareTransferComplete == "function"
+    ) {
+        try {
+            this.linkCable.onHardwareTransferComplete({
+                words: words.slice(0),
+                playerNumber: this.SIOMULT_PLAYER_NUMBER & 0x3,
+                error: !!this.SIOCOMMERROR
+            });
+        }
+        catch (error) {}
     }
 };
 GameBoyAdvanceSerial.prototype.addClocks = function (clocks) {
@@ -173,7 +234,21 @@ GameBoyAdvanceSerial.prototype.addClocks = function (clocks) {
                 }
                 break;
             case 2:
-                if (this.SIOTransferStarted && (this.getLinkPlayerNumber() | 0) == 0) {
+                if (
+                    this.SIOTransferStarted &&
+                    this.linkCableConnected() &&
+                    this.linkExternalTransferPending
+                ) {
+                    this.linkExternalTransferClocks =
+                        ((this.linkExternalTransferClocks | 0) + (clocks | 0)) | 0;
+                    if (
+                        (this.linkExternalTransferClocks | 0) >=
+                        (this.linkExternalTransferCycles | 0)
+                    ) {
+                        this.finishExternalMultiplayerTransfer();
+                    }
+                }
+                else if (this.SIOTransferStarted && (this.getLinkPlayerNumber() | 0) == 0) {
                     this.shiftClocks = ((this.shiftClocks | 0) + (clocks | 0)) | 0;
                     while ((this.shiftClocks | 0) >= (this.SIOShiftClockDivider | 0)) {
                         this.shiftClocks = ((this.shiftClocks | 0) - (this.SIOShiftClockDivider | 0)) | 0;

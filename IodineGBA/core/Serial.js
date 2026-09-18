@@ -354,7 +354,19 @@ GameBoyAdvanceSerial.prototype.readSIOCNT0 = function () {
                 return ((this.SIOTransferStarted) ? 0x80 : 0) | 0x74 | this.SIOCNT0_DATA;
             //Multiplayer:
             case 2:
-                return ((this.SIOTransferStarted) ? 0x80 : 0) | ((this.SIOCOMMERROR) ? 0x40 : 0) | (this.SIOMULT_PLAYER_NUMBER << 4) | this.SIOBaudRate;
+                // Multi-Player mode exposes two physical Link Cable state bits:
+                // bit 2 = SI terminal (0 parent, 1 child)
+                // bit 3 = SD terminal (1 when the connected GBAs are ready).
+                // Some commercial games check these before enabling multiplayer.
+                var linkReady = this.linkCableConnected();
+                var terminalState = (linkReady && (this.SIOMULT_PLAYER_NUMBER | 0) != 0) ? 0x4 : 0;
+                var readyState = linkReady ? 0x8 : 0;
+                return ((this.SIOTransferStarted) ? 0x80 : 0) |
+                    ((this.SIOCOMMERROR) ? 0x40 : 0) |
+                    (this.SIOMULT_PLAYER_NUMBER << 4) |
+                    readyState |
+                    terminalState |
+                    this.SIOBaudRate;
             //UART:
             case 3:
                 return (this.SIOCNT_UART_MISC << 2) | ((this.SIOCNT_UART_FIFO == 4) ? 0x30 : 0x20) | this.SIOBaudRate;

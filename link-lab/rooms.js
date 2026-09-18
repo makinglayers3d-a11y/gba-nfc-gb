@@ -626,6 +626,7 @@
         roomId: hostSession.room.id,
         playerNumber: Math.max(1, Math.min(3, Number(peer.linkSlot) | 0)),
         word: Number(packet.word) & 0xFFFF,
+        generation: Number(packet.generation) >>> 0,
         reason: String(packet.reason || ""),
         requestSeq: String(packet.requestSeq || "")
       });
@@ -695,6 +696,7 @@
         roomId: packet.roomId || joinSession?.room?.id || "",
         playerNumber: 0,
         word: Number(packet.word) & 0xFFFF,
+        generation: Number(packet.generation) >>> 0,
         reason: String(packet.reason || ""),
         requestSeq: String(packet.requestSeq || "")
       });
@@ -720,6 +722,7 @@
         seq: String(packet.seq || ""),
         hostWord: Number(packet.hostWord) & 0xFFFF,
         guestWord: Number(packet.guestWord) & 0xFFFF,
+        guestGeneration: Number(packet.guestGeneration) >>> 0,
         baud: Number(packet.baud) & 0x3,
         playerNumber: Math.max(1, Math.min(3, Number(joinSession?.linkSlot) | 0))
       });

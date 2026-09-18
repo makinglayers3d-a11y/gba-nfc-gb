@@ -755,10 +755,12 @@
     }
 
     if (packet.type === "session:start") {
+      const launchDelay = Math.max(1800, Number(packet.launchDelay) || 2400);
       showSessionBanner("3", 550);
       setTimeout(() => showSessionBanner("2", 550), 600);
       setTimeout(() => showSessionBanner("1", 550), 1200);
       setTimeout(() => showSessionBanner("ML3D LINK\nPREPARADO", 1800), 1800);
+      setTimeout(() => openLinkEmulator(), launchDelay);
       return;
     }
 
@@ -1517,11 +1519,18 @@
         time: Date.now()
       });
     }
-    sendAll({ type: "session:start", game: hostSession.room.game || "", time: Date.now() });
+    const launchDelay = 2400;
+    sendAll({
+      type: "session:start",
+      game: hostSession.room.game || "",
+      launchDelay,
+      time: Date.now()
+    });
     showSessionBanner("3", 550);
     setTimeout(() => showSessionBanner("2", 550), 600);
     setTimeout(() => showSessionBanner("1", 550), 1200);
     setTimeout(() => showSessionBanner("ML3D LINK\nPREPARADO", 1800), 1800);
+    setTimeout(() => openLinkEmulator(), launchDelay);
     closeModal("selectModal");
   }
 

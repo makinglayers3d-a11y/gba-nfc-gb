@@ -143,8 +143,13 @@
     const waitText = Number.isFinite(lastWaitMs) ? Math.round(lastWaitMs) + "ms" : "--";
     const avgWait = waitSamples ? Math.round(waitTotalMs / waitSamples) : 0;
     const title = debugFrozen ? "LINK ERROR SNAPSHOT" : "LINK TRACE";
+    let siocnt0 = 0;
+    try {
+      siocnt0 = serial?.readSIOCNT0?.() ?? 0;
+    } catch {}
+    const visiblePlayerId = (Number(siocnt0) >> 4) & 0x3;
     el.textContent =
-      `${title} ${config.role === "host" ? "H" : "G"} P${config.playerNumber}\n` +
+      `${title} ${config.role === "host" ? "H" : "G"} P${config.playerNumber} ID:${visiblePlayerId} S:${(Number(siocnt0) & 0xFF).toString(16).padStart(2, "0")}\n` +
       `M:${localModeMulti ? 1 : 0} L:${localReady ? 1 : 0} R:${remoteReady ? 1 : 0} WAIT:${waiting ? 1 : 0}\n` +
       `TX:${transferCount} ACK:${config.role === "host" ? `${remoteHardwareAcks.size}/${expectedRemoteHardwareAcks}` : "-"} last:${waitText} avg:${avgWait}ms max:${Math.round(waitMaxMs)}ms err:${errorCount}\n` +
       (debugHistory.length ? debugHistory.join("\n") : lastState);

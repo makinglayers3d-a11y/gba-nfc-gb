@@ -41,7 +41,7 @@
   }
   function loadCompositor(){
     if(window.ML3DAvatarCompositor){loadThumbs();return;}if(compositorLoading)return;compositorLoading=true;ensureStyle();
-    const s=document.createElement('script');s.src='./avatar-compositor-v1.js?v=11';s.defer=true;s.onload=()=>{compositorLoading=false;loadThumbs()};s.onerror=e=>{compositorLoading=false;fallback(e)};document.head.appendChild(s);
+    const s=document.createElement('script');s.src='./avatar-compositor-v1.js?v=12';s.defer=true;s.onload=()=>{compositorLoading=false;loadThumbs()};s.onerror=e=>{compositorLoading=false;fallback(e)};document.head.appendChild(s);
   }
   function wait(){
     if(document.getElementById('avatarFinalBase')){requestAnimationFrame(()=>setTimeout(loadCompositor,80));return;}

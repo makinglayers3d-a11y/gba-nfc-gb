@@ -620,10 +620,15 @@ GameBoyAdvanceSerial.prototype.readRCNT0 = function () {
         var playerNumber = this.getLinkPlayerNumber() | 0;
         var pins = 0;
 
-        if (!busy) {
-            pins |= 0x1; // SC high while idle.
+        if (playerNumber == 0) {
+            if (!busy) {
+                pins |= 0x1; // Host SC high while idle, low while active.
+            }
         }
-        if (playerNumber != 0) {
+        else {
+            // mGBA keeps SC high on secondary GBAs throughout MULTI mode.
+            // Mario Bros. explicitly expects this line to remain high.
+            pins |= 0x1;
             pins |= 0x4; // Child SI remains high in MULTI mode.
         }
         return (this.RCNTDataBitFlow << 4) | pins;

@@ -19,6 +19,9 @@
   let localHardwareComplete = false;
   let expectedRemoteHardwareAcks = 0;
   const remoteHardwareAcks = new Set();
+  const remoteNextWordAcks = new Set();
+  let awaitingGuestNextWord = false;
+  let guestNextWordFallbackTimer = 0;
   let lastGuestPollSeq = "";
   let lastGuestReplyWord = 0xFFFF;
   let lastGuestReplyBaud = 0;
@@ -151,7 +154,7 @@
     el.textContent =
       `${title} ${config.role === "host" ? "H" : "G"} P${config.playerNumber} ID:${visiblePlayerId} S:${(Number(siocnt0) & 0xFF).toString(16).padStart(2, "0")}\n` +
       `M:${localModeMulti ? 1 : 0} L:${localReady ? 1 : 0} R:${remoteReady ? 1 : 0} WAIT:${waiting ? 1 : 0}\n` +
-      `TX:${transferCount} ACK:${config.role === "host" ? `${remoteHardwareAcks.size}/${expectedRemoteHardwareAcks}` : "-"} last:${waitText} avg:${avgWait}ms max:${Math.round(waitMaxMs)}ms err:${errorCount}\n` +
+      `TX:${transferCount} ACK:${config.role === "host" ? `${remoteHardwareAcks.size}/${expectedRemoteHardwareAcks}` : "-"} NEXT:${config.role === "host" ? `${remoteNextWordAcks.size}/${expectedRemoteHardwareAcks}` : (awaitingGuestNextWord ? "WAIT" : "OK")} last:${waitText} avg:${avgWait}ms max:${Math.round(waitMaxMs)}ms err:${errorCount}\n` +
       (debugHistory.length ? debugHistory.join("\n") : lastState);
   }
 
@@ -181,17 +184,42 @@
     if (!localHardwareComplete) return;
     if (expectedRemoteHardwareAcks < 1) return;
     if (remoteHardwareAcks.size < expectedRemoteHardwareAcks) return;
+    if (remoteNextWordAcks.size < expectedRemoteHardwareAcks) return;
 
     transferInFlight = false;
     emitStatus("transfer-synced", {
       seq: activeTransferSeq,
       remoteAcks: remoteHardwareAcks.size,
+      nextWordAcks: remoteNextWordAcks.size,
       expectedAcks: expectedRemoteHardwareAcks
     });
     activeTransferSeq = "";
     localHardwareComplete = false;
     expectedRemoteHardwareAcks = 0;
     remoteHardwareAcks.clear();
+    remoteNextWordAcks.clear();
+  }
+
+  function publishGuestNextWordReady(reason = "write") {
+    if (config.role !== "guest" || !awaitingGuestNextWord || !activeTransferSeq) return;
+    awaitingGuestNextWord = false;
+    clearTimeout(guestNextWordFallbackTimer);
+    guestNextWordFallbackTimer = 0;
+    const word = currentWord();
+    sendLocal({
+      type: "gba:link:next-word-ready",
+      seq: activeTransferSeq,
+      playerNumber: config.playerNumber,
+      word,
+      reason
+    });
+    emitStatus("next-word-ready", {
+      seq: activeTransferSeq,
+      word,
+      reason
+    });
+    transferInFlight = false;
+    activeTransferSeq = "";
   }
 
   const adapter = {
@@ -230,8 +258,21 @@
           playerNumber: config.playerNumber,
           error
         });
-        transferInFlight = false;
-        activeTransferSeq = "";
+        if (error) {
+          awaitingGuestNextWord = false;
+          transferInFlight = false;
+          activeTransferSeq = "";
+          return;
+        }
+
+        // The transfer is physically complete, but the host must not start the
+        // next round until the guest game has processed the SIO IRQ and prepared
+        // its next SIOMLT_SEND word.
+        awaitingGuestNextWord = true;
+        clearTimeout(guestNextWordFallbackTimer);
+        guestNextWordFallbackTimer = setTimeout(() => {
+          publishGuestNextWordReady("post-irq-fallback");
+        }, 0);
         return;
       }
 
@@ -242,9 +283,15 @@
         localHardwareComplete = false;
         expectedRemoteHardwareAcks = 0;
         remoteHardwareAcks.clear();
+        remoteNextWordAcks.clear();
         return;
       }
       maybeReleaseHostTransfer();
+    },
+    onSendDataChange(word) {
+      if (config.role === "guest" && awaitingGuestNextWord) {
+        publishGuestNextWordReady("siomlt-send");
+      }
     },
     onSerialModeChange(mode) {
       const nextModeMulti = (Number(mode) | 0) === 2;
@@ -295,6 +342,7 @@
       localHardwareComplete = false;
       expectedRemoteHardwareAcks = 0;
       remoteHardwareAcks.clear();
+      remoteNextWordAcks.clear();
       localSequence = (localSequence + 1) >>> 0;
       const seq = `${Date.now().toString(36)}-${localSequence.toString(36)}`;
       activeTransferSeq = seq;
@@ -348,6 +396,10 @@
     localHardwareComplete = false;
     expectedRemoteHardwareAcks = 0;
     remoteHardwareAcks.clear();
+    remoteNextWordAcks.clear();
+    awaitingGuestNextWord = false;
+    clearTimeout(guestNextWordFallbackTimer);
+    guestNextWordFallbackTimer = 0;
     lastGuestPollSeq = "";
     lastGuestReplyWord = 0xFFFF;
     lastGuestReplyBaud = 0;
@@ -460,6 +512,23 @@
       return;
     }
 
+    if (packet.type === "gba:link:remote-next-word-ready") {
+      const seq = String(packet.seq || "");
+      if (config.role !== "host" || !transferInFlight || !seq || seq !== activeTransferSeq) {
+        return;
+      }
+      const playerNumber = sanitizePlayerNumber(packet.playerNumber);
+      remoteNextWordAcks.add(playerNumber);
+      emitStatus("remote-next-word-ready", {
+        seq,
+        playerNumber,
+        word: Number(packet.word) & 0xFFFF,
+        reason: String(packet.reason || "")
+      });
+      maybeReleaseHostTransfer();
+      return;
+    }
+
     if (packet.type === "gba:link:complete") {
       const words = Array.isArray(packet.words)
         ? packet.words.slice(0, 4).map((v) => Number(v) & 0xFFFF)
@@ -539,6 +608,8 @@
         localHardwareComplete,
         expectedRemoteHardwareAcks,
         remoteHardwareAcks: [...remoteHardwareAcks],
+        remoteNextWordAcks: [...remoteNextWordAcks],
+        awaitingGuestNextWord,
         transferCount,
         lastWaitMs,
         waitSamples,

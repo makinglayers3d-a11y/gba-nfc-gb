@@ -20,6 +20,7 @@
   let expectedRemoteHardwareAcks = 0;
   const remoteHardwareAcks = new Set();
   const remoteNextWordAcks = new Set();
+  const remotePreparedWords = new Map();
   let awaitingGuestNextWord = false;
   let guestNextWordFallbackTimer = 0;
   let lastGuestPollSeq = "";
@@ -155,7 +156,7 @@
     el.textContent =
       `${title} ${config.role === "host" ? "H" : "G"} P${config.playerNumber} ID:${visiblePlayerId} S:${(Number(siocnt0) & 0xFF).toString(16).padStart(2, "0")}\n` +
       `M:${localModeMulti ? 1 : 0} L:${localReady ? 1 : 0} R:${remoteReady ? 1 : 0} WAIT:${waiting ? 1 : 0}\n` +
-      `TX:${transferCount} ACK:${config.role === "host" ? `${remoteHardwareAcks.size}/${expectedRemoteHardwareAcks}` : "-"} NEXT:${config.role === "host" ? `${remoteNextWordAcks.size}/${expectedRemoteHardwareAcks}` : (awaitingGuestNextWord ? "WAIT" : "OK")} last:${waitText} avg:${avgWait}ms max:${Math.round(waitMaxMs)}ms err:${errorCount}\n` +
+      `TX:${transferCount} ACK:${config.role === "host" ? `${remoteHardwareAcks.size}/${expectedRemoteHardwareAcks}` : "-"} NEXT:${config.role === "host" ? `${remoteNextWordAcks.size}/${expectedRemoteHardwareAcks}` : (awaitingGuestNextWord ? "WAIT" : "OK")} BUF:${config.role === "host" ? remotePreparedWords.size : "-"} last:${waitText} avg:${avgWait}ms max:${Math.round(waitMaxMs)}ms err:${errorCount}\n` +
       (debugHistory.length ? debugHistory.join("\n") : lastState);
   }
 
@@ -178,6 +179,19 @@
       type: "gba:link:ready",
       ready: Boolean(localReady)
     });
+  }
+
+  function publishGuestPreparedWord(reason = "ready") {
+    if (config.role !== "guest" || !config.roomId || !localReady) return false;
+    const word = currentWord();
+    sendLocal({
+      type: "gba:link:prepared-word",
+      playerNumber: config.playerNumber,
+      word,
+      reason
+    });
+    emitStatus("prepared-word", { word, reason });
+    return true;
   }
 
   function maybeReleaseHostTransfer() {
@@ -293,8 +307,13 @@
       maybeReleaseHostTransfer();
     },
     onSendDataChange(word) {
-      if (config.role === "guest" && awaitingGuestNextWord) {
+      if (config.role !== "guest") return;
+      if (awaitingGuestNextWord) {
         publishGuestNextWordReady("siomlt-send");
+        return;
+      }
+      if (localReady && !transferInFlight) {
+        publishGuestPreparedWord("siomlt-send-idle");
       }
     },
     onSerialModeChange(mode) {
@@ -323,6 +342,9 @@
           localReady = true;
           publishLocalReady();
         }
+        if (config.role === "guest") {
+          publishGuestPreparedWord("multi-ready");
+        }
         emitStatus("local-ready", { modeMulti: true, ready: true });
       }, 250);
       emitStatus("local-mode", { modeMulti: true, ready: localReady });
@@ -333,34 +355,66 @@
           word: Number(info.word) & 0xFFFF,
           baud: Number(info.baud) & 0x3
         });
-        // The previous transfer may already be locally complete but still be
-        // waiting for the remote hardware ACK. Reject this redundant start so
-        // Iodine leaves BUSY clear and the game can retry once READY returns.
         return false;
       }
       if (!this.canTransfer()) {
         emitStatus("transfer-waiting-remote", { remoteReady });
         return false;
       }
+
+      const preparedPlayers = [...remotePreparedWords.keys()]
+        .filter((playerNumber) => playerNumber > 0)
+        .sort((a, b) => a - b);
+      if (!preparedPlayers.length) {
+        emitStatus("transfer-waiting-buffer", {
+          word: Number(info.word) & 0xFFFF
+        });
+        return false;
+      }
+
+      const connectedCount = Math.max(1, Math.min(3, preparedPlayers.length));
+      const words = [Number(info.word) & 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF];
+      for (const playerNumber of preparedPlayers) {
+        if (playerNumber > 3) continue;
+        words[playerNumber] = remotePreparedWords.get(playerNumber).word & 0xFFFF;
+      }
+
       transferInFlight = true;
       localHardwareComplete = false;
-      expectedRemoteHardwareAcks = 0;
+      expectedRemoteHardwareAcks = connectedCount;
       remoteHardwareAcks.clear();
       remoteNextWordAcks.clear();
       localSequence = (localSequence + 1) >>> 0;
       const seq = `${Date.now().toString(36)}-${localSequence.toString(36)}`;
       activeTransferSeq = seq;
-      waitStartedAt = performance.now();
+      waitStartedAt = 0;
+
+      // Consume the prepared words exactly once. The guest will publish the
+      // next generation after processing this transfer's SIO IRQ.
+      for (const playerNumber of preparedPlayers) {
+        remotePreparedWords.delete(playerNumber);
+      }
+
       sendLocal({
-        type: "gba:link:request",
+        type: "gba:link:prepared-transfer",
         seq,
         coreSequence: Number(info.sequence) || 0,
-        word: Number(info.word) & 0xFFFF,
+        words,
+        connectedCount,
         baud: Number(info.baud) & 0x3
       });
-      emitStatus("transfer-request", {
+
+      serial?.completeExternalMultiplayerTransfer?.(
+        words,
+        0,
+        false,
+        connectedCount
+      );
+
+      emitStatus("transfer-buffered-start", {
         seq,
-        word: Number(info.word) & 0xFFFF,
+        words: words.slice(0, 2),
+        connectedCount,
         baud: Number(info.baud) & 0x3
       });
       return true;
@@ -401,6 +455,7 @@
     expectedRemoteHardwareAcks = 0;
     remoteHardwareAcks.clear();
     remoteNextWordAcks.clear();
+    remotePreparedWords.clear();
     awaitingGuestNextWord = false;
     clearTimeout(guestNextWordFallbackTimer);
     guestNextWordFallbackTimer = 0;
@@ -440,6 +495,7 @@
 
     if (packet.type === "gba:link:remote-ready") {
       remoteReady = Boolean(packet.ready);
+      if (!remoteReady) remotePreparedWords.clear();
       emitStatus("remote-ready", { ready: remoteReady });
       return;
     }
@@ -516,20 +572,74 @@
       return;
     }
 
+    if (packet.type === "gba:link:remote-prepared-word") {
+      if (config.role !== "host") return;
+      const playerNumber = sanitizePlayerNumber(packet.playerNumber);
+      const word = Number(packet.word) & 0xFFFF;
+      remotePreparedWords.set(playerNumber, {
+        word,
+        reason: String(packet.reason || "prepared"),
+        time: performance.now()
+      });
+      emitStatus("remote-prepared-word", {
+        playerNumber,
+        word,
+        reason: String(packet.reason || "")
+      });
+      return;
+    }
+
     if (packet.type === "gba:link:remote-next-word-ready") {
       const seq = String(packet.seq || "");
       if (config.role !== "host" || !transferInFlight || !seq || seq !== activeTransferSeq) {
         return;
       }
       const playerNumber = sanitizePlayerNumber(packet.playerNumber);
+      const word = Number(packet.word) & 0xFFFF;
       remoteNextWordAcks.add(playerNumber);
+      remotePreparedWords.set(playerNumber, {
+        word,
+        reason: String(packet.reason || "next"),
+        time: performance.now()
+      });
       emitStatus("remote-next-word-ready", {
         seq,
         playerNumber,
-        word: Number(packet.word) & 0xFFFF,
+        word,
         reason: String(packet.reason || "")
       });
       maybeReleaseHostTransfer();
+      return;
+    }
+
+    if (packet.type === "gba:link:prepared-transfer") {
+      const seq = String(packet.seq || "");
+      const playerNumber = sanitizePlayerNumber(packet.playerNumber ?? config.playerNumber);
+      const words = Array.isArray(packet.words)
+        ? packet.words.slice(0, 4).map((v) => Number(v) & 0xFFFF)
+        : [0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF];
+      while (words.length < 4) words.push(0xFFFF);
+      const connectedCount = Math.max(0, Math.min(3, Number(packet.connectedCount) | 0));
+
+      config.playerNumber = playerNumber;
+      activeTransferSeq = seq;
+      localHardwareComplete = false;
+      transferInFlight = true;
+      waitStartedAt = 0;
+
+      serial?.beginExternalMultiplayerTransfer?.(playerNumber);
+      serial?.completeExternalMultiplayerTransfer?.(
+        words,
+        playerNumber,
+        false,
+        connectedCount
+      );
+
+      emitStatus("transfer-buffered-staged", {
+        seq,
+        words: words.slice(0, 2),
+        connectedCount
+      });
       return;
     }
 
@@ -613,6 +723,7 @@
         expectedRemoteHardwareAcks,
         remoteHardwareAcks: [...remoteHardwareAcks],
         remoteNextWordAcks: [...remoteNextWordAcks],
+        remotePreparedWords: [...remotePreparedWords.entries()].map(([playerNumber, value]) => ({ playerNumber, ...value })),
         awaitingGuestNextWord,
         transferCount,
         lastWaitMs,

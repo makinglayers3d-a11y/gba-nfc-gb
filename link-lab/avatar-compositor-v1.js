@@ -3,7 +3,7 @@
 if(window.__ml3dAvatarCompositorV1)return;window.__ml3dAvatarCompositorV1=true;
 
 const HAIR_W=32,HAIR_H=32;
-const HAIR_ATLAS='./assets/avatar-modular/hair-atlas-v1.png?v=2';
+const HAIR_ATLAS='./assets/avatar-modular/hair-atlas-v1.png?v=3';
 const HAIR_DR={down:0,left:1,right:2,up:3};
 const DEF={skin:'#efc3a1',hair:1,hairColor:'#4a3024'};
 const api=()=>window.ML3DAvatarFinal;
@@ -108,11 +108,26 @@ function skin(base,color){
   ox.putImageData(di,0,0);return o;
 }
 
+function baseBounds(base){
+  const ctx=base.getContext('2d',{willReadFrequently:true});
+  const data=ctx.getImageData(0,0,base.width,base.height).data;
+  let x0=base.width,y0=base.height,x1=-1,y1=-1;
+  for(let y=0;y<base.height;y++)for(let x=0;x<base.width;x++){
+    if(data[(y*base.width+x)*4+3]<12)continue;
+    x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);
+  }
+  if(x1<x0)return{x:0,y:0,w:base.width,h:base.height};
+  return{x:x0,y:y0,w:x1-x0+1,h:y1-y0+1};
+}
+
 function drawHairFixed(ctx,piece,base){
   if(!piece)return;
-  const size=Math.max(1,Math.round(base.height*(HAIR_H/96)));
-  const dx=Math.round((base.width-size)/2);
-  const dy=0;
+  const b=baseBounds(base);
+  const scale=Math.max(.25,b.h/88);
+  const size=Math.max(1,Math.round(HAIR_H*scale));
+  const cx=b.x+b.w/2;
+  const dx=Math.round(cx-size/2);
+  const dy=Math.round(b.y-3*scale);
   ctx.drawImage(piece,0,0,HAIR_W,HAIR_H,dx,dy,size,size);
 }
 

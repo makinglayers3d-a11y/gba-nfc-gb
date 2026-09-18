@@ -14,8 +14,14 @@
   let remoteReady = false;
   let remoteWord = 0xFFFF;
   let remoteWordValid = false;
+  let remoteWordGeneration = 0;
+  let consumedRemoteWordGeneration = 0;
+  let localWordGeneration = 0;
+  let lastConsumedLocalGeneration = 0;
   let pendingWord = 0xFFFF;
+  let pendingWordReason = "register";
   let wordPublishQueued = false;
+  let wordRequestPending = false;
   let transferCount = 0;
   let lastLinkState = "boot";
   let config = loadConfig();
@@ -86,7 +92,7 @@
     }
     el.textContent =
       `LINK ${config.role === "host" ? "H" : "G"} P${config.playerNumber}\n` +
-      `L:${localReady ? 1 : 0} R:${remoteReady ? 1 : 0} W:${remoteWordValid ? remoteWord.toString(16).padStart(4, "0") : "----"}\n` +
+      `L:${localReady ? 1 : 0} R:${remoteReady ? 1 : 0} W:${remoteWordValid ? remoteWord.toString(16).padStart(4, "0") : "----"} G:${remoteWordGeneration}/${consumedRemoteWordGeneration}\n` +
       `TX:${transferCount} ${lastLinkState}`;
   }
 
@@ -111,24 +117,46 @@
     });
   }
 
-  function publishSendWord(word = currentWord(), reason = "update", requestSeq = "") {
+  function nextLocalWordGeneration() {
+    localWordGeneration = (localWordGeneration + 1) >>> 0;
+    if (!localWordGeneration) localWordGeneration = 1;
+    return localWordGeneration;
+  }
+
+  function publishSendWord(
+    word = currentWord(),
+    reason = "update",
+    requestSeq = "",
+    advanceGeneration = true
+  ) {
     word = Number(word) & 0xFFFF;
+    if (advanceGeneration || !localWordGeneration) {
+      nextLocalWordGeneration();
+    }
     return sendLocal({
       type: "gba:link:word",
       word,
+      generation: localWordGeneration >>> 0,
       reason,
       requestSeq: String(requestSeq || "")
     });
   }
 
-  function scheduleSendWord(word) {
+  function scheduleSendWord(word, reason = "register") {
     pendingWord = Number(word) & 0xFFFF;
+    pendingWordReason = String(reason || "register");
     if (wordPublishQueued) return;
     wordPublishQueued = true;
     Promise.resolve().then(() => {
       wordPublishQueued = false;
-      publishSendWord(pendingWord, "register");
+      publishSendWord(pendingWord, pendingWordReason, "", true);
     });
+  }
+
+  function transferDelayMs(baud) {
+    // Two-player MULTI moves 32 serial bits. Approximate the real cable
+    // duration at 9600/38400/57600/115200 bps without stalling the CPU.
+    return [4, 1, 1, 1][Number(baud) & 0x3];
   }
 
   const adapter = {
@@ -152,7 +180,7 @@
       if (nextReady === localReady) return;
       localReady = nextReady;
       publishLocalReady();
-      if (localReady) scheduleSendWord(currentWord());
+      if (localReady) scheduleSendWord(currentWord(), "mode-ready");
       emitStatus("local-ready", { ready: localReady });
     },
     onSendDataChange(word) {
@@ -169,19 +197,28 @@
       const hostWord = Number(info.word) & 0xFFFF;
       const baud = Number(info.baud) & 0x3;
 
-      if (!remoteWordValid) {
-        sendLocal({
-          type: "gba:link:word-request",
-          seq,
-          hostWord,
-          baud
-        });
+      if (
+        !remoteWordValid ||
+        (remoteWordGeneration >>> 0) <= (consumedRemoteWordGeneration >>> 0)
+      ) {
+        if (!wordRequestPending) {
+          wordRequestPending = true;
+          sendLocal({
+            type: "gba:link:word-request",
+            seq,
+            hostWord,
+            baud
+          });
+        }
         emitStatus("transfer-awaiting-word", { seq });
         return false;
       }
 
       const guestWord = remoteWord & 0xFFFF;
+      const guestGeneration = remoteWordGeneration >>> 0;
+      consumedRemoteWordGeneration = guestGeneration;
       remoteWordValid = false;
+      wordRequestPending = false;
       transferCount += 1;
 
       sendLocal({
@@ -190,19 +227,25 @@
         coreSequence: Number(info.sequence) || 0,
         hostWord,
         guestWord,
+        guestGeneration,
         baud
       });
 
-      Promise.resolve().then(() => {
+      setTimeout(() => {
         if (!serial?.completeExternalMultiplayerTransfer) return;
         serial.completeExternalMultiplayerTransfer(
           [hostWord, guestWord, 0xFFFF, 0xFFFF],
           0,
           false
         );
-        emitStatus("transfer-fast-complete", { seq, hostWord, guestWord });
-      });
-      emitStatus("transfer-fast", { seq, hostWord, guestWord });
+        emitStatus("transfer-fast-complete", {
+          seq,
+          hostWord,
+          guestWord,
+          guestGeneration
+        });
+      }, transferDelayMs(baud));
+      emitStatus("transfer-fast", { seq, hostWord, guestWord, guestGeneration });
       return true;
     }
   };
@@ -219,7 +262,7 @@
     serial.setLinkPlayerNumber(config.playerNumber);
     localReady = (serial.SIOCNT_MODE | 0) === 2;
     publishLocalReady();
-    scheduleSendWord(currentWord());
+    scheduleSendWord(currentWord(), "attach");
     emitStatus("attached", { localReady, remoteReady });
     return true;
   }
@@ -232,6 +275,11 @@
     localReady = false;
     remoteReady = false;
     remoteWordValid = false;
+    remoteWordGeneration = 0;
+    consumedRemoteWordGeneration = 0;
+    localWordGeneration = 0;
+    lastConsumedLocalGeneration = 0;
+    wordRequestPending = false;
     publishLocalReady();
     serial = null;
     emulator = null;
@@ -270,22 +318,46 @@
     }
 
     if (packet.type === "gba:link:remote-word") {
+      const generation = Number(packet.generation) >>> 0;
+      if (
+        generation &&
+        generation <= (consumedRemoteWordGeneration >>> 0)
+      ) {
+        emitStatus("remote-word-stale", { generation });
+        return;
+      }
+      if (
+        generation &&
+        remoteWordValid &&
+        generation <= (remoteWordGeneration >>> 0)
+      ) {
+        emitStatus("remote-word-duplicate", { generation });
+        return;
+      }
       remoteWord = Number(packet.word) & 0xFFFF;
+      remoteWordGeneration = generation || ((remoteWordGeneration + 1) >>> 0) || 1;
       remoteWordValid = true;
+      wordRequestPending = false;
       emitStatus("remote-word", {
         word: remoteWord,
+        generation: remoteWordGeneration,
         requestSeq: String(packet.requestSeq || "")
       });
       return;
     }
 
     if (packet.type === "gba:link:word-request") {
+      const consumed = (localWordGeneration >>> 0) <= (lastConsumedLocalGeneration >>> 0);
       publishSendWord(
         currentWord(),
         "request",
-        String(packet.seq || packet.requestSeq || "")
+        String(packet.seq || packet.requestSeq || ""),
+        consumed
       );
-      emitStatus("word-request-reply", { seq: packet.seq });
+      emitStatus("word-request-reply", {
+        seq: packet.seq,
+        generation: localWordGeneration
+      });
       return;
     }
 
@@ -293,24 +365,46 @@
       const playerNumber = sanitizePlayerNumber(packet.playerNumber ?? config.playerNumber);
       const hostWord = Number(packet.hostWord) & 0xFFFF;
       const guestWord = Number(packet.guestWord) & 0xFFFF;
+      const guestGeneration = Number(packet.guestGeneration) >>> 0;
+      const baud = Number(packet.baud) & 0x3;
+      if (guestGeneration) {
+        lastConsumedLocalGeneration = Math.max(
+          lastConsumedLocalGeneration >>> 0,
+          guestGeneration
+        ) >>> 0;
+      }
       if (serial?.beginExternalMultiplayerTransfer) {
         serial.beginExternalMultiplayerTransfer(playerNumber);
       }
-      serial?.completeExternalMultiplayerTransfer?.(
-        [hostWord, guestWord, 0xFFFF, 0xFFFF],
-        playerNumber,
-        false
-      );
-      transferCount += 1;
-      emitStatus("transfer-fast-remote", {
-        seq: packet.seq,
-        hostWord,
-        guestWord
-      });
-      // Give the guest CPU a chance to process the serial IRQ and prepare the
-      // next SIOMLT_SEND word, then publish it ahead of the next host transfer.
-      setTimeout(() => publishSendWord(currentWord(), "post-transfer", packet.seq), 0);
-      setTimeout(() => publishSendWord(currentWord(), "post-transfer-late", packet.seq), 16);
+
+      setTimeout(() => {
+        serial?.completeExternalMultiplayerTransfer?.(
+          [hostWord, guestWord, 0xFFFF, 0xFFFF],
+          playerNumber,
+          false
+        );
+        transferCount += 1;
+        emitStatus("transfer-fast-remote", {
+          seq: packet.seq,
+          hostWord,
+          guestWord,
+          guestGeneration
+        });
+
+        // If the game writes a fresh SIOMLT_SEND while handling the IRQ,
+        // onSendDataChange publishes it. Only synthesize a new generation when
+        // the register remains unchanged, because hardware reuses its current
+        // send word on the next transfer.
+        const generationAfterComplete = localWordGeneration >>> 0;
+        setTimeout(() => {
+          if (
+            (localWordGeneration >>> 0) === generationAfterComplete &&
+            (localWordGeneration >>> 0) <= (lastConsumedLocalGeneration >>> 0)
+          ) {
+            publishSendWord(currentWord(), "reuse-after-transfer", packet.seq, true);
+          }
+        }, 17);
+      }, transferDelayMs(baud));
       return;
     }
 
@@ -385,6 +479,10 @@
         remoteReady,
         ready: adapter.canTransfer(),
         remoteWord: remoteWordValid ? remoteWord : null,
+        remoteWordGeneration,
+        consumedRemoteWordGeneration,
+        localWordGeneration,
+        lastConsumedLocalGeneration,
         transferCount,
         lastState: lastLinkState
       };

@@ -80,6 +80,9 @@ GameBoyAdvanceSerial.prototype.detachLinkCable = function () {
     this.SIOMULT_PLAYER_NUMBER = 0;
     this.SIOTransferStarted = false;
     this.SIOCOMMERROR = false;
+    if (this.IOCore && typeof this.IOCore.endLinkCableWait == "function") {
+        this.IOCore.endLinkCableWait();
+    }
 };
 GameBoyAdvanceSerial.prototype.linkCableConnected = function () {
     if (!this.linkCable) {
@@ -124,23 +127,15 @@ GameBoyAdvanceSerial.prototype.getLinkPlayerNumber = function () {
 GameBoyAdvanceSerial.prototype.getLinkSendData = function () {
     return this.SIODATA8 & 0xFFFF;
 };
-GameBoyAdvanceSerial.prototype.notifyLinkSendDataChange = function () {
-    if (
-        this.linkCable &&
-        typeof this.linkCable.onSendDataChange == "function"
-    ) {
-        try {
-            this.linkCable.onSendDataChange(this.getLinkSendData() | 0);
-        }
-        catch (error) {}
-    }
-};
 GameBoyAdvanceSerial.prototype.beginExternalMultiplayerTransfer = function (playerNumber) {
     this.setLinkPlayerNumber(playerNumber | 0);
     this.SIOTransferStarted = true;
     this.SIOCOMMERROR = false;
     this.serialBitsShifted = 0;
     this.shiftClocks = 0;
+    if (this.IOCore && typeof this.IOCore.beginLinkCableWait == "function") {
+        this.IOCore.beginLinkCableWait();
+    }
     return this.getLinkSendData() | 0;
 };
 GameBoyAdvanceSerial.prototype.completeExternalMultiplayerTransfer = function (words, playerNumber, commError) {
@@ -156,6 +151,9 @@ GameBoyAdvanceSerial.prototype.completeExternalMultiplayerTransfer = function (w
     this.SIOCOMMERROR = !!commError;
     this.serialBitsShifted = 0;
     this.shiftClocks = 0;
+    if (this.IOCore && typeof this.IOCore.endLinkCableWait == "function") {
+        this.IOCore.endLinkCableWait();
+    }
     if ((this.SIOCNT_IRQ | 0) != 0 && this.IOCore && this.IOCore.irq) {
         this.IOCore.irq.requestIRQ(0x80);
     }
@@ -384,6 +382,14 @@ GameBoyAdvanceSerial.prototype.writeSIOCNT0 = function (data) {
                                         this.SIOTransferStarted = false;
                                         this.SIOCOMMERROR = false;
                                     }
+                                    else if (
+                                        this.IOCore &&
+                                        typeof this.IOCore.beginLinkCableWait == "function"
+                                    ) {
+                                        // Stop GBA virtual time at the serial barrier. Browser
+                                        // timers/WebRTC continue outside the emulated CPU.
+                                        this.IOCore.beginLinkCableWait();
+                                    }
                                 }
                                 catch (error) {
                                     this.SIOCOMMERROR = true;
@@ -480,12 +486,6 @@ GameBoyAdvanceSerial.prototype.readSIODATA8_0 = function () {
 GameBoyAdvanceSerial.prototype.writeSIODATA8_1 = function (data) {
     data = data | 0;
     this.SIODATA8 = (this.SIODATA8 & 0xFF) | (data << 8);
-    if ((this.SIOCNT_MODE | 0) == 2) {
-        // Commit the prepared 16-bit MULTI word only after the high byte is
-        // written. A 16-bit MMIO write reaches low then high, so notifying on
-        // both bytes generated two network words for one hardware write.
-        this.notifyLinkSendDataChange();
-    }
 }
 GameBoyAdvanceSerial.prototype.readSIODATA8_1 = function () {
     return this.SIODATA8 >> 8;

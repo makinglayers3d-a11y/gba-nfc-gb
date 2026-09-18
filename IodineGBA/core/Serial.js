@@ -62,6 +62,8 @@ GameBoyAdvanceSerial.prototype.initialize = function () {
     this.linkExternalTransferError = false;
     this.linkExternalTransferClocks = 0;
     this.linkExternalTransferCycles = 0;
+    this.linkExternalTransferHold = false;
+    this.linkExternalTransferTimingDone = false;
 }
 GameBoyAdvanceSerial.prototype.SIOMultiplayerBaudRate = [
       9600,
@@ -96,6 +98,8 @@ GameBoyAdvanceSerial.prototype.detachLinkCable = function () {
     this.linkExternalTransferPending = false;
     this.linkExternalTransferClocks = 0;
     this.linkExternalTransferCycles = 0;
+    this.linkExternalTransferHold = false;
+    this.linkExternalTransferTimingDone = false;
     if (this.IOCore && typeof this.IOCore.endLinkCableWait == "function") {
         this.IOCore.endLinkCableWait(false);
     }
@@ -174,7 +178,7 @@ GameBoyAdvanceSerial.prototype.beginExternalMultiplayerTransfer = function (play
     }
     return this.getLinkSendData() | 0;
 };
-GameBoyAdvanceSerial.prototype.completeExternalMultiplayerTransfer = function (words, playerNumber, commError, connectedCount) {
+GameBoyAdvanceSerial.prototype.completeExternalMultiplayerTransfer = function (words, playerNumber, commError, connectedCount, holdCompletion) {
     words = words || [];
     connectedCount = Math.max(0, Math.min(3, connectedCount | 0)) | 0;
     this.setLinkPlayerNumber(playerNumber | 0);
@@ -189,6 +193,8 @@ GameBoyAdvanceSerial.prototype.completeExternalMultiplayerTransfer = function (w
     this.linkExternalTransferClocks = 0;
     this.linkExternalTransferCycles =
         this.LinkMultiplayerTransferCycles[this.SIOBaudRate & 0x3][connectedCount] | 0;
+    this.linkExternalTransferHold = !!holdCompletion;
+    this.linkExternalTransferTimingDone = false;
     this.linkExternalTransferPending = true;
 
     // Network rendezvous is complete. Resume virtual time, but keep SIO BUSY
@@ -212,6 +218,8 @@ GameBoyAdvanceSerial.prototype.finishExternalMultiplayerTransfer = function () {
     this.linkExternalTransferPending = false;
     this.linkExternalTransferClocks = 0;
     this.linkExternalTransferCycles = 0;
+    this.linkExternalTransferHold = false;
+    this.linkExternalTransferTimingDone = false;
     if ((this.SIOCNT_IRQ | 0) != 0 && this.IOCore && this.IOCore.irq) {
         this.IOCore.irq.requestIRQ(0x80);
     }
@@ -228,6 +236,16 @@ GameBoyAdvanceSerial.prototype.finishExternalMultiplayerTransfer = function () {
         }
         catch (error) {}
     }
+};
+GameBoyAdvanceSerial.prototype.releaseExternalMultiplayerTransfer = function () {
+    if (!this.linkExternalTransferPending) {
+        return false;
+    }
+    this.linkExternalTransferHold = false;
+    if (this.linkExternalTransferTimingDone) {
+        this.finishExternalMultiplayerTransfer();
+    }
+    return true;
 };
 GameBoyAdvanceSerial.prototype.addClocks = function (clocks) {
     clocks = clocks | 0;
@@ -255,7 +273,10 @@ GameBoyAdvanceSerial.prototype.addClocks = function (clocks) {
                         (this.linkExternalTransferClocks | 0) >=
                         (this.linkExternalTransferCycles | 0)
                     ) {
-                        this.finishExternalMultiplayerTransfer();
+                        this.linkExternalTransferTimingDone = true;
+                        if (!this.linkExternalTransferHold) {
+                            this.finishExternalMultiplayerTransfer();
+                        }
                     }
                 }
                 else if (this.SIOTransferStarted && (this.getLinkPlayerNumber() | 0) == 0) {
@@ -467,14 +488,7 @@ GameBoyAdvanceSerial.prototype.writeSIOCNT0 = function (data) {
                                         this.SIOTransferStarted = false;
                                         this.SIOCOMMERROR = false;
                                     }
-                                    else if (
-                                        this.IOCore &&
-                                        typeof this.IOCore.beginLinkCableWait == "function"
-                                    ) {
-                                        // Stop GBA virtual time at the serial barrier. Browser
-                                        // timers/WebRTC continue outside the emulated CPU.
-                                        this.IOCore.beginLinkCableWait();
-                                    }
+
                                 }
                                 catch (error) {
                                     this.SIOCOMMERROR = true;

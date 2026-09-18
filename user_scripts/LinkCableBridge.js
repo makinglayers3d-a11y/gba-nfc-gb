@@ -81,6 +81,10 @@
     return seq ? seq.slice(-7) : "-";
   }
 
+  function hex16(value) {
+    return (Number(value) & 0xFFFF).toString(16).padStart(4, "0");
+  }
+
   function recordDebugState(state, extra = {}) {
     if (params.get("linkDebug") !== "1" || debugFrozen) return;
     const waiting = Boolean(emulator?.IOCore?.linkCableWait);
@@ -91,9 +95,13 @@
     const flags =
       `M${localModeMulti ? 1 : 0}L${localReady ? 1 : 0}R${remoteReady ? 1 : 0}W${waiting ? 1 : 0}`;
     const errorTag = extra.error ? " ERR" : "";
+    const dataTag = Array.isArray(extra.words)
+      ? ` d:${hex16(extra.words[0])}/${hex16(extra.words[1])}`
+      : (extra.word === undefined ? "" : ` d:${hex16(extra.word)}`);
     debugHistory.push(
       `${String(elapsed).padStart(5, " ")} ${flags} TX${transferCount} ${state}` +
       ` s:${shortSeq(extra.seq)}` +
+      dataTag +
       (wait === null ? "" : ` t:${wait}ms`) +
       errorTag
     );
@@ -216,7 +224,11 @@
         word: Number(info.word) & 0xFFFF,
         baud: Number(info.baud) & 0x3
       });
-      emitStatus("transfer-request", { seq });
+      emitStatus("transfer-request", {
+        seq,
+        word: Number(info.word) & 0xFFFF,
+        baud: Number(info.baud) & 0x3
+      });
       return true;
     }
   };
@@ -293,13 +305,18 @@
       if (serial?.beginExternalMultiplayerTransfer) {
         serial.beginExternalMultiplayerTransfer(playerNumber);
       }
+      const replyWord = currentWord();
       sendLocal({
         type: "gba:link:reply",
         seq: String(packet.seq || ""),
-        word: currentWord(),
+        word: replyWord,
         baud: Number(packet.baud) & 0x3
       });
-      emitStatus("transfer-reply", { seq: packet.seq });
+      emitStatus("transfer-reply", {
+        seq: packet.seq,
+        word: replyWord,
+        baud: Number(packet.baud) & 0x3
+      });
       return;
     }
 
@@ -326,7 +343,8 @@
       emitStatus("transfer-complete", {
         seq: packet.seq,
         error: Boolean(packet.error),
-        waitMs: lastWaitMs
+        waitMs: lastWaitMs,
+        words: words.slice(0, 2)
       });
       return;
     }

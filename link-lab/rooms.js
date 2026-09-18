@@ -1412,9 +1412,33 @@
     url.searchParams.set("linkPlayer", String(playerNumber));
     url.searchParams.set("linkRole", role);
 
-    const opened = window.open(url.toString(), "_blank", "noopener");
+    const targetUrl = url.toString();
+    let opened = null;
+    try {
+      // Keep the lobby alive in its current tab and open the emulator from the
+      // user's tap. Passing "noopener" as a window feature can return null on
+      // mobile browsers even when the tab opens, so open first and detach the
+      // opener afterwards.
+      opened = window.open(targetUrl, "_blank");
+      if (opened) {
+        try { opened.opener = null; } catch {}
+      }
+    } catch (error) {
+      opened = null;
+    }
+
     if (!opened) {
-      showSessionBanner("PERMITE VENTANAS EMERGENTES", 2200);
+      // Mobile fallback: a real target=_blank link is handled more reliably
+      // by Chrome/WebView popup policies when invoked from the button tap.
+      const link = document.createElement("a");
+      link.href = targetUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showSessionBanner(`GBA LINK · JUGADOR ${playerNumber}`, 1400);
     } else {
       showSessionBanner(`GBA LINK · JUGADOR ${playerNumber}`, 1400);
     }

@@ -383,6 +383,7 @@
           playerNumber: Math.max(1, Math.min(3, Number(peer.linkSlot) | 0)),
           connectedCount: Math.max(0, Math.min(3, Number(packet.connectedCount) | 0)),
           baud: Number(packet.baud) & 0x3,
+          hostReady: Boolean(localGbaReady),
           time: Date.now()
         });
       }
@@ -805,6 +806,13 @@
     }
 
     if (packet.type === "gba:link:prepared-transfer") {
+      if (packet.hostReady !== undefined) {
+        postLocalLink({
+          type: "gba:link:remote-ready",
+          roomId: packet.roomId || joinSession?.room?.id || "",
+          ready: Boolean(packet.hostReady)
+        });
+      }
       postLocalLink({
         type: "gba:link:prepared-transfer",
         roomId: packet.roomId || joinSession?.room?.id || "",

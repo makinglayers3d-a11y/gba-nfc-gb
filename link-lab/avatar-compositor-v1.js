@@ -4,6 +4,8 @@ if(window.__ml3dAvatarCompositorV1)return;window.__ml3dAvatarCompositorV1=true;
 
 const HAIR_W=32,HAIR_H=32;
 const HAIR_ATLAS='./assets/avatar-modular/hair-atlas-v1.png?v=3';
+const PILOT_HAIR_ATLAS='./assets/avatar-modular/hair-pilot-v1.png?v=1';
+const PILOT_GRID=4;
 const HAIR_DR={down:0,left:1,right:2,up:3};
 const DEF={skin:'#efc3a1',hair:1,hairColor:'#4a3024',hairOffsetX:0,hairOffsetY:0,hairScale:1};
 const api=()=>window.ML3DAvatarFinal;
@@ -16,7 +18,7 @@ function profile(){
 }
 const setProfile=patch=>api()?.setProfile?.(patch);
 
-let hairAtlas=null,ready=false,previewHairAdjust=null;
+let hairAtlas=null,pilotHairAtlas=null,pilotReady=false,ready=false,previewHairAdjust=null;
 const raw=new Map(),tinted=new Map();
 const hairNumber=(v,fallback,min,max)=>{const n=Number(v);return Number.isFinite(n)?Math.max(min,Math.min(max,n)):fallback};
 function hairAdjust(p,override=null){
@@ -32,7 +34,15 @@ function load(){
   return new Promise(res=>{
     const h=new Image();
     h.decoding='async';
-    h.onload=()=>{hairAtlas=h;ready=true;raw.clear();tinted.clear();res(true)};
+    h.onload=()=>{
+      hairAtlas=h;ready=true;raw.clear();tinted.clear();
+      const p=new Image();
+      p.decoding='async';
+      p.onload=()=>{pilotHairAtlas=p;pilotReady=true;raw.clear();tinted.clear();paintPreview();paintLobby()};
+      p.onerror=()=>{pilotHairAtlas=null;pilotReady=false};
+      p.src=PILOT_HAIR_ATLAS;
+      res(true);
+    };
     h.onerror=()=>{console.error('[ML3D avatar] No se pudo cargar hair-atlas-v1.png');res(false)};
     h.src=HAIR_ATLAS;
   });
@@ -44,6 +54,16 @@ function hairRect(v,d,f){
   const i=Math.max(0,Math.min(8,n-1));
   const frame=Math.max(0,Math.min(3,+f||0));
   return{x:(i*4+frame)*HAIR_W,y:(HAIR_DR[d]??0)*HAIR_H};
+}
+function pilotRect(d,f){
+  if(!pilotReady||!pilotHairAtlas)return null;
+  const row=HAIR_DR[d]??0;
+  const col=Math.max(0,Math.min(PILOT_GRID-1,+f||0));
+  const sx=Math.round(pilotHairAtlas.naturalWidth*col/PILOT_GRID);
+  const ex=Math.round(pilotHairAtlas.naturalWidth*(col+1)/PILOT_GRID);
+  const sy=Math.round(pilotHairAtlas.naturalHeight*row/PILOT_GRID);
+  const ey=Math.round(pilotHairAtlas.naturalHeight*(row+1)/PILOT_GRID);
+  return{x:sx,y:sy,w:Math.max(1,ex-sx),h:Math.max(1,ey-sy)};
 }
 
 function keepMainComponent(canvas){
@@ -76,14 +96,20 @@ function keepMainComponent(canvas){
 
 function rawHair(v,d='down',f=0){
   if(!ready)return null;
-  const r=hairRect(v,d,f);if(!r)return null;
-  const key=[v,d,f].join('|');
+  const n=Number(v);
+  const key=[v,d,f,pilotReady&&n===1?'pilot':'main'].join('|');
   if(raw.has(key))return raw.get(key);
   const c=document.createElement('canvas');
   c.width=HAIR_W;c.height=HAIR_H;
   const x=c.getContext('2d',{willReadFrequently:true});
   x.imageSmoothingEnabled=false;
-  x.drawImage(hairAtlas,r.x,r.y,HAIR_W,HAIR_H,0,0,HAIR_W,HAIR_H);
+  if(n===1&&pilotReady){
+    const pr=pilotRect(d,f);if(!pr)return null;
+    x.drawImage(pilotHairAtlas,pr.x,pr.y,pr.w,pr.h,0,0,HAIR_W,HAIR_H);
+  }else{
+    const r=hairRect(v,d,f);if(!r)return null;
+    x.drawImage(hairAtlas,r.x,r.y,HAIR_W,HAIR_H,0,0,HAIR_W,HAIR_H);
+  }
   keepMainComponent(c);
   raw.set(key,c);
   return c;
@@ -192,7 +218,8 @@ function thumbFor(k,v){
 window.ML3DAvatarCompositor={
   ready:()=>ready,profile,setProfile,compose,paintLobby,paintPreview,thumbFor,
   setPreviewHairAdjust(value){previewHairAdjust=value?hairAdjust(profile(),value):null;paintPreview()},
-  getPreviewHairAdjust(){return previewHairAdjust?{...previewHairAdjust}:null}
+  getPreviewHairAdjust(){return previewHairAdjust?{...previewHairAdjust}:null},
+  pilotReady:()=>pilotReady
 };
 load().then(()=>{paintPreview();paintLobby()});
 })();

@@ -186,16 +186,33 @@
         <p class="hint">Comprueba los círculos de calidad antes de iniciar.</p>
         <button type="button" id="startSession" class="primary">INICIAR CONEXIÓN</button>
         <button type="button" class="top-gap" data-open-link-emulator>ABRIR EMULADOR LINK</button>
-        <p class="hint">Mantén esta pestaña del lobby abierta. El emulador se abrirá aparte y usará este enlace WebRTC.</p>
+        <p class="hint">El emulador se abrirá dentro del propio ML3D Link y mantendrá esta sala WebRTC activa.</p>
       </details>
     </div>
     <div id="guestMenu" hidden>
       <p id="guestRoomInfo" class="hint"></p>
       <button type="button" class="primary" data-open-link-emulator>ABRIR EMULADOR LINK</button>
-      <p class="hint">Mantén esta pestaña del lobby abierta mientras juegas.</p>
+      <p class="hint">El emulador se abrirá dentro del propio ML3D Link y mantendrá esta sala WebRTC activa.</p>
       <button type="button" id="leaveRoom" class="danger top-gap">SALIR DE LA SALA</button>
     </div>
   </div>
+</div>
+
+<div id="linkEmulatorShell" class="link-emulator-shell" hidden>
+  <div class="link-emulator-bar">
+    <div>
+      <strong>ML3D LINK · EMULADOR</strong>
+      <span id="linkEmulatorStatus">Conectado a la sala</span>
+    </div>
+    <button type="button" id="closeLinkEmulator" aria-label="Volver al lobby">VOLVER AL LOBBY</button>
+  </div>
+  <iframe
+    id="linkEmulatorFrame"
+    class="link-emulator-frame"
+    title="ML3Demuler Link"
+    src="about:blank"
+    allow="autoplay; fullscreen; gamepad"
+  ></iframe>
 </div>
 
 <script src="avatar-final.js?v=2"></script>

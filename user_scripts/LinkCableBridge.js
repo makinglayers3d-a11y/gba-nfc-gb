@@ -200,17 +200,10 @@
     // being in MULTI mode, otherwise the secondary GBA can never enter the
     // Multiplayer menu.
     isReady() {
-      // Keep cable presence visible for menu detection, but after the host has
-      // locally completed a transfer hold READY low until every remote GBA has
-      // acknowledged its own hardware completion.
-      if (
-        config.role === "host" &&
-        transferInFlight &&
-        localHardwareComplete
-      ) {
-        return false;
-      }
-      return this.isConnected();
+      // Visible GBA READY state: in MULTI mode this reflects that the remote
+      // console is also stably in MULTI. It must not be repurposed for our
+      // internal hardware-ACK barrier.
+      return this.isConnected() && remoteReady;
     },
     canTransfer() {
       return this.isConnected() && remoteReady;

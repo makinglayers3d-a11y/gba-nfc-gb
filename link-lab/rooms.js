@@ -226,6 +226,7 @@
   function completeHostLinkTransfer(error = false) {
     const pending = gbaLinkPending;
     if (!pending || !hostSession) return;
+    clearTimeout(pending.retryTimer);
     clearTimeout(pending.timer);
     gbaLinkPending = null;
 
@@ -252,6 +253,33 @@
         error: Boolean(error),
         time: Date.now()
       });
+    }
+  }
+
+  function retryHostLinkTransfer() {
+    const pending = gbaLinkPending;
+    if (!pending || !hostSession || !pending.waiting.size) return;
+
+    pending.retryCount = (pending.retryCount | 0) + 1;
+    for (const joinId of pending.waiting) {
+      const peer = hostSession.peers.get(joinId);
+      if (!peer || peer.channel?.readyState !== "open") continue;
+      const slot = Math.max(1, Math.min(3, Number(peer.linkSlot) | 0));
+      safeSend(peer.channel, {
+        type: "gba:link:poll",
+        roomId: hostSession.room.id,
+        seq: pending.seq,
+        playerNumber: slot,
+        baud: pending.baud,
+        hostWord: pending.hostWord,
+        retry: pending.retryCount,
+        time: Date.now()
+      });
+    }
+    log(`GBA Link: reintento ${pending.retryCount} para ${pending.seq}.`);
+
+    if (pending.retryCount < 2 && gbaLinkPending === pending) {
+      pending.retryTimer = setTimeout(retryHostLinkTransfer, pending.retryMs);
     }
   }
 
@@ -284,19 +312,28 @@
     const measuredRtts = [...hostSession.peers.values()]
       .map((peer) => Number(peer.metrics?.rtt))
       .filter(Number.isFinite);
-    const timeoutMs = measuredRtts.length
-      ? Math.max(250, Math.min(900, Math.ceil(Math.max(...measuredRtts) * 4 + 120)))
-      : 600;
+    const worstRtt = measuredRtts.length ? Math.max(...measuredRtts) : null;
+    const retryMs = worstRtt === null
+      ? 350
+      : Math.max(180, Math.min(700, Math.ceil(worstRtt * 2.5 + 100)));
+    const timeoutMs = worstRtt === null
+      ? 2200
+      : Math.max(1500, Math.min(5000, Math.ceil(worstRtt * 10 + 1000)));
 
     gbaLinkPending = {
       seq,
       words,
       waiting,
       connectedCount: Math.max(0, Math.min(3, waiting.size | 0)),
+      baud: Number(packet.baud) & 0x3,
+      hostWord: words[0],
+      retryCount: 0,
+      retryMs,
       timeoutMs,
-      // Keep a lost packet from freezing GBA virtual time for seconds. Scale
-      // the watchdog to the measured WebRTC RTT, with a bounded mobile-safe
-      // fallback when no quality sample exists yet.
+      // Mobile browsers can occasionally delay a DataChannel callback for
+      // hundreds of milliseconds. Retry the same transfer sequence first and
+      // only raise COMMERROR after a much wider hard watchdog.
+      retryTimer: setTimeout(retryHostLinkTransfer, retryMs),
       timer: setTimeout(() => completeHostLinkTransfer(true), timeoutMs)
     };
 
@@ -698,6 +735,7 @@
         seq: String(packet.seq || ""),
         words: Array.isArray(packet.words) ? packet.words : [],
         playerNumber: Math.max(1, Math.min(3, Number(packet.playerNumber) | 0)),
+        connectedCount: Math.max(0, Math.min(3, Number(packet.connectedCount) | 0)),
         error: Boolean(packet.error)
       });
       return;

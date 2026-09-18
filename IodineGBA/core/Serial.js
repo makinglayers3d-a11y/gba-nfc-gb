@@ -237,9 +237,12 @@ GameBoyAdvanceSerial.prototype.finishExternalMultiplayerTransfer = function () {
         catch (error) {}
     }
 };
-GameBoyAdvanceSerial.prototype.releaseExternalMultiplayerTransfer = function () {
+GameBoyAdvanceSerial.prototype.releaseExternalMultiplayerTransfer = function (commError) {
     if (!this.linkExternalTransferPending) {
         return false;
+    }
+    if (commError) {
+        this.linkExternalTransferError = true;
     }
     this.linkExternalTransferHold = false;
     if (this.linkExternalTransferTimingDone) {

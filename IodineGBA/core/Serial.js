@@ -470,9 +470,6 @@ GameBoyAdvanceSerial.prototype.readSIOCNT1 = function () {
 GameBoyAdvanceSerial.prototype.writeSIODATA8_0 = function (data) {
     data = data | 0;
     this.SIODATA8 = (this.SIODATA8 & 0xFF00) | data;
-    if ((this.SIOCNT_MODE | 0) == 2) {
-        this.notifyLinkSendDataChange();
-    }
     if ((this.RCNTMode | 0) < 0x2 && (this.SIOCNT_MODE | 0) == 3 && this.SIOCNT_UART_FIFO_ENABLE) {
         this.SIOCNT_UART_FIFO = Math.min(((this.SIOCNT_UART_FIFO | 0) + 1) | 0, 4) | 0;
     }
@@ -484,6 +481,9 @@ GameBoyAdvanceSerial.prototype.writeSIODATA8_1 = function (data) {
     data = data | 0;
     this.SIODATA8 = (this.SIODATA8 & 0xFF) | (data << 8);
     if ((this.SIOCNT_MODE | 0) == 2) {
+        // Commit the prepared 16-bit MULTI word only after the high byte is
+        // written. A 16-bit MMIO write reaches low then high, so notifying on
+        // both bytes generated two network words for one hardware write.
         this.notifyLinkSendDataChange();
     }
 }

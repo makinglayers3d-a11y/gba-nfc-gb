@@ -15,6 +15,10 @@
   let remoteReady = false;
   let readyTimer = 0;
   let transferInFlight = false;
+  let activeTransferSeq = "";
+  let localHardwareComplete = false;
+  let expectedRemoteHardwareAcks = 0;
+  const remoteHardwareAcks = new Set();
   let lastGuestPollSeq = "";
   let lastGuestReplyWord = 0xFFFF;
   let lastGuestReplyBaud = 0;
@@ -142,7 +146,7 @@
     el.textContent =
       `${title} ${config.role === "host" ? "H" : "G"} P${config.playerNumber}\n` +
       `M:${localModeMulti ? 1 : 0} L:${localReady ? 1 : 0} R:${remoteReady ? 1 : 0} WAIT:${waiting ? 1 : 0}\n` +
-      `TX:${transferCount} last:${waitText} avg:${avgWait}ms max:${Math.round(waitMaxMs)}ms err:${errorCount}\n` +
+      `TX:${transferCount} ACK:${config.role === "host" ? `${remoteHardwareAcks.size}/${expectedRemoteHardwareAcks}` : "-"} last:${waitText} avg:${avgWait}ms max:${Math.round(waitMaxMs)}ms err:${errorCount}\n` +
       (debugHistory.length ? debugHistory.join("\n") : lastState);
   }
 
@@ -167,6 +171,24 @@
     });
   }
 
+  function maybeReleaseHostTransfer() {
+    if (config.role !== "host" || !transferInFlight) return;
+    if (!localHardwareComplete) return;
+    if (expectedRemoteHardwareAcks < 1) return;
+    if (remoteHardwareAcks.size < expectedRemoteHardwareAcks) return;
+
+    transferInFlight = false;
+    emitStatus("transfer-synced", {
+      seq: activeTransferSeq,
+      remoteAcks: remoteHardwareAcks.size,
+      expectedAcks: expectedRemoteHardwareAcks
+    });
+    activeTransferSeq = "";
+    localHardwareComplete = false;
+    expectedRemoteHardwareAcks = 0;
+    remoteHardwareAcks.clear();
+  }
+
   const adapter = {
     get playerNumber() {
       return config.playerNumber;
@@ -184,13 +206,37 @@
       return this.isConnected() && remoteReady;
     },
     onHardwareTransferComplete(info = {}) {
-      transferInFlight = false;
       transferCount += 1;
+      const error = Boolean(info.error);
       emitStatus("transfer-hw-complete", {
+        seq: activeTransferSeq,
         words: Array.isArray(info.words) ? info.words.slice(0, 2) : undefined,
-        error: Boolean(info.error),
+        error,
         waitMs: lastWaitMs
       });
+
+      if (config.role === "guest") {
+        sendLocal({
+          type: "gba:link:hw-complete",
+          seq: activeTransferSeq,
+          playerNumber: config.playerNumber,
+          error
+        });
+        transferInFlight = false;
+        activeTransferSeq = "";
+        return;
+      }
+
+      localHardwareComplete = true;
+      if (error) {
+        transferInFlight = false;
+        activeTransferSeq = "";
+        localHardwareComplete = false;
+        expectedRemoteHardwareAcks = 0;
+        remoteHardwareAcks.clear();
+        return;
+      }
+      maybeReleaseHostTransfer();
     },
     onSerialModeChange(mode) {
       const nextModeMulti = (Number(mode) | 0) === 2;
@@ -238,8 +284,12 @@
         return false;
       }
       transferInFlight = true;
+      localHardwareComplete = false;
+      expectedRemoteHardwareAcks = 0;
+      remoteHardwareAcks.clear();
       localSequence = (localSequence + 1) >>> 0;
       const seq = `${Date.now().toString(36)}-${localSequence.toString(36)}`;
+      activeTransferSeq = seq;
       waitStartedAt = performance.now();
       sendLocal({
         type: "gba:link:request",
@@ -286,6 +336,10 @@
     localReady = false;
     remoteReady = false;
     transferInFlight = false;
+    activeTransferSeq = "";
+    localHardwareComplete = false;
+    expectedRemoteHardwareAcks = 0;
+    remoteHardwareAcks.clear();
     lastGuestPollSeq = "";
     lastGuestReplyWord = 0xFFFF;
     lastGuestReplyBaud = 0;
@@ -350,6 +404,8 @@
 
       const playerNumber = sanitizePlayerNumber(packet.playerNumber);
       config.playerNumber = playerNumber;
+      activeTransferSeq = seq;
+      localHardwareComplete = false;
       waitStartedAt = performance.now();
       transferInFlight = true;
       if (serial?.beginExternalMultiplayerTransfer) {
@@ -373,6 +429,29 @@
       return;
     }
 
+    if (packet.type === "gba:link:remote-hw-complete") {
+      const seq = String(packet.seq || "");
+      if (config.role !== "host" || !transferInFlight || !seq || seq !== activeTransferSeq) {
+        return;
+      }
+      remoteHardwareAcks.add(sanitizePlayerNumber(packet.playerNumber));
+      emitStatus("remote-hw-complete", {
+        seq,
+        playerNumber: sanitizePlayerNumber(packet.playerNumber),
+        error: Boolean(packet.error)
+      });
+      if (packet.error) {
+        transferInFlight = false;
+        activeTransferSeq = "";
+        localHardwareComplete = false;
+        expectedRemoteHardwareAcks = 0;
+        remoteHardwareAcks.clear();
+        return;
+      }
+      maybeReleaseHostTransfer();
+      return;
+    }
+
     if (packet.type === "gba:link:complete") {
       const words = Array.isArray(packet.words)
         ? packet.words.slice(0, 4).map((v) => Number(v) & 0xFFFF)
@@ -388,11 +467,16 @@
       }
       waitStartedAt = 0;
 
+      const connectedCount = Math.max(0, Math.min(3, Number(packet.connectedCount) | 0));
+      if (config.role === "host") {
+        expectedRemoteHardwareAcks = connectedCount;
+      }
+
       serial?.completeExternalMultiplayerTransfer?.(
         words,
         sanitizePlayerNumber(packet.playerNumber ?? config.playerNumber),
         Boolean(packet.error),
-        Math.max(0, Math.min(3, Number(packet.connectedCount) | 0))
+        connectedCount
       );
 
       emitStatus("transfer-staged", {
@@ -400,7 +484,7 @@
         error: Boolean(packet.error),
         waitMs: lastWaitMs,
         words: words.slice(0, 2),
-        connectedCount: Math.max(0, Math.min(3, Number(packet.connectedCount) | 0))
+        connectedCount
       });
       return;
     }
@@ -443,6 +527,10 @@
         ready: adapter.canTransfer(),
         waiting: Boolean(emulator?.IOCore?.linkCableWait),
         transferInFlight,
+        activeTransferSeq,
+        localHardwareComplete,
+        expectedRemoteHardwareAcks,
+        remoteHardwareAcks: [...remoteHardwareAcks],
         transferCount,
         lastWaitMs,
         waitSamples,

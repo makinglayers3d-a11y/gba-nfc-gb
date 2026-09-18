@@ -5,7 +5,7 @@ if(window.__ml3dAvatarCompositorV1)return;window.__ml3dAvatarCompositorV1=true;
 const HAIR_W=32,HAIR_H=32;
 const HAIR_ATLAS='./assets/avatar-modular/hair-atlas-v1.png?v=3';
 const HAIR_DR={down:0,left:1,right:2,up:3};
-const DEF={skin:'#efc3a1',hair:1,hairColor:'#4a3024'};
+const DEF={skin:'#efc3a1',hair:1,hairColor:'#4a3024',hairOffsetX:0,hairOffsetY:0,hairScale:1};
 const api=()=>window.ML3DAvatarFinal;
 const clamp=n=>Math.max(0,Math.min(255,Math.round(n)));
 const rgb=h=>{const n=parseInt(String(h||'#fff').replace('#','').padEnd(6,'f'),16)||0xffffff;return{r:(n>>16)&255,g:(n>>8)&255,b:n&255}};
@@ -16,8 +16,17 @@ function profile(){
 }
 const setProfile=patch=>api()?.setProfile?.(patch);
 
-let hairAtlas=null,ready=false;
+let hairAtlas=null,ready=false,previewHairAdjust=null;
 const raw=new Map(),tinted=new Map();
+const hairNumber=(v,fallback,min,max)=>{const n=Number(v);return Number.isFinite(n)?Math.max(min,Math.min(max,n)):fallback};
+function hairAdjust(p,override=null){
+  const source=override||p||{};
+  return{
+    x:hairNumber(source.x??source.hairOffsetX,0,-24,24),
+    y:hairNumber(source.y??source.hairOffsetY,0,-24,24),
+    scale:hairNumber(source.scale??source.hairScale,1,.45,2)
+  };
+}
 
 function load(){
   return new Promise(res=>{
@@ -123,22 +132,23 @@ function baseBounds(base){
   return{x:x0,y:y0,w:x1-x0+1,h:y1-y0+1};
 }
 
-function drawHairFixed(ctx,piece,base){
+function drawHairFixed(ctx,piece,base,p=profile(),override=null){
   if(!piece)return;
-  const b=baseBounds(base);
-  const size=Math.max(1,Math.round(Math.min(b.w*1.32,b.h*.58)));
+  const b=baseBounds(base),adj=hairAdjust(p,override);
+  const baseSize=Math.max(1,Math.round(Math.min(b.w*1.32,b.h*.58)));
+  const size=Math.max(1,Math.round(baseSize*adj.scale));
   const cx=b.x+b.w/2;
-  const dx=Math.round(cx-size/2);
-  const dy=Math.round(b.y-2);
+  const dx=Math.round(cx-size/2+adj.x);
+  const dy=Math.round(b.y-2+adj.y);
   ctx.drawImage(piece,0,0,HAIR_W,HAIR_H,dx,dy,size,size);
 }
 
-function compose(base,p=profile(),d='down',f=0){
+function compose(base,p=profile(),d='down',f=0,override=null){
   const o=document.createElement('canvas');o.width=base.width;o.height=base.height;
   const x=o.getContext('2d');x.imageSmoothingEnabled=false;
   x.drawImage(base,0,0);
   x.drawImage(skin(base,p.skin),0,0);
-  drawHairFixed(x,tintHair(p.hair,d,f,p.hairColor,light(p.hairColor,.34)),base);
+  drawHairFixed(x,tintHair(p.hair,d,f,p.hairColor,light(p.hairColor,.34)),base,p,override);
   return o;
 }
 
@@ -162,14 +172,14 @@ function paintLobby(){
     const st=state(b),c=ensure(h,'avatar-v3-overlay-canvas',64,96),x=c.getContext('2d');
     x.imageSmoothingEnabled=false;x.clearRect(0,0,c.width,c.height);
     x.drawImage(skin(b,p.skin),0,0,64,96);
-    drawHairFixed(x,tintHair(p.hair,st.dir,st.frame,p.hairColor,light(p.hairColor,.34)),b);
+    drawHairFixed(x,tintHair(p.hair,st.dir,st.frame,p.hairColor,light(p.hairColor,.34)),b,p);
     h.classList.add('avatar-v3-composed');
   });
 }
 function paintPreview(){
   if(!ready)return;
   const r=document.getElementById('avatarFinalPreview'),b=r?.querySelector(':scope > .avatar-v5-preview');if(!r||!b)return;
-  const fin=compose(b,profile(),'down',0),c=ensure(r,'avatar-v3-final-preview',fin.width,fin.height),x=c.getContext('2d');
+  const fin=compose(b,profile(),'down',0,previewHairAdjust),c=ensure(r,'avatar-v3-final-preview',fin.width,fin.height),x=c.getContext('2d');
   x.imageSmoothingEnabled=false;x.clearRect(0,0,c.width,c.height);x.drawImage(fin,0,0);r.classList.add('avatar-v3-composed');
 }
 function thumbFor(k,v){
@@ -179,6 +189,10 @@ function thumbFor(k,v){
   const x=c.getContext('2d');x.imageSmoothingEnabled=false;x.drawImage(piece,0,0,32,32,8,8,80,80);return c;
 }
 
-window.ML3DAvatarCompositor={ready:()=>ready,profile,setProfile,compose,paintLobby,paintPreview,thumbFor};
+window.ML3DAvatarCompositor={
+  ready:()=>ready,profile,setProfile,compose,paintLobby,paintPreview,thumbFor,
+  setPreviewHairAdjust(value){previewHairAdjust=value?hairAdjust(profile(),value):null;paintPreview()},
+  getPreviewHairAdjust(){return previewHairAdjust?{...previewHairAdjust}:null}
+};
 load().then(()=>{paintPreview();paintLobby()});
 })();

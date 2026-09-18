@@ -90,7 +90,7 @@
   }
 
   function assetThumbFor(kind,value){
-    const out=document.createElement('canvas');out.width=96;out.height=126;
+    const out=document.createElement('canvas');out.width=96;out.height=kind==='hair'?96:126;
     if(kind==='hair'&&!hairReady)return out;
     if(kind!=='hair'&&!ready)return out;
     const p=profile();let variant=value,primary='#fff',accent='#d9e0e6';
@@ -105,7 +105,7 @@
     }
     const piece=kind==='hair'?tintedHairFrame(variant,primary,accent):tintedFrame(kind,variant,primary,accent),b=piece?._assetBounds;if(!piece||!b)return out;
     const ctx=out.getContext('2d');ctx.imageSmoothingEnabled=false;
-    const padX=8,padY=9,scale=Math.min((out.width-padX*2)/b.w,(out.height-padY*2)/b.h);
+    const padX=kind==='hair'?6:8,padY=kind==='hair'?6:9,scale=Math.min((out.width-padX*2)/b.w,(out.height-padY*2)/b.h);
     const dw=Math.max(1,Math.round(b.w*scale)),dh=Math.max(1,Math.round(b.h*scale));
     ctx.drawImage(piece,b.x,b.y,b.w,b.h,Math.round((out.width-dw)/2),Math.round((out.height-dh)/2),dw,dh);
     return out;

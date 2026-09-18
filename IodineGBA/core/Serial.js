@@ -124,6 +124,17 @@ GameBoyAdvanceSerial.prototype.getLinkPlayerNumber = function () {
 GameBoyAdvanceSerial.prototype.getLinkSendData = function () {
     return this.SIODATA8 & 0xFFFF;
 };
+GameBoyAdvanceSerial.prototype.notifyLinkSendDataChange = function () {
+    if (
+        this.linkCable &&
+        typeof this.linkCable.onSendDataChange == "function"
+    ) {
+        try {
+            this.linkCable.onSendDataChange(this.getLinkSendData() | 0);
+        }
+        catch (error) {}
+    }
+};
 GameBoyAdvanceSerial.prototype.beginExternalMultiplayerTransfer = function (playerNumber) {
     this.setLinkPlayerNumber(playerNumber | 0);
     this.SIOTransferStarted = true;
@@ -451,6 +462,9 @@ GameBoyAdvanceSerial.prototype.readSIOCNT1 = function () {
 GameBoyAdvanceSerial.prototype.writeSIODATA8_0 = function (data) {
     data = data | 0;
     this.SIODATA8 = (this.SIODATA8 & 0xFF00) | data;
+    if ((this.SIOCNT_MODE | 0) == 2) {
+        this.notifyLinkSendDataChange();
+    }
     if ((this.RCNTMode | 0) < 0x2 && (this.SIOCNT_MODE | 0) == 3 && this.SIOCNT_UART_FIFO_ENABLE) {
         this.SIOCNT_UART_FIFO = Math.min(((this.SIOCNT_UART_FIFO | 0) + 1) | 0, 4) | 0;
     }
@@ -461,6 +475,9 @@ GameBoyAdvanceSerial.prototype.readSIODATA8_0 = function () {
 GameBoyAdvanceSerial.prototype.writeSIODATA8_1 = function (data) {
     data = data | 0;
     this.SIODATA8 = (this.SIODATA8 & 0xFF) | (data << 8);
+    if ((this.SIOCNT_MODE | 0) == 2) {
+        this.notifyLinkSendDataChange();
+    }
 }
 GameBoyAdvanceSerial.prototype.readSIODATA8_1 = function () {
     return this.SIODATA8 >> 8;

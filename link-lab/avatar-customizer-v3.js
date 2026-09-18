@@ -2,7 +2,7 @@
 'use strict';
 if(window.__ml3dAvatarCustomizerV3Unified)return;window.__ml3dAvatarCustomizerV3Unified=true;
 const C=()=>window.ML3DAvatarCompositor;
-const COUNTS={hair:8,top:8,bottom:8,shoes:6};
+const COUNTS={hair:9,top:8,bottom:8,shoes:6};
 const ACCESSORIES=['none','cap','glasses','headphones','scarf','shoulderbag','bow','beanie','backpack'];
 const LABELS={none:'NINGUNO',cap:'GORRA',glasses:'GAFAS',headphones:'AURICULARES',scarf:'PAÑUELO',shoulderbag:'BOLSO',bow:'LAZO',beanie:'GORRO',backpack:'MOCHILA'};
 const PALETTES={

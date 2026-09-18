@@ -200,6 +200,16 @@
     // being in MULTI mode, otherwise the secondary GBA can never enter the
     // Multiplayer menu.
     isReady() {
+      // Keep cable presence visible for menu detection, but after the host has
+      // locally completed a transfer hold READY low until every remote GBA has
+      // acknowledged its own hardware completion.
+      if (
+        config.role === "host" &&
+        transferInFlight &&
+        localHardwareComplete
+      ) {
+        return false;
+      }
       return this.isConnected();
     },
     canTransfer() {
@@ -274,10 +284,10 @@
           word: Number(info.word) & 0xFFFF,
           baud: Number(info.baud) & 0x3
         });
-        // Preserve BUSY on the current hardware transfer. This is not a new
-        // transfer; it is a redundant start write while the previous one is
-        // still active.
-        return true;
+        // The previous transfer may already be locally complete but still be
+        // waiting for the remote hardware ACK. Reject this redundant start so
+        // Iodine leaves BUSY clear and the game can retry once READY returns.
+        return false;
       }
       if (!this.canTransfer()) {
         emitStatus("transfer-waiting-remote", { remoteReady });

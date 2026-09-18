@@ -412,7 +412,15 @@ GameBoyAdvanceSerial.prototype.readSIOCNT0 = function () {
             case 0:
             //32-Bit:
             case 1:
-                return ((this.SIOTransferStarted) ? 0x80 : 0) | 0x74 | this.SIOCNT0_DATA;
+                // In Normal mode bit 2 is the live SI input. With no peer it
+                // is pulled high; with the ML3D Link cable attached we expose
+                // an active-low peer-ready signal so software can detect the
+                // other GBA before switching into Multi-Player mode.
+                var normalSIState = this.linkCableConnected() ? 0 : 0x4;
+                return ((this.SIOTransferStarted) ? 0x80 : 0) |
+                    0x70 |
+                    normalSIState |
+                    this.SIOCNT0_DATA;
             //Multiplayer:
             case 2:
                 // Multi-Player mode exposes two physical Link Cable state bits:

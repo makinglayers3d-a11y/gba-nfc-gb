@@ -606,8 +606,11 @@ GameBoyAdvanceSerial.prototype.writeRCNT0 = function (data) {
 }
 GameBoyAdvanceSerial.prototype.readRCNT0 = function () {
     // RCNT bits 0-3 expose the live SC/SD/SI/SO pin states even while
-    // Normal/Multiplayer mode is selected. Several Nintendo games poll SC
-    // through RCNT bit 0 before accepting a secondary GBA.
+    // Normal/Multiplayer mode is selected. Mario Bros. is known to poll SC.
+    // Match mGBA's observable multiplayer wiring:
+    //   host idle/busy  -> SC 1/0, SI 0
+    //   child idle/busy -> SC 1/0, SI 1
+    // SD/SO are not synthesized here; SIOCNT exposes ready/terminal state.
     if (
         (this.RCNTMode | 0) < 0x2 &&
         (this.SIOCNT_MODE | 0) == 0x2 &&
@@ -619,16 +622,10 @@ GameBoyAdvanceSerial.prototype.readRCNT0 = function () {
 
         if (!busy) {
             pins |= 0x1; // SC high while idle.
-            if (this.linkCableReady()) {
-                pins |= 0x2; // SD high only when every linked GBA is actually ready.
-            }
-            pins |= 0x8; // SO high while idle.
-            if (playerNumber != 0) {
-                pins |= 0x4; // Child SI sees previous unit SO high while idle.
-            }
         }
-        // During a transfer the parent pulls SC low and the chained
-        // start condition propagates low through the child inputs.
+        if (playerNumber != 0) {
+            pins |= 0x4; // Child SI remains high in MULTI mode.
+        }
         return (this.RCNTDataBitFlow << 4) | pins;
     }
     return (this.RCNTDataBitFlow << 4) | this.RCNTDataBits;

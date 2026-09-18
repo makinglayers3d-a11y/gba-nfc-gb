@@ -14,6 +14,7 @@
   let localModeMulti = false;
   let remoteReady = false;
   let readyTimer = 0;
+  let transferInFlight = false;
   let transferCount = 0;
   let lastState = "boot";
   let waitStartedAt = 0;
@@ -180,6 +181,7 @@
       return this.isConnected() && remoteReady;
     },
     onHardwareTransferComplete(info = {}) {
+      transferInFlight = false;
       transferCount += 1;
       emitStatus("transfer-hw-complete", {
         words: Array.isArray(info.words) ? info.words.slice(0, 2) : undefined,
@@ -218,10 +220,21 @@
       emitStatus("local-mode", { modeMulti: true, ready: localReady });
     },
     startMultiplayerTransfer(info = {}) {
+      if (transferInFlight) {
+        emitStatus("transfer-overlap-suppressed", {
+          word: Number(info.word) & 0xFFFF,
+          baud: Number(info.baud) & 0x3
+        });
+        // Preserve BUSY on the current hardware transfer. This is not a new
+        // transfer; it is a redundant start write while the previous one is
+        // still active.
+        return true;
+      }
       if (!this.canTransfer()) {
         emitStatus("transfer-waiting-remote", { remoteReady });
         return false;
       }
+      transferInFlight = true;
       localSequence = (localSequence + 1) >>> 0;
       const seq = `${Date.now().toString(36)}-${localSequence.toString(36)}`;
       waitStartedAt = performance.now();
@@ -269,6 +282,7 @@
     localModeMulti = false;
     localReady = false;
     remoteReady = false;
+    transferInFlight = false;
     publishLocalReady();
     serial = null;
     emulator = null;
@@ -397,6 +411,7 @@
         cableReady: adapter.isReady(),
         ready: adapter.canTransfer(),
         waiting: Boolean(emulator?.IOCore?.linkCableWait),
+        transferInFlight,
         transferCount,
         lastWaitMs,
         waitSamples,

@@ -320,26 +320,6 @@
       return;
     }
 
-    if (
-      packet.type === "gba:link:word" ||
-      packet.type === "gba:link:word-request" ||
-      packet.type === "gba:link:fast-transfer"
-    ) {
-      const forwarded = {
-        ...packet,
-        roomId,
-        source: undefined,
-        time: Date.now()
-      };
-      delete forwarded.source;
-      if (hostSession) {
-        sendAll(forwarded);
-      } else if (joinSession) {
-        safeSend(joinSession.channel, forwarded);
-      }
-      return;
-    }
-
     if (packet.type === "gba:link:request" && hostSession) {
       startHostLinkTransfer(packet);
       return;
@@ -620,19 +600,6 @@
       return;
     }
 
-    if (packet.type === "gba:link:word") {
-      postLocalLink({
-        type: "gba:link:remote-word",
-        roomId: hostSession.room.id,
-        playerNumber: Math.max(1, Math.min(3, Number(peer.linkSlot) | 0)),
-        word: Number(packet.word) & 0xFFFF,
-        generation: Number(packet.generation) >>> 0,
-        reason: String(packet.reason || ""),
-        requestSeq: String(packet.requestSeq || "")
-      });
-      return;
-    }
-
     if (packet.type === "gba:link:reply") {
       if (!gbaLinkPending || String(packet.seq || "") !== gbaLinkPending.seq) return;
       const slot = Math.max(1, Math.min(3, Number(peer.linkSlot) | 0));
@@ -687,45 +654,6 @@
         ready: Boolean(packet.ready)
       });
       log(`Host: GBA ${packet.ready ? "MULTIPLAYER LISTA" : "no lista"}.`);
-      return;
-    }
-
-    if (packet.type === "gba:link:word") {
-      postLocalLink({
-        type: "gba:link:remote-word",
-        roomId: packet.roomId || joinSession?.room?.id || "",
-        playerNumber: 0,
-        word: Number(packet.word) & 0xFFFF,
-        generation: Number(packet.generation) >>> 0,
-        reason: String(packet.reason || ""),
-        requestSeq: String(packet.requestSeq || "")
-      });
-      return;
-    }
-
-    if (packet.type === "gba:link:word-request") {
-      postLocalLink({
-        type: "gba:link:word-request",
-        roomId: packet.roomId || joinSession?.room?.id || "",
-        seq: String(packet.seq || ""),
-        hostWord: Number(packet.hostWord) & 0xFFFF,
-        baud: Number(packet.baud) & 0x3,
-        playerNumber: Math.max(1, Math.min(3, Number(joinSession?.linkSlot) | 0))
-      });
-      return;
-    }
-
-    if (packet.type === "gba:link:fast-transfer") {
-      postLocalLink({
-        type: "gba:link:fast-transfer",
-        roomId: packet.roomId || joinSession?.room?.id || "",
-        seq: String(packet.seq || ""),
-        hostWord: Number(packet.hostWord) & 0xFFFF,
-        guestWord: Number(packet.guestWord) & 0xFFFF,
-        guestGeneration: Number(packet.guestGeneration) >>> 0,
-        baud: Number(packet.baud) & 0x3,
-        playerNumber: Math.max(1, Math.min(3, Number(joinSession?.linkSlot) | 0))
-      });
       return;
     }
 

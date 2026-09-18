@@ -153,8 +153,12 @@
       siocnt0 = serial?.readSIOCNT0?.() ?? 0;
     } catch {}
     const visiblePlayerId = (Number(siocnt0) >> 4) & 0x3;
+    let rcnt0 = 0;
+    try {
+      rcnt0 = serial?.readRCNT0?.() ?? 0;
+    } catch {}
     el.textContent =
-      `${title} ${config.role === "host" ? "H" : "G"} P${config.playerNumber} ID:${visiblePlayerId} S:${(Number(siocnt0) & 0xFF).toString(16).padStart(2, "0")}\n` +
+      `${title} ${config.role === "host" ? "H" : "G"} P${config.playerNumber} ID:${visiblePlayerId} S:${(Number(siocnt0) & 0xFF).toString(16).padStart(2, "0")} R:${(Number(rcnt0) & 0xFF).toString(16).padStart(2, "0")}\n` +
       `M:${localModeMulti ? 1 : 0} L:${localReady ? 1 : 0} R:${remoteReady ? 1 : 0} WAIT:${waiting ? 1 : 0}\n` +
       `TX:${transferCount} ACK:${config.role === "host" ? `${remoteHardwareAcks.size}/${expectedRemoteHardwareAcks}` : "-"} NEXT:${config.role === "host" ? `${remoteNextWordAcks.size}/${expectedRemoteHardwareAcks}` : (awaitingGuestNextWord ? "WAIT" : "OK")} BUF:${config.role === "host" ? remotePreparedWords.size : "-"} last:${waitText} avg:${avgWait}ms max:${Math.round(waitMaxMs)}ms err:${errorCount}\n` +
       (debugHistory.length ? debugHistory.join("\n") : lastState);

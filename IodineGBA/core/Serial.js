@@ -569,13 +569,13 @@ GameBoyAdvanceSerial.prototype.readSIOCNT0 = function () {
             case 0:
             //32-Bit:
             case 1:
-                // In Normal mode bit 2 is the live SI input. With no peer it
-                // is pulled high; with the ML3D Link cable attached we expose
-                // an active-low peer-ready signal so software can detect the
-                // other GBA before switching into Multi-Player mode.
+                // Do not invent multiplayer/cable status in Normal mode.
+                // With an attached lockstep driver mGBA preserves the software
+                // Normal-mode control bits and does not force bits 4-6 high.
+                // SI is low here while the local cable driver owns the link;
+                // disconnected fallback keeps the usual pulled-high SI.
                 var normalSIState = this.linkCableConnected() ? 0 : 0x4;
                 return ((this.SIOTransferStarted) ? 0x80 : 0) |
-                    0x70 |
                     normalSIState |
                     this.SIOCNT0_DATA;
             //Multiplayer:

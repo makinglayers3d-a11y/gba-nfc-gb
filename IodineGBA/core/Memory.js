@@ -1558,8 +1558,7 @@ GameBoyAdvanceMemory.prototype.writeIODispatch16 = function (address, data) {
         //4000128h - SIOCNT - SIO Sub Mode Control (R/W)
         case 0x4000128:
             this.IOCore.updateSerialClocking();
-            this.serial.writeSIOCNT0(data & 0xFF);
-            this.serial.writeSIOCNT1((data >> 8) & 0xFF);
+            this.serial.writeSIOCNT16(data & 0xFFFF);
             this.IOCore.updateCoreEventTime();
             break;
         //400012Ah - SIOMLT_SEND - Data Send Register (R/W)
@@ -1973,8 +1972,7 @@ GameBoyAdvanceMemory.prototype.writeIODispatch32 = function (address, data) {
         //400012Ah - SIOMLT_SEND - Data Send Register (R/W)
         case 0x4000128:
             this.IOCore.updateSerialClocking();
-            this.serial.writeSIOCNT0(data & 0xFF);
-            this.serial.writeSIOCNT1((data >> 8) & 0xFF);
+            this.serial.writeSIOCNT16(data & 0xFFFF);
             this.serial.writeSIODATA8_0((data >> 16) & 0xFF);
             this.serial.writeSIODATA8_1(data >>> 24);
             this.IOCore.updateCoreEventTime();

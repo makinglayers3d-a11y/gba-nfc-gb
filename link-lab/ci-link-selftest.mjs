@@ -65,9 +65,23 @@ async function status() {
     const ctl = api?.test?.controller;
     const s = api?.status || {};
     const serials = ctl?.serials || [];
+    const cores = ctl?.cores || [];
     const byte = (v) => Number(v ?? 0) & 0xff;
+    const marioLinkState = cores.map((core) => {
+      const ram = core?.IOCore?.memory?.internalRAM;
+      if (!ram) return null;
+      return {
+        childState: byte(ram[0x79B4]),
+        linkFlags: byte(ram[0x79C0]),
+        multi0: byte(ram[0x79C8]) | (byte(ram[0x79C9]) << 8),
+        multi1: byte(ram[0x79CA]) | (byte(ram[0x79CB]) << 8),
+        multi2: byte(ram[0x79CC]) | (byte(ram[0x79CD]) << 8),
+        multi3: byte(ram[0x79CE]) | (byte(ram[0x79CF]) << 8)
+      };
+    });
     return {
       ...s,
+      marioLinkState,
       masks: api?.test?.masks || null,
       serial: serials.map((ser) => ({
         mode: ser?.SIOCNT_MODE ?? null,

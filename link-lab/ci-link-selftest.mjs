@@ -138,14 +138,14 @@ await capture("mode-menu");
 await tapBoth(4, 4, 45); // RIGHT
 await capture("multiplayer-selected");
 
-// Official manual flow: confirm MULTIPLAYER with START.
-await tapSeat(0, 3, 4, 12); // P0 START
+// Multi-Pak manual flow: both consoles have MULTIPLAYER selected,
+// but only Player 1 starts the cable check. Secondary players wait.
+await tapSeat(0, 3, 4, 420); // P0 START only
 await capture("host-entered-multi");
-await tapSeat(1, 3, 4, 420); // P1 START
-await capture("guest-entered-multi");
+await capture("guest-waiting");
 
-// Let the handshake/error/result settle.
-await waitFrames(900);
+// Let the cable check / handshake settle without pressing anything on P1.
+await waitFrames(1200);
 await capture("final");
 
 await fs.writeFile(

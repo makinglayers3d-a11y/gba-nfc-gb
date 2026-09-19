@@ -741,10 +741,32 @@
 
       try {
         const hostMem = this.cores[0]?.IOCore?.memory;
-        const childIO = this.cores[1]?.IOCore;
-        const childMem = childIO?.memory;
-        const childCPU = childIO?.cpu;
-        if (!hostMem || !childMem?.externalRAM || !childCPU) return false;
+        const childEmu = this.cores[1];
+        if (!hostMem || !childEmu) return false;
+
+        // A real Single-Pak slave is not running the cartridge game before
+        // MultiBoot. Rebuild the secondary IOCore here so the downloaded
+        // client starts with clean IWRAM, timers, IRQ/DMA/SIO and graphics
+        // state instead of inheriting the title-screen state of our helper ROM.
+        const sharedCycle = Number(this.cores[0]?.IOCore?.linkCycleCounter) || 0;
+        if ((childEmu.initializeCore?.() | 0) === 0) {
+          mb.swiError = "secondary IOCore reset failed";
+          return false;
+        }
+        const childIO = childEmu.IOCore;
+        if (!childIO) return false;
+        childIO.linkCycleCounter = sharedCycle;
+        childIO.cyclesOveriteratedPreviously = 0;
+        childIO.linkIterationCut = false;
+
+        // Refresh the coordinator's serial reference and reattach the local
+        // deterministic cable/observers to the newly created secondary core.
+        this.serials[1] = childIO.serial;
+        this.installLocalCable();
+
+        const childMem = childIO.memory;
+        const childCPU = childIO.cpu;
+        if (!childMem?.externalRAM || !childCPU) return false;
 
         const read32 = (address) => hostMem.memoryRead32(Number(address) | 0) >>> 0;
         const bootSrc = read32((Number(paramPtr) + 0x20) >>> 0);

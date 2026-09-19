@@ -678,10 +678,15 @@ GameBoyAdvanceSerial.prototype.readSIOCNT0 = function () {
                 // Some commercial games check these before enabling multiplayer.
                 var linkConnected = this.linkCableConnected();
                 var linkReady = this.linkCableReady();
-                var visiblePlayerNumber = linkConnected
-                    ? (this.getLinkPlayerNumber() | 0) & 0x3
+                var physicalPlayerNumber = linkConnected
+                    ? (this.linkPlayerNumber | 0) & 0x3
                     : this.SIOMULT_PLAYER_NUMBER & 0x3;
-                var terminalState = (linkConnected && visiblePlayerNumber != 0) ? 0x4 : 0;
+                var visiblePlayerNumber = linkConnected
+                    ? (this.linkPlayerIdValid ? physicalPlayerNumber : 0)
+                    : this.SIOMULT_PLAYER_NUMBER & 0x3;
+                // SI identifies the physical parent/child wiring immediately;
+                // unlike ID bits 4-5, it does not wait for the first transfer.
+                var terminalState = (linkConnected && physicalPlayerNumber != 0) ? 0x4 : 0;
                 var readyState = linkReady ? 0x8 : 0;
                 return ((this.SIOTransferStarted) ? 0x80 : 0) |
                     ((this.SIOCOMMERROR) ? 0x40 : 0) |
@@ -709,11 +714,9 @@ GameBoyAdvanceSerial.prototype.writeSIOCNT1 = function (data) {
     var oldMode = this.SIOCNT_MODE | 0;
     this.SIOCNT_MODE = (data >> 4) & 0x3;
 
-    if (this.linkCableConnected() && (this.SIOCNT_MODE | 0) == 0x2) {
-        this.linkPlayerIdValid = true;
-        this.SIOMULT_PLAYER_NUMBER = this.linkPlayerNumber & 0x3;
-    }
-
+    // Multiplayer ID bits are not valid merely because software selected
+    // MULTI mode. Real hardware assigns/exposes the ID after the first
+    // successful transfer; keep the physical cable position separately.
     if (
         (oldMode | 0) != (this.SIOCNT_MODE | 0) &&
         this.linkCable &&

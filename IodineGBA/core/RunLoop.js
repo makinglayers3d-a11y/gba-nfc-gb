@@ -194,6 +194,21 @@ GameBoyAdvanceIO.prototype.runTHUMB = function () {
         //Handle the current system state selected:
         switch (this.systemStatus | 0) {
             case 4: //CPU Handle State (Normal THUMB)
+                if (typeof this.linkInstructionObserver == "function") {
+                    try {
+                        var traceRawPC = this.cpu && this.cpu.registers
+                            ? (this.cpu.registers[15] >>> 0)
+                            : 0;
+                        var traceLogicalPC = (traceRawPC - 0x40) >>> 0;
+                        if (
+                            (traceLogicalPC >= 0x080C9E80 && traceLogicalPC <= 0x080C9F68) ||
+                            (traceLogicalPC >= 0x080C98D0 && traceLogicalPC <= 0x080C9934)
+                        ) {
+                            this.linkInstructionObserver(traceLogicalPC, traceRawPC);
+                        }
+                    }
+                    catch (error) {}
+                }
                 this.THUMB.executeIteration();
                 break;
             case 5:

@@ -4,9 +4,17 @@ from pathlib import Path
 from capstone import Cs, CS_ARCH_ARM, CS_MODE_ARM, CS_MODE_THUMB, CS_MODE_LITTLE_ENDIAN
 
 ROOT = Path(__file__).resolve().parents[1]
-states_path = ROOT / "artifacts" / "link-selftest" / "states.json"
+artifact_root = ROOT / "artifacts"
+candidates = sorted(
+    p for p in artifact_root.glob("link-selftest*")
+    if p.is_dir() and (p / "states.json").exists()
+)
+if not candidates:
+    raise SystemExit("No Link selftest states.json found")
+selftest_dir = candidates[-1]
+states_path = selftest_dir / "states.json"
 rom_path = ROOT / "games" / "Super Mario Bros. 3.gba"
-out_path = ROOT / "artifacts" / "link-selftest" / "protocol-disassembly.txt"
+out_path = selftest_dir / "protocol-disassembly.txt"
 
 TARGET_WORDS = {0x6200, 0xFEFE, 0x0000, 0xFDFD, 0xFCFC, 0xFCFD, 0xF00F}
 ROM_BASES = (0x08000000, 0x0A000000, 0x0C000000)

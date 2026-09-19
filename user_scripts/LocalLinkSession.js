@@ -141,6 +141,8 @@
       this.startSkewCount = 0;
       this.recentTransfers = [];
       this.sendWordHistory = [[], []];
+      this.protocolTransition = null;
+      this.protocolTransitionRemaining = 0;
       this.wedged = false;
       this.inputTimer = null;
       this.readyTimer = null;
@@ -338,7 +340,29 @@
         }
       }
 
-      this.recentTransfers.push({
+      const serialSnapshot = this.serials.map((serial, seat) => {
+        let low = 0, high = 0, rcntLow = 0, rcntHigh = 0;
+        try { low = serial?.readSIOCNT0?.() ?? 0; } catch {}
+        try { high = serial?.readSIOCNT1?.() ?? 0; } catch {}
+        try { rcntLow = serial?.readRCNT0?.() ?? 0; } catch {}
+        try { rcntHigh = serial?.readRCNT1?.() ?? 0; } catch {}
+        return {
+          seat,
+          mode: serial?.SIOCNT_MODE ?? null,
+          busy: !!serial?.SIOTransferStarted,
+          irqEnabled: !!serial?.SIOCNT_IRQ,
+          siocnt: ((Number(high) & 0xff) << 8) | (Number(low) & 0xff),
+          rcnt: ((Number(rcntHigh) & 0xff) << 8) | (Number(rcntLow) & 0xff),
+          send: Number(serial?.getLinkSendData?.() ?? 0) & 0xffff,
+          a: Number(serial?.SIODATA_A ?? 0) & 0xffff,
+          b: Number(serial?.SIODATA_B ?? 0) & 0xffff,
+          c: Number(serial?.SIODATA_C ?? 0) & 0xffff,
+          d: Number(serial?.SIODATA_D ?? 0) & 0xffff
+        };
+      });
+
+      const transferRecord = {
+        frame: this.frame,
         sequence: pending.sequence,
         parentCycle: pending.parentCycle,
         childCycle: childCycles,
@@ -347,9 +371,30 @@
         currentChildWord,
         timestampedChildWord,
         timestampedCycle,
-        baud: pending.baud
-      });
-      if (this.recentTransfers.length > 64) this.recentTransfers.shift();
+        baud: pending.baud,
+        serial: serialSnapshot
+      };
+
+      this.recentTransfers.push(transferRecord);
+      if (this.recentTransfers.length > 160) this.recentTransfers.shift();
+
+      if (
+        !this.protocolTransition &&
+        (pending.word & 0xffff) === 0xf00f &&
+        currentChildWord === 0xfdfd
+      ) {
+        this.protocolTransition = {
+          detectedAtFrame: this.frame,
+          detectedAtSequence: pending.sequence,
+          before: this.recentTransfers.slice(),
+          after: [],
+          sendHistory: this.sendWordHistory.map((history) => history.slice(-160))
+        };
+        this.protocolTransitionRemaining = 40;
+      } else if (this.protocolTransition && this.protocolTransitionRemaining > 0) {
+        this.protocolTransition.after.push(transferRecord);
+        this.protocolTransitionRemaining -= 1;
+      }
 
       const childWord = currentChildWord;
       const words = [pending.word, childWord, 0xffff, 0xffff];
@@ -633,7 +678,14 @@
           avg: this.startSkewCount ? this.startSkewTotal / this.startSkewCount : null,
           count: this.startSkewCount
         },
-        recentTransfers: this.recentTransfers.slice()
+        recentTransfers: this.recentTransfers.slice(),
+        protocolTransition: this.protocolTransition ? {
+          detectedAtFrame: this.protocolTransition.detectedAtFrame,
+          detectedAtSequence: this.protocolTransition.detectedAtSequence,
+          before: this.protocolTransition.before.slice(),
+          after: this.protocolTransition.after.slice(),
+          sendHistory: this.protocolTransition.sendHistory.map((history) => history.slice())
+        } : null
       };
     }
 

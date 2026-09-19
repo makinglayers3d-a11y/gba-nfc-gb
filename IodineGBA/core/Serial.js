@@ -181,7 +181,7 @@ GameBoyAdvanceSerial.prototype.beginExternalMultiplayerTransfer = function (play
     }
     return this.getLinkSendData() | 0;
 };
-GameBoyAdvanceSerial.prototype.completeExternalMultiplayerTransfer = function (words, playerNumber, commError, connectedCount, holdCompletion, transferBaud, elapsedCycles) {
+GameBoyAdvanceSerial.prototype.completeExternalMultiplayerTransfer = function (words, playerNumber, commError, connectedCount, holdCompletion, transferBaud, elapsedCycles, transferCycleOverride) {
     words = words || [];
     connectedCount = Math.max(0, Math.min(3, connectedCount | 0)) | 0;
     this.setLinkPlayerNumber(playerNumber | 0);
@@ -196,8 +196,12 @@ GameBoyAdvanceSerial.prototype.completeExternalMultiplayerTransfer = function (w
     var effectiveBaud = (typeof transferBaud == "number")
         ? (transferBaud | 0) & 0x3
         : this.SIOBaudRate & 0x3;
-    this.linkExternalTransferCycles =
+    var defaultTransferCycles =
         this.LinkMultiplayerTransferCycles[effectiveBaud][connectedCount] | 0;
+    this.linkExternalTransferCycles =
+        (typeof transferCycleOverride == "number" && (transferCycleOverride | 0) > 0)
+            ? (transferCycleOverride | 0)
+            : defaultTransferCycles;
     // A lockstep secondary can receive the START event slightly after the
     // parent's timestamp. Count that elapsed virtual time immediately so both
     // cores still complete at the same absolute finish cycle.

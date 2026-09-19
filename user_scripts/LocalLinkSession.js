@@ -5,7 +5,8 @@
   const roomId = String(params.get("linkRoom") || "");
   const mySeat = Math.max(0, Math.min(1, Number(params.get("linkPlayer")) | 0));
   const role = params.get("linkRole") === "host" ? "host" : "guest";
-  const enabled = Boolean(roomId);
+  const selfTest = params.get("linkSelfTest") === "1";
+  const enabled = Boolean(roomId) || selfTest;
   const BUS_NAME = "ml3d-gba-link-v1";
   const FRAME_CYCLES = 280896;
   const INPUT_DELAY = 4;
@@ -13,6 +14,7 @@
   const UNKNOWN = -1;
 
   let localMask = 0;
+  const selfTestMasks = [0, 0];
   let controller = null;
   let pendingStart = null;
 
@@ -32,8 +34,40 @@
       return Boolean(controller?.started);
     },
     get status() {
-      return controller?.status?.() || { enabled, roomId, mySeat, role };
-    }
+      return controller?.status?.() || { enabled, roomId, mySeat, role, selfTest };
+    },
+    test: selfTest ? {
+      setSeatMask(seat, mask) {
+        seat = Number(seat) | 0;
+        if (seat < 0 || seat > 1) return false;
+        selfTestMasks[seat] = Number(mask) & 0x3ff;
+        return true;
+      },
+      press(seat, key) {
+        seat = Number(seat) | 0;
+        key = Number(key) | 0;
+        if (seat < 0 || seat > 1 || key < 0 || key > 9) return false;
+        selfTestMasks[seat] |= (1 << key);
+        return true;
+      },
+      release(seat, key) {
+        seat = Number(seat) | 0;
+        key = Number(key) | 0;
+        if (seat < 0 || seat > 1 || key < 0 || key > 9) return false;
+        selfTestMasks[seat] &= ~(1 << key);
+        return true;
+      },
+      releaseAll() {
+        selfTestMasks[0] = 0;
+        selfTestMasks[1] = 0;
+      },
+      get masks() {
+        return selfTestMasks.slice();
+      },
+      get controller() {
+        return controller || null;
+      }
+    } : null
   };
 
   if (!enabled || typeof BroadcastChannel !== "function") return;
@@ -118,10 +152,16 @@
 
       this.installLocalCable();
       this.buildDebug();
-      this.publishReady();
-      this.readyTimer = setInterval(() => {
-        if (!this.started) this.publishReady();
-      }, 500);
+      if (selfTest) {
+        this.remoteReady = true;
+        this.remoteHash = this.romHash;
+        setTimeout(() => this.start("ci-selftest", INPUT_DELAY), 0);
+      } else {
+        this.publishReady();
+        this.readyTimer = setInterval(() => {
+          if (!this.started) this.publishReady();
+        }, 500);
+      }
     }
 
     slot(frame, seat) {
@@ -303,14 +343,21 @@
       const target = this.frame + INPUT_DELAY;
       if (this.sentFrames.has(target)) return;
       this.sentFrames.add(target);
-      this.setInput(target, mySeat, localMask);
-      sendLocal({
-        type: "gba:lockstep:input",
-        sessionId: this.sessionId,
-        playerNumber: mySeat,
-        frame: target,
-        mask: localMask
-      });
+
+      if (selfTest) {
+        this.setInput(target, 0, selfTestMasks[0]);
+        this.setInput(target, 1, selfTestMasks[1]);
+      } else {
+        this.setInput(target, mySeat, localMask);
+        sendLocal({
+          type: "gba:lockstep:input",
+          sessionId: this.sessionId,
+          playerNumber: mySeat,
+          frame: target,
+          mask: localMask
+        });
+      }
+
       const oldest = this.frame - 8;
       for (const frame of this.sentFrames) {
         if (frame < oldest) this.sentFrames.delete(frame);

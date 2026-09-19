@@ -144,6 +144,21 @@ async function capture(label) {
   });
 }
 
+async function dumpMultibootClient() {
+  const bytes = await page.evaluate(() => {
+    const ctl = window.ML3DLocalLinkSession?.test?.controller;
+    const mb = ctl?.multibootProxy;
+    const ram = ctl?.cores?.[1]?.IOCore?.memory?.externalRAM;
+    if (!ram || !mb?.booted) return null;
+    const end = Math.max(0x100, Math.min(ram.length, (Number(mb.bootEnd) >>> 0) - 0x02000000));
+    return Array.from(ram.slice(0, end), (v) => Number(v) & 0xff);
+  });
+  if (bytes?.length) {
+    await fs.writeFile(path.join(outDir, "multiboot-client.bin"), Buffer.from(bytes));
+    console.log("MULTIBOOT_CLIENT_BYTES", bytes.length);
+  }
+}
+
 await waitFrames(240);
 await capture("language");
 
@@ -176,7 +191,14 @@ await capture("host-second-start");
 await tapSeat(0, 3, 4, 240);
 await capture("battle-settings-confirmed");
 
-await waitFrames(1800);
+// Sample the post-MultiBoot protocol while the client is still negotiating.
+for (let i = 1; i <= 6; i++) {
+  await waitFrames(30);
+  await capture("client-protocol-" + i);
+}
+await dumpMultibootClient();
+
+await waitFrames(1620);
 await capture("final");
 
 await fs.writeFile(

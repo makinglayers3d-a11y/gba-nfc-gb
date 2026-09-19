@@ -141,6 +141,7 @@
       this.startSkewCount = 0;
       this.recentTransfers = [];
       this.sendWordHistory = [[], []];
+      this.siocntWrites = [[], []];
       this.protocolTransition = null;
       this.protocolTransitionRemaining = 0;
       this.wedged = false;

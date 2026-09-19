@@ -150,6 +150,26 @@ GameBoyAdvanceIO.prototype.runARM = function () {
         //Handle the current system state selected:
         switch (this.systemStatus | 0) {
             case 0: //CPU Handle State (Normal ARM)
+                if (typeof this.linkInstructionObserver == "function") {
+                    try {
+                        var traceRawPCARM = this.cpu && this.cpu.registers
+                            ? (this.cpu.registers[15] >>> 0)
+                            : 0;
+                        // ARM uses a 3-stage pipeline; r15 is two words ahead.
+                        var traceLogicalPCARM = (traceRawPCARM - 0x8) >>> 0;
+                        // Keep the existing Mario ROM watches and also trace the
+                        // downloaded Single-Pak client while it executes in EWRAM.
+                        if (
+                            (traceLogicalPCARM >= 0x02000000 && traceLogicalPCARM < 0x02010000) ||
+                            (traceLogicalPCARM >= 0x080C9948 && traceLogicalPCARM <= 0x080C9D34) ||
+                            (traceLogicalPCARM >= 0x080C9E6C && traceLogicalPCARM <= 0x080C9F68) ||
+                            (traceLogicalPCARM >= 0x080C98D0 && traceLogicalPCARM <= 0x080C9934)
+                        ) {
+                            this.linkInstructionObserver(traceLogicalPCARM, traceRawPCARM);
+                        }
+                    }
+                    catch (error) {}
+                }
                 this.ARM.executeIteration();
                 break;
             case 1:

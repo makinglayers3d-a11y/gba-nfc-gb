@@ -146,13 +146,13 @@ await capture("mode-menu");
 await tapBoth(4, 4, 45); // RIGHT
 await capture("multiplayer-selected");
 
-// Let P0 establish the cable-check state first.
-await tapSeat(0, 3, 4, joinDelay); // P0 START, configurable delay before P1
-await capture("host-entered-multi");
+// Multi-Pak manual flow: secondary players confirm MULTIPLAYER first
+// and wait. Player 1 then confirms and becomes the cable parent.
+await tapSeat(1, 3, 4, joinDelay); // P1/secondary START first
+await capture("guest-waiting-multi");
 
-// Secondary joins after the selected delay.
-await tapSeat(1, 3, 4, 420); // P1 START
-await capture("guest-entered-multi");
+await tapSeat(0, 3, 4, 420); // P0/parent START after guest is ready
+await capture("host-entered-multi");
 
 await waitFrames(1200);
 await capture("final");

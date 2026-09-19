@@ -1208,6 +1208,27 @@
         transferCycles: requestedTransferCycles || null,
         progressiveTransfer,
         multibootProxy: { ...this.multibootProxy },
+        coreExecution: this.cores.map((core, seat) => {
+          const io = core?.IOCore;
+          const cpu = io?.cpu;
+          const regs = cpu?.registers;
+          const mem = io?.memory;
+          return {
+            seat,
+            pc: regs ? (Number(regs[15]) >>> 0) : null,
+            sp: regs ? (Number(regs[13]) >>> 0) : null,
+            lr: regs ? (Number(regs[14]) >>> 0) : null,
+            r0: regs ? (Number(regs[0]) >>> 0) : null,
+            r1: regs ? (Number(regs[1]) >>> 0) : null,
+            modeFlags: cpu ? (Number(cpu.modeFlags) & 0xff) : null,
+            thumb: cpu ? !!(Number(cpu.modeFlags) & 0x20) : null,
+            halted: !!io?.systemStatus,
+            ewramC0: mem?.externalRAM
+              ? Array.from(mem.externalRAM.slice(0xc0, 0xe0), (v) => Number(v) & 0xff)
+              : null,
+            recentInstructions: (this.instructionRing[seat] || []).slice(-16)
+          };
+        }),
         startSkew: {
           last: this.startSkewLast,
           min: Number.isFinite(this.startSkewMin) ? this.startSkewMin : null,

@@ -143,6 +143,7 @@
       this.startSkewTotal = 0;
       this.startSkewCount = 0;
       this.recentTransfers = [];
+      this.multibootTrace = [];
       this.sendWordHistory = [[], []];
       this.siocntWrites = [[], []];
       this.rcntWrites = [[], []];
@@ -848,6 +849,26 @@
       if (this.recentTransfers.length > 160) this.recentTransfers.shift();
 
       if (
+        this.multibootProxy.armed ||
+        this.multibootProxy.active ||
+        ((pending.word & 0xff00) >= 0x6100 && (pending.word & 0xff00) <= 0x6400)
+      ) {
+        this.multibootTrace.push({
+          frame: this.frame,
+          sequence: pending.sequence,
+          hostWord: pending.word & 0xffff,
+          rawChildWord: currentChildWord & 0xffff,
+          effectiveChildWord: effectiveChildWord & 0xffff,
+          proxyWord: proxyWord === null ? null : (proxyWord & 0xffff),
+          stage: this.multibootProxy.stage,
+          armed: !!this.multibootProxy.armed,
+          active: !!this.multibootProxy.active,
+          booted: !!this.multibootProxy.booted
+        });
+        if (this.multibootTrace.length > 2048) this.multibootTrace.shift();
+      }
+
+      if (
         !this.protocolTransition &&
         (pending.word & 0xffff) === 0xf00f &&
         currentChildWord === 0xfdfd
@@ -1156,6 +1177,7 @@
           count: this.startSkewCount
         },
         recentTransfers: this.recentTransfers.slice(),
+        multibootTrace: this.multibootTrace.slice(),
         protocolTransition: this.protocolTransition ? {
           detectedAtFrame: this.protocolTransition.detectedAtFrame,
           detectedAtSequence: this.protocolTransition.detectedAtSequence,

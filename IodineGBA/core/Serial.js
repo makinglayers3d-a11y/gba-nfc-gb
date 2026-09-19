@@ -651,6 +651,10 @@ GameBoyAdvanceSerial.prototype.readRCNT0 = function () {
             pins |= 0x1;
             pins |= 0x4; // Child SI remains high in MULTI mode.
         }
+        if (this.linkCableReady()) {
+            // mGBA mirrors multiplayer READY onto RCNT SD as well.
+            pins |= 0x2;
+        }
         return (this.RCNTDataBitFlow << 4) | pins;
     }
     return (this.RCNTDataBitFlow << 4) | this.RCNTDataBits;

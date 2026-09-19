@@ -125,25 +125,26 @@ async function capture(label) {
 await waitFrames(240);
 await capture("language");
 
-// Select English on both GBAs.
+// Select English.
 await tapBoth(0, 4, 360); // A
 await capture("after-language");
 
-// Skip/advance the opening, but wait long enough for the mode menu to settle.
-await tapBoth(3, 4, 620); // START
+// The intro only accepts START after formatting/early animation has advanced.
+await waitFrames(320);
+await tapBoth(3, 4, 180); // START
 await capture("mode-menu");
 
-// Single Player is the default. Move to Multiplayer only after the menu exists.
+// Select Multiplayer on both GBAs.
 await tapBoth(4, 4, 45); // RIGHT
 await capture("multiplayer-selected");
 
-// Reproduce the manual order: P0 enters first, then P1.
+// Host first, guest second, matching the manual reproduction.
 await tapSeat(0, 0, 4, 120); // P0 A
 await capture("host-entered-multi");
 await tapSeat(1, 0, 4, 420); // P1 A
 await capture("guest-entered-multi");
 
-// Observe the handshake/result.
+// Let the handshake/error/result settle.
 await waitFrames(900);
 await capture("final");
 

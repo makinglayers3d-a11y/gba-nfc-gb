@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 from capstone import Cs, CS_ARCH_ARM, CS_MODE_ARM, CS_MODE_THUMB, CS_MODE_LITTLE_ENDIAN
+import struct
 
 ROOT = Path(__file__).resolve().parents[1]
 artifact_root = ROOT / "artifacts"
@@ -89,6 +90,49 @@ for seat, word, pc, thumb in sorted(entries):
         lines.append(
             f"{marker} {insn.address:08X}: {insn.mnemonic:<9} {insn.op_str}"
         )
+
+# Add broad protocol routines even if a particular word writer was not
+# captured in this run. This lets us follow the validation/error branches.
+STATIC_RANGES = [
+    (0x080C9948, 0x430, True, "main link state machine"),
+    (0x080C9E6C, 0x180, True, "link status helper"),
+    (0x080C9900, 0x48, True, "link reset/start helper"),
+]
+
+def literal_annotation(insn, rom, base_used):
+    # Resolve Thumb literal loads of the form: ldr rN, [pc, #imm].
+    if insn.mnemonic != "ldr" or "[pc" not in insn.op_str:
+        return ""
+    try:
+        rhs = insn.op_str.split("[pc", 1)[1].split("]", 1)[0]
+        imm = 0
+        if "#" in rhs:
+            token = rhs.split("#", 1)[1].split(",", 1)[0].strip()
+            imm = int(token, 0)
+        literal_addr = ((insn.address + 4) & ~3) + imm
+        off = literal_addr - base_used
+        if 0 <= off <= len(rom) - 4:
+            value = struct.unpack_from("<I", rom, off)[0]
+            return f" ; [0x{literal_addr:08X}]=0x{value:08X}"
+    except Exception:
+        pass
+    return ""
+
+for start_addr, size, thumb, label in STATIC_RANGES:
+    lines.append("")
+    lines.append(f"=== STATIC {label} {start_addr:08X}+{size:X} ===")
+    base_used = 0x08000000
+    start = start_addr - base_used
+    end = min(len(rom), start + size)
+    if start < 0 or start >= len(rom):
+        lines.append("Range outside ROM.")
+        continue
+    mode = (CS_MODE_THUMB if thumb else CS_MODE_ARM) | CS_MODE_LITTLE_ENDIAN
+    md = Cs(CS_ARCH_ARM, mode)
+    md.detail = False
+    for insn in md.disasm(rom[start:end], start_addr):
+        ann = literal_annotation(insn, rom, base_used)
+        lines.append(f"   {insn.address:08X}: {insn.mnemonic:<9} {insn.op_str}{ann}")
 
 out_path.write_text("\n".join(lines) + "\n")
 print(out_path.read_text())

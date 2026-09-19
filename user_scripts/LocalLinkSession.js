@@ -738,6 +738,9 @@
         };
       });
 
+      const proxyWord = this.multibootReply(pending.word);
+      const effectiveChildWord = proxyWord === null ? currentChildWord : (proxyWord & 0xffff);
+
       const transferRecord = {
         frame: this.frame,
         sequence: pending.sequence,
@@ -746,6 +749,11 @@
         skew: startSkew,
         hostWord: pending.word & 0xffff,
         currentChildWord,
+        effectiveChildWord,
+        proxyWord: proxyWord === null ? null : (proxyWord & 0xffff),
+        multibootStage: this.multibootProxy.stage,
+        multibootActive: !!this.multibootProxy.active,
+        multibootBooted: !!this.multibootProxy.booted,
         timestampedChildWord,
         timestampedCycle,
         baud: pending.baud,
@@ -773,8 +781,7 @@
         this.protocolTransitionRemaining -= 1;
       }
 
-      const proxyWord = this.multibootReply(pending.word);
-      const childWord = proxyWord === null ? currentChildWord : (proxyWord & 0xffff);
+      const childWord = effectiveChildWord;
       const words = [pending.word, childWord, 0xffff, 0xffff];
 
       this.serials[1].beginExternalMultiplayerTransfer(1);
@@ -1056,6 +1063,7 @@
         stalls: this.stallCount,
         transferCycles: requestedTransferCycles || null,
         progressiveTransfer,
+        multibootProxy: { ...this.multibootProxy },
         startSkew: {
           last: this.startSkewLast,
           min: Number.isFinite(this.startSkewMin) ? this.startSkewMin : null,

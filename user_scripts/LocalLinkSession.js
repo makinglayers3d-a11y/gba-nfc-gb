@@ -149,6 +149,8 @@
       this.criticalSiomultiReads = [[], []];
       this.comparisonTrace = [[], []];
       this.mainReturnTrace = [[], []];
+      this.instructionRing = [[], []];
+      this.error60Trace = [[], []];
       this.protocolTransition = null;
       this.protocolTransitionRemaining = 0;
       this.wedged = false;
@@ -333,6 +335,41 @@
             const cpu = io.cpu;
             if (!cpu?.registers) return;
             const regs = Array.from(cpu.registers.slice(0, 8), (v) => Number(v) >>> 0);
+
+            const ring = this.instructionRing[seat];
+            ring.push({
+              frame: this.frame,
+              cycle: Number(io.linkCycleCounter) || 0,
+              logicalPc: Number(logicalPc) >>> 0,
+              rawPc: Number(rawPc) >>> 0,
+              r0: regs[0] >>> 0,
+              r1: regs[1] >>> 0,
+              r2: regs[2] >>> 0,
+              r3: regs[3] >>> 0,
+              r4: regs[4] >>> 0,
+              r5: regs[5] >>> 0,
+              r6: regs[6] >>> 0,
+              r7: regs[7] >>> 0
+            });
+            if (ring.length > 32) ring.shift();
+
+            if (logicalPc === 0x080C9D1C) {
+              const traces = this.error60Trace[seat];
+              traces.push({
+                frame: this.frame,
+                cycle: Number(io.linkCycleCounter) || 0,
+                history: ring.slice(),
+                bus: [
+                  this.serials[seat].SIODATA_A & 0xffff,
+                  this.serials[seat].SIODATA_B & 0xffff,
+                  this.serials[seat].SIODATA_C & 0xffff,
+                  this.serials[seat].SIODATA_D & 0xffff
+                ],
+                siocnt: ((this.serials[seat].readSIOCNT1?.() ?? 0) << 8) |
+                  (this.serials[seat].readSIOCNT0?.() ?? 0)
+              });
+              if (traces.length > 16) traces.shift();
+            }
 
             // Exact protocol comparisons that can return Link error 0x71.
             if (logicalPc === 0x080C9D28 && (regs[0] >>> 0) !== 0) {
@@ -891,7 +928,8 @@
         siomultiReads: this.siomultiReads.map((list) => list.slice()),
         criticalSiomultiReads: this.criticalSiomultiReads.map((list) => list.slice()),
         comparisonTrace: this.comparisonTrace.map((list) => list.slice()),
-        mainReturnTrace: this.mainReturnTrace.map((list) => list.slice())
+        mainReturnTrace: this.mainReturnTrace.map((list) => list.slice()),
+        error60Trace: this.error60Trace.map((list) => list.slice())
       };
     }
 

@@ -253,8 +253,8 @@ function loadGameType(name, callback) {
   if (value === undefined) return;
 
   if (linkRoomActive && window.ML3DLocalLinkSession?.handleLocalKey) {
-    window.ML3DLocalLinkSession.handleLocalKey(value, true);
-    return;
+    const consumed = window.ML3DLocalLinkSession.handleLocalKey(value, true);
+    if (consumed) return;
   }
 
   emulator.keyDown(value);
@@ -281,8 +281,8 @@ function loadGameType(name, callback) {
   if (value === undefined) return;
 
   if (linkRoomActive && window.ML3DLocalLinkSession?.handleLocalKey) {
-    window.ML3DLocalLinkSession.handleLocalKey(value, false);
-    return;
+    const consumed = window.ML3DLocalLinkSession.handleLocalKey(value, false);
+    if (consumed) return;
   }
 
   emulator.keyUp(value);

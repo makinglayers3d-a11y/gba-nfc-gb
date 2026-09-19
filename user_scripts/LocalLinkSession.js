@@ -142,6 +142,7 @@
       this.recentTransfers = [];
       this.sendWordHistory = [[], []];
       this.siocntWrites = [[], []];
+      this.siomultiReads = [[], []];
       this.protocolTransition = null;
       this.protocolTransitionRemaining = 0;
       this.wedged = false;

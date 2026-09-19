@@ -130,7 +130,7 @@ await tapBoth(0, 4, 360); // A
 await capture("after-language");
 
 // Skip/advance the opening, but wait long enough for the mode menu to settle.
-await tapBoth(3, 4, 420); // START
+await tapBoth(3, 4, 620); // START
 await capture("mode-menu");
 
 // Single Player is the default. Move to Multiplayer only after the menu exists.

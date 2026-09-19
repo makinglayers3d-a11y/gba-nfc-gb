@@ -154,6 +154,18 @@
       this.resetTrace = [[], []];
       this.protocolTransition = null;
       this.protocolTransitionRemaining = 0;
+      // Single-Game-Pak / BIOS MultiBoot proxy. Mario Bros. in SMA4 does
+      // not expect a second cartridge: the parent downloads a RAM client.
+      this.multibootProxy = {
+        active: false,
+        stage: "idle",
+        headerRemaining: 0,
+        clientBit: 0x2,
+        clientData: 0x01,
+        bootSrc: 0,
+        bootEnd: 0,
+        booted: false
+      };
       this.wedged = false;
       this.inputTimer = null;
       this.readyTimer = null;
@@ -321,6 +333,10 @@
             else io.flagIterationEnd();
           } catch {}
           return true;
+        },
+        performMultiboot: (paramPtr, mode) => {
+          if (seat !== 0) return false;
+          return this.performDirectMultiboot(paramPtr, mode);
         }
       });
 
@@ -568,6 +584,108 @@
       }
     }
 
+    multibootReply(hostWord) {
+      const mb = this.multibootProxy;
+      hostWord &= 0xffff;
+
+      // Recognition. First child in multiplayer wiring uses client bit 0x2.
+      if (!mb.active && hostWord === 0x6200) {
+        mb.active = true;
+        mb.stage = "detect";
+        mb.headerRemaining = 0;
+        mb.booted = false;
+        return 0x7200 | mb.clientBit;
+      }
+      if (!mb.active) return null;
+
+      if (mb.stage === "detect") {
+        if ((hostWord & 0xfff0) === 0x6100) {
+          mb.stage = "header";
+          mb.headerRemaining = 0x60;
+          return 0x7200 | mb.clientBit;
+        }
+        return hostWord === 0x6200 ? (0x7200 | mb.clientBit) : null;
+      }
+
+      if (mb.stage === "header") {
+        if (mb.headerRemaining > 0) {
+          const reply = ((mb.headerRemaining & 0xff) << 8) | mb.clientBit;
+          mb.headerRemaining -= 1;
+          if (mb.headerRemaining === 0) mb.stage = "postHeader0";
+          return reply;
+        }
+      }
+
+      if (mb.stage === "postHeader0" && hostWord === 0x6200) {
+        mb.stage = "postHeader1";
+        return mb.clientBit;
+      }
+      if (mb.stage === "postHeader1" && (hostWord & 0xfff0) === 0x6200) {
+        mb.stage = "palette";
+        return 0x7200 | mb.clientBit;
+      }
+      if (mb.stage === "palette" && (hostWord & 0xff00) === 0x6300) {
+        mb.stage = "handshake";
+        return 0x7300 | mb.clientData;
+      }
+      if (mb.stage === "handshake" && (hostWord & 0xff00) === 0x6400) {
+        mb.stage = "bios";
+        return 0x7300 | mb.clientData;
+      }
+
+      return null;
+    }
+
+    performDirectMultiboot(paramPtr, mode) {
+      const mb = this.multibootProxy;
+      if (!mb.active || mb.stage !== "bios") return false;
+
+      try {
+        const hostMem = this.cores[0]?.IOCore?.memory;
+        const childIO = this.cores[1]?.IOCore;
+        const childMem = childIO?.memory;
+        const childCPU = childIO?.cpu;
+        if (!hostMem || !childMem?.externalRAM || !childCPU) return false;
+
+        const read32 = (address) => hostMem.memoryRead32(Number(address) | 0) >>> 0;
+        const bootSrc = read32((Number(paramPtr) + 0x20) >>> 0);
+        const bootEnd = read32((Number(paramPtr) + 0x24) >>> 0);
+        if (bootSrc < 0xc0 || bootEnd <= bootSrc) return false;
+        const imageStart = (bootSrc - 0xc0) >>> 0;
+        const imageSize = (bootEnd - imageStart) >>> 0;
+        if (imageSize < 0x100 || imageSize > 0x40000) return false;
+
+        for (let i = 0; i < imageSize; i++) {
+          childMem.externalRAM[i] = hostMem.memoryRead8((imageStart + i) | 0) & 0xff;
+        }
+
+        // BIOS fields for a multiplayer-cable boot, first child.
+        childMem.externalRAM[0xc4] = Number(mode) & 0xff;
+        childMem.externalRAM[0xc5] = 0x01;
+
+        // Recreate the important post-BIOS CPU state, then execute the RAM
+        // entry branch at 020000C0.
+        childCPU.switchMode(0x13);
+        childCPU.THUMB.writeSP(0x03007fe0);
+        childCPU.switchMode(0x12);
+        childCPU.THUMB.writeSP(0x03007fa0);
+        childCPU.switchMode(0x1f);
+        childCPU.THUMB.writeSP(0x03007f00);
+        childCPU.enterARM();
+        childCPU.branch(0x020000c0);
+
+        mb.bootSrc = bootSrc >>> 0;
+        mb.bootEnd = bootEnd >>> 0;
+        mb.booted = true;
+        mb.active = false;
+        mb.stage = "running";
+        return true;
+      } catch (error) {
+        this.lastLinkError = "MULTIBOOT: " + String(error?.stack || error?.message || error);
+        return false;
+      }
+    }
+
     carryTransfer() {
       const pending = this.pendingTransfer;
       if (!pending) return false;
@@ -654,7 +772,8 @@
         this.protocolTransitionRemaining -= 1;
       }
 
-      const childWord = currentChildWord;
+      const proxyWord = this.multibootReply(pending.word);
+      const childWord = proxyWord === null ? currentChildWord : (proxyWord & 0xffff);
       const words = [pending.word, childWord, 0xffff, 0xffff];
 
       this.serials[1].beginExternalMultiplayerTransfer(1);

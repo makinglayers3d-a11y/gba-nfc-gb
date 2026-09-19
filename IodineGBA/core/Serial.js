@@ -178,7 +178,7 @@ GameBoyAdvanceSerial.prototype.beginExternalMultiplayerTransfer = function (play
     }
     return this.getLinkSendData() | 0;
 };
-GameBoyAdvanceSerial.prototype.completeExternalMultiplayerTransfer = function (words, playerNumber, commError, connectedCount, holdCompletion) {
+GameBoyAdvanceSerial.prototype.completeExternalMultiplayerTransfer = function (words, playerNumber, commError, connectedCount, holdCompletion, transferBaud) {
     words = words || [];
     connectedCount = Math.max(0, Math.min(3, connectedCount | 0)) | 0;
     this.setLinkPlayerNumber(playerNumber | 0);
@@ -191,8 +191,11 @@ GameBoyAdvanceSerial.prototype.completeExternalMultiplayerTransfer = function (w
     this.linkExternalTransferPlayer = this.linkPlayerNumber & 0x3;
     this.linkExternalTransferError = !!commError;
     this.linkExternalTransferClocks = 0;
+    var effectiveBaud = (typeof transferBaud == "number")
+        ? (transferBaud | 0) & 0x3
+        : this.SIOBaudRate & 0x3;
     this.linkExternalTransferCycles =
-        this.LinkMultiplayerTransferCycles[this.SIOBaudRate & 0x3][connectedCount] | 0;
+        this.LinkMultiplayerTransferCycles[effectiveBaud][connectedCount] | 0;
     this.linkExternalTransferHold = !!holdCompletion;
     this.linkExternalTransferTimingDone = false;
     this.linkExternalTransferPending = true;

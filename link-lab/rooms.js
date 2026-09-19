@@ -348,6 +348,61 @@
     const roomId = currentLinkRoomId();
     if (!roomId || packet.roomId !== roomId) return;
 
+    if (packet.type === "gba:lockstep:ready") {
+      const outgoing = {
+        type: "gba:lockstep:ready",
+        roomId,
+        playerNumber: Number(packet.playerNumber) | 0,
+        role: String(packet.role || ""),
+        romHash: String(packet.romHash || ""),
+        protocol: String(packet.protocol || ""),
+        time: Date.now()
+      };
+      if (hostSession) {
+        for (const peer of hostSession.peers.values()) {
+          if (peer.channel?.readyState === "open") safeSend(peer.channel, outgoing);
+        }
+      } else if (joinSession?.channel?.readyState === "open") {
+        safeSend(joinSession.channel, outgoing);
+      }
+      return;
+    }
+
+    if (packet.type === "gba:lockstep:start" && hostSession) {
+      const outgoing = {
+        type: "gba:lockstep:start",
+        roomId,
+        sessionId: String(packet.sessionId || ""),
+        delay: Number(packet.delay) | 0,
+        romHash: String(packet.romHash || ""),
+        time: Date.now()
+      };
+      for (const peer of hostSession.peers.values()) {
+        if (peer.channel?.readyState === "open") safeSend(peer.channel, outgoing);
+      }
+      return;
+    }
+
+    if (packet.type === "gba:lockstep:input") {
+      const outgoing = {
+        type: "gba:lockstep:input",
+        roomId,
+        sessionId: String(packet.sessionId || ""),
+        playerNumber: Number(packet.playerNumber) | 0,
+        frame: Number(packet.frame),
+        mask: Number(packet.mask) & 0x3ff,
+        time: Date.now()
+      };
+      if (hostSession) {
+        for (const peer of hostSession.peers.values()) {
+          if (peer.channel?.readyState === "open") safeSend(peer.channel, outgoing);
+        }
+      } else if (joinSession?.channel?.readyState === "open") {
+        safeSend(joinSession.channel, outgoing);
+      }
+      return;
+    }
+
     if (packet.type === "gba:link:ready") {
       localGbaReady = Boolean(packet.ready);
       if (hostSession) {
@@ -694,6 +749,30 @@
     const player = players.get(joinId);
     if (!peer) return;
 
+    if (packet.type === "gba:lockstep:ready") {
+      postLocalLink({
+        type: "gba:lockstep:remote-ready",
+        roomId: hostSession.room.id,
+        ready: true,
+        playerNumber: Math.max(1, Math.min(3, Number(peer.linkSlot) | 0)),
+        romHash: String(packet.romHash || ""),
+        protocol: String(packet.protocol || "")
+      });
+      return;
+    }
+
+    if (packet.type === "gba:lockstep:input") {
+      postLocalLink({
+        type: "gba:lockstep:remote-input",
+        roomId: hostSession.room.id,
+        sessionId: String(packet.sessionId || ""),
+        playerNumber: Math.max(1, Math.min(3, Number(peer.linkSlot) | 0)),
+        frame: Number(packet.frame),
+        mask: Number(packet.mask) & 0x3ff
+      });
+      return;
+    }
+
     if (packet.type === "gba:link:ready") {
       peer.linkReady = Boolean(packet.ready);
       const activePeers = [...hostSession.peers.values()].filter((item) => item.channel?.readyState === "open");
@@ -788,6 +867,41 @@
   }
 
   function handleGuestPacket(packet) {
+    if (packet.type === "gba:lockstep:ready") {
+      postLocalLink({
+        type: "gba:lockstep:remote-ready",
+        roomId: packet.roomId || joinSession?.room?.id || "",
+        ready: true,
+        playerNumber: 0,
+        romHash: String(packet.romHash || ""),
+        protocol: String(packet.protocol || "")
+      });
+      return;
+    }
+
+    if (packet.type === "gba:lockstep:start") {
+      postLocalLink({
+        type: "gba:lockstep:start",
+        roomId: packet.roomId || joinSession?.room?.id || "",
+        sessionId: String(packet.sessionId || ""),
+        delay: Number(packet.delay) | 0,
+        romHash: String(packet.romHash || "")
+      });
+      return;
+    }
+
+    if (packet.type === "gba:lockstep:input") {
+      postLocalLink({
+        type: "gba:lockstep:remote-input",
+        roomId: packet.roomId || joinSession?.room?.id || "",
+        sessionId: String(packet.sessionId || ""),
+        playerNumber: 0,
+        frame: Number(packet.frame),
+        mask: Number(packet.mask) & 0x3ff
+      });
+      return;
+    }
+
     if (packet.type === "gba:link:ready") {
       postLocalLink({
         type: "gba:link:remote-ready",

@@ -1754,6 +1754,7 @@
     url.searchParams.set("linkPlayer", String(playerNumber));
     url.searchParams.set("linkRole", role);
     url.searchParams.set("linkDebug", "1");
+    url.searchParams.set("linkTransport", "dual");
     // Unique launch value avoids reusing an older cached emulator document.
     url.searchParams.set("linkLaunch", String(Date.now()));
 

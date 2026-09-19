@@ -758,10 +758,11 @@
           childMem.externalRAM[i] = hostMem.memoryRead8((imageStart + i) | 0) & 0xff;
         }
 
-        // BIOS fields for a multiplayer-cable boot, first child.
-        childMem.externalRAM[0xc4] = Number(mode) & 0xff;
-        // Client ID is player number minus one: first child/player 2 => 0.
-        childMem.externalRAM[0xc5] = 0x00;
+        // Extended multiboot header values written by the slave BIOS.
+        // SWI r1 mode 1 is MultiPlay, which the downloaded program observes
+        // as boot mode 03h. The first slave ID is 01h.
+        childMem.externalRAM[0xc4] = ((Number(mode) | 0) === 1) ? 0x03 : 0x02;
+        childMem.externalRAM[0xc5] = 0x01;
 
         // Recreate the important post-BIOS CPU state, then execute the RAM
         // entry branch at 020000C0.

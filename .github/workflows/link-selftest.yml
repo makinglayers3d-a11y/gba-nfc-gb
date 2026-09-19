@@ -61,6 +61,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gba-link-selftest-${{ matrix.delay }}
+          name: gba-link-selftest-${{ matrix.transfer_cycles }}-${{ matrix.delay }}
           path: artifacts/link-selftest-${{ matrix.delay }}
           if-no-files-found: warn

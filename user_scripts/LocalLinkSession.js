@@ -6,6 +6,7 @@
   const mySeat = Math.max(0, Math.min(1, Number(params.get("linkPlayer")) | 0));
   const role = params.get("linkRole") === "host" ? "host" : "guest";
   const selfTest = params.get("linkSelfTest") === "1";
+  const requestedTransferCycles = Math.max(0, Number(params.get("linkTransferCycles")) | 0);
   const enabled = Boolean(roomId) || selfTest;
   const BUS_NAME = "ml3d-gba-link-v1";
   const FRAME_CYCLES = 280896;
@@ -506,10 +507,13 @@
       // Host timing starts now but completion remains held until P1 actually
       // reaches its own hardware-complete event.
       this.serials[0].completeExternalMultiplayerTransfer(
-        words, 0, false, 1, true, pending.baud
+        words, 0, false, 1, true, pending.baud, 0,
+        requestedTransferCycles || undefined
       );
       this.serials[1].completeExternalMultiplayerTransfer(
-        words, 1, false, 1, false, pending.baud, Math.max(0, childCycles - pending.parentCycle)
+        words, 1, false, 1, false, pending.baud,
+        Math.max(0, childCycles - pending.parentCycle),
+        requestedTransferCycles || undefined
       );
 
       this.pendingTransfer = null;
@@ -772,6 +776,7 @@
         remoteHash: this.remoteHash,
         wedged: this.wedged,
         stalls: this.stallCount,
+        transferCycles: requestedTransferCycles || null,
         startSkew: {
           last: this.startSkewLast,
           min: Number.isFinite(this.startSkewMin) ? this.startSkewMin : null,

@@ -3,9 +3,19 @@
 
   if (window.ML3DLinkCable) return;
 
+  const params = new URLSearchParams(location.search);
+  if (params.get("linkTransport") === "dual") {
+    window.ML3DLinkCable = {
+      attachEmulator() { return false; },
+      detachEmulator() {},
+      configure() {},
+      status() { return { disabled: true, transport: "dual" }; }
+    };
+    return;
+  }
+
   const CHANNEL_NAME = "ml3d-gba-link-v1";
   const STORAGE_KEY = "ml3d-gba-link-session-v1";
-  const params = new URLSearchParams(location.search);
 
   let emulator = null;
   let serial = null;

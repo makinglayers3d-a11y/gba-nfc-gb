@@ -461,8 +461,13 @@ GameBoyAdvanceSerial.prototype.writeSIOCNT0 = function (data) {
                     if ((data & 0x80) != 0) {
                         if (!this.SIOTransferStarted) {
                             this.SIOTransferStarted = true;
-                            // SIOMULTI0..3 retain the previous transfer result
-                            // until hardware completes the new transfer.
+                            if ((linkPlayerNumber | 0) == 0) {
+                                // mGBA clears the primary receive registers at START.
+                                this.SIODATA_A = 0xFFFF;
+                                this.SIODATA_B = 0xFFFF;
+                                this.SIODATA_C = 0xFFFF;
+                                this.SIODATA_D = 0xFFFF;
+                            }
                             this.serialBitsShifted = 0;
                             this.shiftClocks = 0;
 

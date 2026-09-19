@@ -11,6 +11,7 @@ on:
       - "app.js"
       - "index.html"
       - "link-lab/ci-link-selftest.mjs"
+      - "link-lab/ci-rom-disasm.py"
       - ".github/workflows/link-selftest.yml"
   workflow_dispatch:
 
@@ -43,6 +44,11 @@ jobs:
 
       - name: Run Super Mario Advance 4 dual-core selftest
         run: node link-lab/ci-link-selftest.mjs
+
+      - name: Disassemble protocol writer routines
+        run: |
+          python3 -m pip install --quiet capstone
+          python3 link-lab/ci-rom-disasm.py
 
       - name: Upload selftest evidence
         if: always()

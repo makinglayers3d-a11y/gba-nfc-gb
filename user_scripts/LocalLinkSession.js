@@ -134,6 +134,13 @@
       this.finishSyncCount = 0;
       this.localTransferArmed = false;
       this.lastLinkError = "";
+      this.startSkewLast = 0;
+      this.startSkewMin = Infinity;
+      this.startSkewMax = -Infinity;
+      this.startSkewTotal = 0;
+      this.startSkewCount = 0;
+      this.recentTransfers = [];
+      this.sendWordHistory = [[], []];
       this.wedged = false;
       this.inputTimer = null;
       this.readyTimer = null;
@@ -252,6 +259,12 @@
           return (this.serials[1]?.SIOCNT_MODE | 0) === 2;
         },
         onSerialModeChange: () => this.renderDebug(),
+        onSendDataChange: (word) => {
+          const cycle = Number(this.cores[seat]?.IOCore?.linkCycleCounter) || 0;
+          const history = this.sendWordHistory[seat];
+          history.push({ cycle, word: Number(word) & 0xffff });
+          if (history.length > 256) history.splice(0, history.length - 256);
+        },
         onLinkError: (error) => {
           this.lastLinkError = String(error?.stack || error?.message || error || "unknown");
           this.renderDebug();
@@ -306,7 +319,39 @@
         return false;
       }
 
-      const childWord = this.serials[1].getLinkSendData() & 0xffff;
+      const startSkew = childCycles - pending.parentCycle;
+      this.startSkewLast = startSkew;
+      this.startSkewMin = Math.min(this.startSkewMin, startSkew);
+      this.startSkewMax = Math.max(this.startSkewMax, startSkew);
+      this.startSkewTotal += startSkew;
+      this.startSkewCount += 1;
+
+      const currentChildWord = this.serials[1].getLinkSendData() & 0xffff;
+      const childHistory = this.sendWordHistory[1];
+      let timestampedChildWord = currentChildWord;
+      let timestampedCycle = childCycles;
+      for (let i = childHistory.length - 1; i >= 0; --i) {
+        if (childHistory[i].cycle <= pending.parentCycle) {
+          timestampedChildWord = childHistory[i].word & 0xffff;
+          timestampedCycle = childHistory[i].cycle;
+          break;
+        }
+      }
+
+      this.recentTransfers.push({
+        sequence: pending.sequence,
+        parentCycle: pending.parentCycle,
+        childCycle: childCycles,
+        skew: startSkew,
+        hostWord: pending.word & 0xffff,
+        currentChildWord,
+        timestampedChildWord,
+        timestampedCycle,
+        baud: pending.baud
+      });
+      if (this.recentTransfers.length > 64) this.recentTransfers.shift();
+
+      const childWord = currentChildWord;
       const words = [pending.word, childWord, 0xffff, 0xffff];
 
       this.serials[1].beginExternalMultiplayerTransfer(1);
@@ -537,7 +582,7 @@
         (!this.started ? `ESPERANDO PEER:${this.remoteReady ? "OK" : "..."} ROM:${this.remoteHash ? (this.remoteHash === this.romHash ? "OK" : "DIFF") : "..."}\n` : "") +
         `F:${this.frame} IN:${current0 === UNKNOWN ? "-" : current0.toString(16)}/${current1 === UNKNOWN ? "-" : current1.toString(16)} D:${INPUT_DELAY}\n` +
         `M:${s0?.SIOCNT_MODE ?? "-"}/${s1?.SIOCNT_MODE ?? "-"} BUSY:${s0?.SIOTransferStarted ? 1 : 0}/${s1?.SIOTransferStarted ? 1 : 0} S:${hx(s0v)}/${hx(s1v)} R:${hx(r0v)}/${hx(r1v)}\n` +
-        `XFER:${this.transferCount} HS:${this.finishSyncCount} PEND:${this.pendingTransfer ? 1 : 0}/${this.localTransferArmed ? 1 : 0} Δ:${Math.round(c0 - c1)} T:${Math.round((this.frame + 1) * FRAME_CYCLES - Math.min(c0, c1))} STALL:${this.stallCount}` +
+        `XFER:${this.transferCount} HS:${this.finishSyncCount} PEND:${this.pendingTransfer ? 1 : 0}/${this.localTransferArmed ? 1 : 0} Δ:${Math.round(c0 - c1)} SK:${this.startSkewCount ? `${this.startSkewLast}/${this.startSkewMin}..${this.startSkewMax}` : "-"} T:${Math.round((this.frame + 1) * FRAME_CYCLES - Math.min(c0, c1))} STALL:${this.stallCount}` +
         (this.lastLinkError ? `\nADAPTER ERROR: ${this.lastLinkError.split("\n")[0]}` : "") +
         (this.wedged ? "\nWEDGED" : "");
     }
@@ -557,7 +602,15 @@
         romHash: this.romHash,
         remoteHash: this.remoteHash,
         wedged: this.wedged,
-        stalls: this.stallCount
+        stalls: this.stallCount,
+        startSkew: {
+          last: this.startSkewLast,
+          min: Number.isFinite(this.startSkewMin) ? this.startSkewMin : null,
+          max: Number.isFinite(this.startSkewMax) ? this.startSkewMax : null,
+          avg: this.startSkewCount ? this.startSkewTotal / this.startSkewCount : null,
+          count: this.startSkewCount
+        },
+        recentTransfers: this.recentTransfers.slice()
       };
     }
 

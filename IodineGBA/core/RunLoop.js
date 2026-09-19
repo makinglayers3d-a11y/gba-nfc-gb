@@ -17,6 +17,7 @@ function GameBoyAdvanceIO(SKIPBoot, coreExposed, BIOS, ROM) {
     // Monotonic virtual-time counter used by the local dual-core Link
     // coordinator. It advances only with emulated GBA clocks.
     this.linkCycleCounter = 0;
+    this.linkIterationCut = false;
     this.graphicsClocks = 0;
     this.timerClocks = 0;
     this.serialClocks = 0;
@@ -98,8 +99,17 @@ GameBoyAdvanceIO.prototype.enter = function (CPUCyclesTotal) {
         //Ensure audio buffers at least once per iteration:
         this.sound.audioJIT();
     }
-    //If we clocked just a little too much, subtract the extra from the next run:
-    this.cyclesOveriteratedPreviously = this.cyclesToIterate | 0;
+    // A Link-local early cut leaves positive cyclesToIterate by design. That
+    // remainder belongs to the abandoned scheduler slice and must not be fed
+    // back into the next enter() call as "overiteration".
+    if (this.linkIterationCut) {
+        this.cyclesOveriteratedPreviously = 0;
+        this.linkIterationCut = false;
+    }
+    else {
+        //If we clocked just a little too much, subtract the extra from the next run:
+        this.cyclesOveriteratedPreviously = this.cyclesToIterate | 0;
+    }
 }
 GameBoyAdvanceIO.prototype.beginLinkCableWait = function () {
     if (!this.linkCableWait) {
@@ -424,6 +434,10 @@ GameBoyAdvanceIO.prototype.deflagStop = function () {
 GameBoyAdvanceIO.prototype.flagIterationEnd = function () {
     //Flag a run loop kill event to step through:
     this.systemStatus = this.systemStatus | 0x80;
+}
+GameBoyAdvanceIO.prototype.flagLinkIterationEnd = function () {
+    this.linkIterationCut = true;
+    this.flagIterationEnd();
 }
 GameBoyAdvanceIO.prototype.deflagIterationEnd = function () {
     //Deflag a run loop kill event to step through:

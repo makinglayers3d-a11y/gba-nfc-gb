@@ -138,13 +138,14 @@ await capture("mode-menu");
 await tapBoth(4, 4, 45); // RIGHT
 await capture("multiplayer-selected");
 
-// Multi-Pak manual flow: both consoles have MULTIPLAYER selected,
-// but only Player 1 starts the cable check. Secondary players wait.
-await tapSeat(0, 3, 4, 420); // P0 START only
+// Let P0 establish the cable-check state first.
+await tapSeat(0, 3, 4, 420); // P0 START
 await capture("host-entered-multi");
-await capture("guest-waiting");
 
-// Let the cable check / handshake settle without pressing anything on P1.
+// Secondary joins only after P0 has been inside the check state for a while.
+await tapSeat(1, 3, 4, 420); // P1 START delayed
+await capture("guest-entered-multi");
+
 await waitFrames(1200);
 await capture("final");
 

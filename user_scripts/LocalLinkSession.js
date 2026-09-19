@@ -326,6 +326,22 @@
           list.push({ cycle, ...entry });
           if (list.length > 512) list.splice(0, list.length - 512);
         };
+        this.serials[seat].linkSIOMULTIReadObserver = (index, word) => {
+          const core = this.cores[seat];
+          const cycle = Number(core?.IOCore?.linkCycleCounter) || 0;
+          const cpu = core?.IOCore?.cpu;
+          const pc = Number(cpu?.registers?.[15] ?? 0) >>> 0;
+          const regs = cpu?.registers ? Array.from(cpu.registers.slice(0, 8), (v) => Number(v) >>> 0) : [];
+          const list = this.siomultiReads[seat];
+          list.push({
+            cycle,
+            pc,
+            index: Number(index) | 0,
+            word: Number(word) & 0xffff,
+            regs
+          });
+          if (list.length > 1024) list.splice(0, list.length - 1024);
+        };
       }
     }
 
@@ -705,7 +721,8 @@
           after: this.protocolTransition.after.slice(),
           sendHistory: this.protocolTransition.sendHistory.map((history) => history.slice())
         } : null,
-        siocntWrites: this.siocntWrites.map((list) => list.slice())
+        siocntWrites: this.siocntWrites.map((list) => list.slice()),
+        siomultiReads: this.siomultiReads.map((list) => list.slice())
       };
     }
 

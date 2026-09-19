@@ -526,6 +526,20 @@ GameBoyAdvanceSerial.prototype.writeSIOCNT0 = function (data) {
                         }
                     }
                 }
+                else {
+                    // Current mGBA behavior: a secondary GBA can latch bit 7 by
+                    // writing SIOCNT even though it cannot generate the serial
+                    // clock. The bit then remains set until the master transfer
+                    // actually completes. Do not start a transfer here.
+                    if ((data & 0x80) != 0 && !this.SIOTransferStarted) {
+                        this.SIOTransferStarted = true;
+                        this.serialBitsShifted = 0;
+                        this.shiftClocks = 0;
+                        this.SIOCOMMERROR = false;
+                    }
+                    // A write with bit 7 clear cannot cancel a latched/active
+                    // secondary BUSY state; hardware clears it at completion.
+                }
                 break;
             //UART:
             case 3:

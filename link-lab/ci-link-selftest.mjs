@@ -3,6 +3,7 @@ import path from "node:path";
 import puppeteer from "puppeteer-core";
 
 const joinDelay = Math.max(0, Number(process.env.JOIN_DELAY || 420) | 0);
+const transferCycles = Math.max(0, Number(process.env.LINK_TRANSFER_CYCLES || 0) | 0);
 const outDir = path.resolve(`artifacts/link-selftest-${joinDelay}`);
 await fs.mkdir(outDir, { recursive: true });
 
@@ -42,9 +43,11 @@ page.on("pageerror", err => console.error("[pageerror]", err.stack || err.messag
 
 const url =
   "http://127.0.0.1:8000/?game=mario3&skipintro=1" +
-  "&linkRoom=ci&linkPlayer=0&linkRole=host&linkTransport=dual&linkSelfTest=1";
+  "&linkRoom=ci&linkPlayer=0&linkRole=host&linkTransport=dual&linkSelfTest=1" +
+  (transferCycles ? `&linkTransferCycles=${transferCycles}` : "");
 
 console.log("JOIN_DELAY", joinDelay);
+console.log("TRANSFER_CYCLES", transferCycles || "default");
 console.log("Opening", url);
 await page.goto(url, { waitUntil: "networkidle0", timeout: 120000 });
 

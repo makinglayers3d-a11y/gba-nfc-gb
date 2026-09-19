@@ -94,6 +94,8 @@ for seat, word, pc, thumb in sorted(entries):
 # captured in this run. This lets us follow the validation/error branches.
 STATIC_RANGES = [
     (0x080C97D4, 0x12C, True, "pre-handshake child state machine"),
+    (0x080C9A68, 0x220, True, "Mario host handshake states"),
+    (0x080C98E6, 0x100, True, "Mario child FEFE exit path"),
     (0x080C9C80, 0xC0, True, "error 0x60 branch"),
     (0x080C96E0, 0xC0, True, "SIOMULTI read/copy helper"),
     (0x080C971C, 0x100, True, "SIOMULTI receive snapshot helper"),

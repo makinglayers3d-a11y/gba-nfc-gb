@@ -99,6 +99,7 @@
       this.transferCount = 0;
       this.finishSyncCount = 0;
       this.localTransferArmed = false;
+      this.lastLinkError = "";
       this.wedged = false;
       this.inputTimer = null;
       this.readyTimer = null;
@@ -201,6 +202,7 @@
 
       const makeAdapter = (seat) => ({
         playerNumber: seat,
+        localDeterministic: true,
         isConnected: () => true,
         isReady: () =>
           (this.serials[0]?.SIOCNT_MODE | 0) === 2 &&
@@ -210,6 +212,10 @@
           return (this.serials[1]?.SIOCNT_MODE | 0) === 2;
         },
         onSerialModeChange: () => this.renderDebug(),
+        onLinkError: (error) => {
+          this.lastLinkError = String(error?.stack || error?.message || error || "unknown");
+          this.renderDebug();
+        },
         onHardwareTransferComplete: () => {
           if (!this.localTransferArmed) return;
           if (seat === 1) {
@@ -485,6 +491,7 @@
         `F:${this.frame} IN:${current0 === UNKNOWN ? "-" : current0.toString(16)}/${current1 === UNKNOWN ? "-" : current1.toString(16)} D:${INPUT_DELAY}\n` +
         `M:${s0?.SIOCNT_MODE ?? "-"}/${s1?.SIOCNT_MODE ?? "-"} BUSY:${s0?.SIOTransferStarted ? 1 : 0}/${s1?.SIOTransferStarted ? 1 : 0} S:${hx(s0v)}/${hx(s1v)} R:${hx(r0v)}/${hx(r1v)}\n` +
         `XFER:${this.transferCount} HS:${this.finishSyncCount} PEND:${this.pendingTransfer ? 1 : 0}/${this.localTransferArmed ? 1 : 0} Δ:${Math.round(c0 - c1)} T:${Math.round((this.frame + 1) * FRAME_CYCLES - Math.min(c0, c1))} STALL:${this.stallCount}` +
+        (this.lastLinkError ? `\nADAPTER ERROR: ${this.lastLinkError.split("\n")[0]}` : "") +
         (this.wedged ? "\nWEDGED" : "");
     }
 

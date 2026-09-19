@@ -259,6 +259,22 @@ GameBoyAdvanceSerial.prototype.releaseExternalMultiplayerTransfer = function (co
     }
     return true;
 };
+GameBoyAdvanceSerial.prototype.nextLinkEventTime = function () {
+    if (
+        this.SIOTransferStarted &&
+        this.linkCableConnected() &&
+        this.linkExternalTransferPending &&
+        !this.linkExternalTransferTimingDone
+    ) {
+        var remaining =
+            ((this.linkExternalTransferCycles | 0) -
+            (this.linkExternalTransferClocks | 0)) | 0;
+        // Avoid returning zero indefinitely if the serial clocks are caught
+        // precisely at the boundary before addClocks() commits the event.
+        return Math.max(remaining | 0, 1) | 0;
+    }
+    return 0x7FFFFFFF;
+};
 GameBoyAdvanceSerial.prototype.addClocks = function (clocks) {
     clocks = clocks | 0;
     if ((this.RCNTMode | 0) < 2) {

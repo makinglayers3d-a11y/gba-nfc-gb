@@ -1241,7 +1241,15 @@
             r1: regs ? (Number(regs[1]) >>> 0) : null,
             modeFlags: cpu ? (Number(cpu.modeFlags) & 0xff) : null,
             thumb: cpu ? !!(Number(cpu.modeFlags) & 0x20) : null,
-            halted: !!io?.systemStatus,
+            systemStatus: io ? (Number(io.systemStatus) | 0) : null,
+            halted: io ? !!((Number(io.systemStatus) | 0) & 0x20) : null,
+            stopped: io ? !!((Number(io.systemStatus) | 0) & 0x40) : null,
+            irq: io?.irq ? {
+              ie: Number(io.irq.interruptsEnabled) | 0,
+              if: Number(io.irq.interruptsRequested) | 0,
+              ime: Number(io.irq.IME) | 0,
+              match: (Number(io.irq.interruptsEnabled) | 0) & (Number(io.irq.interruptsRequested) | 0)
+            } : null,
             ewramC0: mem?.externalRAM
               ? Array.from(mem.externalRAM.slice(0xc0, 0xe0), (v) => Number(v) & 0xff)
               : null,

@@ -700,12 +700,28 @@
         // without advancing. Only 6202 is the second info exchange.
         if (hostWord === 0x6200) return mb.clientBit;
       }
-      if (mb.stage === "palette" && (hostWord & 0xff00) === 0x6300) {
-        mb.stage = "handshake";
-        return 0x7300 | mb.clientData;
+      if (mb.stage === "palette") {
+        // Some software pipelines the final 620Y word for one extra transfer.
+        // Keep acknowledging it until the first 63PP palette command arrives.
+        if (hostWord === (0x6200 | mb.clientBit)) {
+          return 0x7200 | mb.clientBit;
+        }
+        if ((hostWord & 0xff00) === 0x6300) {
+          mb.stage = "handshake";
+          return 0x7300 | mb.clientData;
+        }
       }
-      if (mb.stage === "handshake" && (hostWord & 0xff00) === 0x6400) {
-        mb.stage = "bios";
+      if (mb.stage === "handshake") {
+        // Palette command may also be repeated until 73CC is observed.
+        if ((hostWord & 0xff00) === 0x6300) {
+          return 0x7300 | mb.clientData;
+        }
+        if ((hostWord & 0xff00) === 0x6400) {
+          mb.stage = "bios";
+          return 0x7300 | mb.clientData;
+        }
+      }
+      if (mb.stage === "bios" && (hostWord & 0xff00) === 0x6400) {
         return 0x7300 | mb.clientData;
       }
 

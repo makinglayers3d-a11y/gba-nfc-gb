@@ -138,10 +138,10 @@ await capture("mode-menu");
 await tapBoth(4, 4, 45); // RIGHT
 await capture("multiplayer-selected");
 
-// Host first, guest second, matching the manual reproduction.
-await tapSeat(0, 0, 4, 12); // P0 A
+// Official manual flow: confirm MULTIPLAYER with START.
+await tapSeat(0, 3, 4, 12); // P0 START
 await capture("host-entered-multi");
-await tapSeat(1, 0, 4, 420); // P1 A
+await tapSeat(1, 3, 4, 420); // P1 START
 await capture("guest-entered-multi");
 
 // Let the handshake/error/result settle.

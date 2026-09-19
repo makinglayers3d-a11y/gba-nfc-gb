@@ -66,6 +66,7 @@ GameBoyAdvanceSerial.prototype.initialize = function () {
     this.linkExternalTransferTimingDone = false;
     this.linkSIOCNTWriteObserver = null;
     this.linkSIOMULTIReadObserver = null;
+    this.linkRCNTWriteObserver = null;
 }
 GameBoyAdvanceSerial.prototype.SIOMultiplayerBaudRate = [
       9600,
@@ -707,6 +708,9 @@ GameBoyAdvanceSerial.prototype.readSIODATA8_1 = function () {
     return this.SIODATA8 >> 8;
 }
 GameBoyAdvanceSerial.prototype.writeRCNT0 = function (data) {
+    if (typeof this.linkRCNTWriteObserver == "function") {
+        try { this.linkRCNTWriteObserver(0, data & 0xFF); } catch (error) {}
+    }
     if ((this.RCNTMode | 0) == 0x2) {
         //General Comm:
         var oldDataBits = this.RCNTDataBits | 0;
@@ -754,6 +758,9 @@ GameBoyAdvanceSerial.prototype.readRCNT0 = function () {
     return (this.RCNTDataBitFlow << 4) | this.RCNTDataBits;
 }
 GameBoyAdvanceSerial.prototype.writeRCNT1 = function (data) {
+    if (typeof this.linkRCNTWriteObserver == "function") {
+        try { this.linkRCNTWriteObserver(1, data & 0xFF); } catch (error) {}
+    }
     this.RCNTMode = data >> 6;
     this.RCNTIRQ = ((data & 0x1) != 0);
     if ((this.RCNTMode | 0) != 0x2) {

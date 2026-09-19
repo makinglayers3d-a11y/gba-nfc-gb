@@ -97,6 +97,8 @@
       this.remoteHash = "";
       this.pendingTransfer = null;
       this.transferCount = 0;
+      this.finishSyncCount = 0;
+      this.localTransferArmed = false;
       this.wedged = false;
       this.inputTimer = null;
       this.readyTimer = null;
@@ -206,8 +208,23 @@
           return (this.serials[1]?.SIOCNT_MODE | 0) === 2;
         },
         onSerialModeChange: () => this.renderDebug(),
+        onHardwareTransferComplete: () => {
+          if (!this.localTransferArmed) return;
+          if (seat === 1) {
+            // Match mGBA's finish hard-sync: the clock owner must not expose
+            // completion/IRQ until the secondary has finished the same transfer.
+            this.finishSyncCount += 1;
+            this.serials[0]?.releaseExternalMultiplayerTransfer?.(false);
+            return;
+          }
+          if (seat === 0) {
+            this.transferCount += 1;
+            this.localTransferArmed = false;
+            this.renderDebug();
+          }
+        },
         startMultiplayerTransfer: (info = {}) => {
-          if (seat !== 0 || this.pendingTransfer) return false;
+          if (seat !== 0 || this.pendingTransfer || this.localTransferArmed) return false;
           if ((this.serials[1]?.SIOCNT_MODE | 0) !== 2) return false;
           this.pendingTransfer = {
             sequence: Number(info.sequence) | 0,
@@ -245,15 +262,18 @@
       const words = [pending.word, childWord, 0xffff, 0xffff];
 
       this.serials[1].beginExternalMultiplayerTransfer(1);
+      this.localTransferArmed = true;
+
+      // Host timing starts now but completion remains held until P1 actually
+      // reaches its own hardware-complete event.
       this.serials[0].completeExternalMultiplayerTransfer(
-        words, 0, false, 1, false, pending.baud
+        words, 0, false, 1, true, pending.baud
       );
       this.serials[1].completeExternalMultiplayerTransfer(
         words, 1, false, 1, false, pending.baud
       );
 
       this.pendingTransfer = null;
-      this.transferCount += 1;
       return true;
     }
 
@@ -456,7 +476,7 @@
         (!this.started ? `ESPERANDO PEER:${this.remoteReady ? "OK" : "..."} ROM:${this.remoteHash ? (this.remoteHash === this.romHash ? "OK" : "DIFF") : "..."}\n` : "") +
         `F:${this.frame} IN:${current0 === UNKNOWN ? "-" : current0.toString(16)}/${current1 === UNKNOWN ? "-" : current1.toString(16)} D:${INPUT_DELAY}\n` +
         `M:${s0?.SIOCNT_MODE ?? "-"}/${s1?.SIOCNT_MODE ?? "-"} BUSY:${s0?.SIOTransferStarted ? 1 : 0}/${s1?.SIOTransferStarted ? 1 : 0}\n` +
-        `XFER:${this.transferCount} PEND:${this.pendingTransfer ? 1 : 0} Δ:${Math.round(c0 - c1)} T:${Math.round((this.frame + 1) * FRAME_CYCLES - Math.min(c0, c1))} STALL:${this.stallCount}` +
+        `XFER:${this.transferCount} HS:${this.finishSyncCount} PEND:${this.pendingTransfer ? 1 : 0}/${this.localTransferArmed ? 1 : 0} Δ:${Math.round(c0 - c1)} T:${Math.round((this.frame + 1) * FRAME_CYCLES - Math.min(c0, c1))} STALL:${this.stallCount}` +
         (this.wedged ? "\nWEDGED" : "");
     }
 
@@ -469,7 +489,8 @@
         sessionId: this.sessionId,
         frame: this.frame,
         transfers: this.transferCount,
-        pendingTransfer: Boolean(this.pendingTransfer),
+        finishSyncs: this.finishSyncCount,
+        pendingTransfer: Boolean(this.pendingTransfer || this.localTransferArmed),
         remoteReady: this.remoteReady,
         romHash: this.romHash,
         remoteHash: this.remoteHash,

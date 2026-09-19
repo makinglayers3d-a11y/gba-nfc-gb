@@ -647,26 +647,14 @@
 
       if (!mb.active && hostWord === 0x6200) {
         mb.active = true;
-        mb.stage = "detect";
-        mb.detectRemaining = 15;
+        mb.stage = "confirm";
+        mb.detectRemaining = 0;
         mb.headerRemaining = 0;
         mb.booted = false;
-        // BIOS slave first reports that it has just entered MULTI mode.
-        return 0x0000;
+        // BIOS multiboot discovery: a detected first child answers 7202.
+        return 0x7200 | mb.clientBit;
       }
       if (!mb.active) return null;
-
-      if (mb.stage === "detect") {
-        if (hostWord === 0x6200) {
-          // Detection succeeds on the first valid 720x response. The master's
-          // 16-count is a retry budget, not a requirement for 15 consecutive
-          // acknowledgements.
-          mb.detectRemaining = Math.max(0, (mb.detectRemaining | 0) - 1);
-          mb.stage = "confirm";
-          return 0x7200 | mb.clientBit;
-        }
-        return null;
-      }
 
       if (mb.stage === "confirm") {
         if (hostWord === (0x6100 | mb.clientBit)) {
@@ -674,18 +662,17 @@
           mb.headerRemaining = 0x60;
           return 0x7200 | mb.clientBit;
         }
-        // Keep acknowledging discovery if the master performs another probe
-        // before sending 610Y.
+        // The parent can repeat 6200 up to its retry budget before 610Y.
         if (hostWord === 0x6200) return 0x7200 | mb.clientBit;
         return null;
       }
 
       if (mb.stage === "header") {
         if (mb.headerRemaining > 0) {
-          // The slave reports the number of header halfwords remaining
-          // *after* the word just received: 5F02 ... 0002.
-          mb.headerRemaining -= 1;
+          // BIOS expects NN02 where NN is the number of header halfwords
+          // remaining INCLUDING the one just transferred: 6002 ... 0102.
           const reply = ((mb.headerRemaining & 0xff) << 8) | mb.clientBit;
+          mb.headerRemaining -= 1;
           if (mb.headerRemaining === 0) mb.stage = "postHeader0";
           return reply;
         }

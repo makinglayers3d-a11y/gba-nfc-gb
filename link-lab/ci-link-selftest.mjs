@@ -92,6 +92,14 @@ async function setMask(seat, mask) {
   );
 }
 
+async function tapSeat(seat, key, holdFrames = 4, settleFrames = 90) {
+  const bit = 1 << key;
+  await setMask(seat, bit);
+  await waitFrames(holdFrames);
+  await setMask(seat, 0);
+  await waitFrames(settleFrames);
+}
+
 async function tapBoth(key, holdFrames = 4, settleFrames = 90) {
   const bit = 1 << key;
   await setMask(0, bit);
@@ -115,23 +123,28 @@ async function capture(label) {
 }
 
 await waitFrames(240);
-await capture("boot");
+await capture("language");
 
-// Common SMA4 menu traversal candidates.
-await tapBoth(3, 4, 180); // START
-await capture("after-start");
-await tapBoth(0, 4, 180); // A
-await capture("after-a1");
-await tapBoth(7, 4, 60);  // DOWN
-await tapBoth(0, 4, 240); // A
-await capture("after-down-a");
-await tapBoth(3, 4, 120); // START
-await capture("after-start2");
-await tapBoth(0, 4, 180); // A
-await capture("after-a2");
+// Select English on both local GBAs.
+await tapBoth(0, 4, 360); // A
+await capture("after-language");
 
-// Give any multiplayer handshake time to settle.
-await waitFrames(600);
+// Let formatting/intro advance, then skip to the Mario Bros. mode menu.
+await tapBoth(3, 4, 240); // START
+await capture("mode-menu");
+
+// Move both cursors from Single Player to Multiplayer.
+await tapBoth(4, 4, 45); // RIGHT
+await capture("multiplayer-selected");
+
+// Match the manual reproduction: host enters first, guest shortly after.
+await tapSeat(0, 0, 4, 120); // P0 A
+await capture("host-entered-multi");
+await tapSeat(1, 0, 4, 600); // P1 A
+await capture("guest-entered-multi");
+
+// Keep running long enough for the handshake/error/result screen.
+await waitFrames(900);
 await capture("final");
 
 await fs.writeFile(

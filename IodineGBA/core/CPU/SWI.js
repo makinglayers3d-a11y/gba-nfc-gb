@@ -381,8 +381,26 @@ GameBoyAdvanceSWI.prototype.execute = function (opcode) {
             this.warnUnimplementedCalls && console.warn("UNSUPPORTED CALL TO GBA_SWI_MUSIC_PLAYER_FADE_OUT");
             break;     
         case SWI_OP_CODE.GBA_SWI_MULTI_BOOT:
-            this.warnUnimplementedCalls && console.warn("UNSUPPORTED CALL TO GBA_SWI_MULTI_BOOT");
-            break;                
+        {
+            // Local link adapters may provide a deterministic direct MultiBoot
+            // path. This mirrors the BIOS result contract (r0=0 success,
+            // r0=1 failure) while the adapter performs the peer RAM boot.
+            const paramPtr = this.CPUCore.ARM.readRegister(0) >>> 0;
+            const mode = this.CPUCore.ARM.readRegister(1) >>> 0;
+            const cable = this.IOCore?.serial?.linkCable;
+            let ok = false;
+            if (cable && typeof cable.performMultiboot === "function") {
+                try {
+                    ok = !!cable.performMultiboot(paramPtr, mode);
+                } catch (error) {
+                    ok = false;
+                }
+            }
+            this.CPUCore.ARM.writeRegister(0, ok ? 0 : 1);
+            if (!ok) {
+                this.warnUnimplementedCalls && console.warn("UNSUPPORTED CALL TO GBA_SWI_MULTI_BOOT");
+            }
+        }   break;                
         case SWI_OP_CODE.GBA_SWI_HARD_RESET:
             this.warnUnimplementedCalls && console.warn("UNSUPPORTED CALL TO GBA_SWI_HARD_RESET");
             break;                

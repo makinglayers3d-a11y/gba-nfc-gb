@@ -364,16 +364,20 @@ GameBoyAdvanceIO.prototype.handleStop = function () {
     //Exits when user presses joypad or from an external irq outside of GBA internal.
 }
 GameBoyAdvanceIO.prototype.cyclesUntilNextHALTEvent = function () {
-    //Find the clocks to the next HALT leave or DMA event:
+    //Find the clocks to the next HALT leave, DMA, or Link hardware event:
     var haltClocks = this.irq.nextEventTime() | 0;
     var dmaClocks = this.dma.nextEventTime() | 0;
-    return this.solveClosestTime(haltClocks | 0, dmaClocks | 0) | 0;
+    var serialClocks = this.serial.nextLinkEventTime() | 0;
+    var closest = this.solveClosestTime(haltClocks | 0, dmaClocks | 0) | 0;
+    return Math.min(closest | 0, serialClocks | 0) | 0;
 }
 GameBoyAdvanceIO.prototype.cyclesUntilNextEvent = function () {
-    //Find the clocks to the next IRQ or DMA event:
+    //Find the clocks to the next IRQ, DMA, or Link hardware event:
     var irqClocks = this.irq.nextIRQEventTime() | 0;
     var dmaClocks = this.dma.nextEventTime() | 0;
-    return this.solveClosestTime(irqClocks | 0, dmaClocks | 0) | 0;
+    var serialClocks = this.serial.nextLinkEventTime() | 0;
+    var closest = this.solveClosestTime(irqClocks | 0, dmaClocks | 0) | 0;
+    return Math.min(closest | 0, serialClocks | 0) | 0;
 }
 GameBoyAdvanceIO.prototype.solveClosestTime = function (clocks1, clocks2) {
     clocks1 = clocks1 | 0;

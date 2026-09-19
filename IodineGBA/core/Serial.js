@@ -162,12 +162,8 @@ GameBoyAdvanceSerial.prototype.beginExternalMultiplayerTransfer = function (play
     this.setLinkPlayerNumber(playerNumber | 0);
     this.SIOTransferStarted = true;
     this.SIOCOMMERROR = false;
-    // Hardware clears all receive registers to FFFF at transfer start on every
-    // participating GBA, not only on the parent.
-    this.SIODATA_A = 0xFFFF;
-    this.SIODATA_B = 0xFFFF;
-    this.SIODATA_C = 0xFFFF;
-    this.SIODATA_D = 0xFFFF;
+    // Keep the previous SIOMULTI receive registers visible while BUSY.
+    // mGBA/hardware replace SIOMULTI0..3 only when the transfer finishes.
     this.serialBitsShifted = 0;
     this.shiftClocks = 0;
     this.linkExternalTransferPending = false;
@@ -465,12 +461,8 @@ GameBoyAdvanceSerial.prototype.writeSIOCNT0 = function (data) {
                     if ((data & 0x80) != 0) {
                         if (!this.SIOTransferStarted) {
                             this.SIOTransferStarted = true;
-                            if ((linkPlayerNumber | 0) == 0) {
-                                this.SIODATA_A = 0xFFFF;
-                                this.SIODATA_B = 0xFFFF;
-                                this.SIODATA_C = 0xFFFF;
-                                this.SIODATA_D = 0xFFFF;
-                            }
+                            // SIOMULTI0..3 retain the previous transfer result
+                            // until hardware completes the new transfer.
                             this.serialBitsShifted = 0;
                             this.shiftClocks = 0;
 

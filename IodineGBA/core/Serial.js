@@ -618,7 +618,9 @@ GameBoyAdvanceSerial.prototype.writeSIOCNT1 = function (data) {
     this.SIOCNT_UART_FIFO_ENABLE = ((data & 0x1) != 0);
 }
 GameBoyAdvanceSerial.prototype.readSIOCNT1 = function () {
-    return (0x80 | this.SIOCNT_IRQ | (this.SIOCNT_MODE << 4) | ((this.SIOCNT_UART_RECV_ENABLE) ? 0x8 : 0) |
+    // SIOCNT bit 15 is unused/read-only 0 in Normal, Multi and UART modes.
+    // Iodine historically forced it high, which is not hardware-accurate.
+    return (this.SIOCNT_IRQ | (this.SIOCNT_MODE << 4) | ((this.SIOCNT_UART_RECV_ENABLE) ? 0x8 : 0) |
     ((this.SIOCNT_UART_SEND_ENABLE) ? 0x4 : 0) | ((this.SIOCNT_UART_PARITY_ENABLE) ? 0x2 : 0) | ((this.SIOCNT_UART_FIFO_ENABLE) ? 0x2 : 0));
 }
 GameBoyAdvanceSerial.prototype.writeSIODATA8_0 = function (data) {

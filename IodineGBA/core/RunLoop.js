@@ -199,7 +199,10 @@ GameBoyAdvanceIO.prototype.runTHUMB = function () {
                         var traceRawPC = this.cpu && this.cpu.registers
                             ? (this.cpu.registers[15] >>> 0)
                             : 0;
-                        var traceLogicalPC = (traceRawPC - 0x40) >>> 0;
+                        // THUMB uses a 3-stage fetch/decode/execute pipeline here.
+                        // At the start of executeIteration(), r15 is the fetch address;
+                        // the opcode about to execute is two halfwords behind it.
+                        var traceLogicalPC = (traceRawPC - 0x4) >>> 0;
                         if (
                             (traceLogicalPC >= 0x080C9948 && traceLogicalPC <= 0x080C9D34) ||
                             (traceLogicalPC >= 0x080C9E6C && traceLogicalPC <= 0x080C9F68) ||

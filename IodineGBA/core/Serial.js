@@ -738,7 +738,10 @@ GameBoyAdvanceSerial.prototype.writeRCNT1 = function (data) {
     }
 }
 GameBoyAdvanceSerial.prototype.readRCNT1 = function () {
-    return (this.RCNTMode << 6) | ((this.RCNTIRQ) ? 0x3F : 0x3E);
+    // RCNT high byte:
+    // bit 0 = IRQ enable, bits 1-5 are reserved/read as 0,
+    // bits 6-7 select the serial mode.
+    return (this.RCNTMode << 6) | ((this.RCNTIRQ) ? 0x1 : 0);
 }
 GameBoyAdvanceSerial.prototype.writeJOYCNT = function (data) {
     this.JOYBUS_IRQ = (data << 25) >> 31;

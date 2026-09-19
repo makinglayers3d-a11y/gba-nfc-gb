@@ -2,7 +2,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import puppeteer from "puppeteer-core";
 
-const outDir = path.resolve("artifacts/link-selftest");
+const joinDelay = Math.max(0, Number(process.env.JOIN_DELAY || 420) | 0);
+const outDir = path.resolve(`artifacts/link-selftest-${joinDelay}`);
 await fs.mkdir(outDir, { recursive: true });
 
 async function findChrome() {
@@ -43,6 +44,7 @@ const url =
   "http://127.0.0.1:8000/?game=mario3&skipintro=1" +
   "&linkRoom=ci&linkPlayer=0&linkRole=host&linkTransport=dual&linkSelfTest=1";
 
+console.log("JOIN_DELAY", joinDelay);
 console.log("Opening", url);
 await page.goto(url, { waitUntil: "networkidle0", timeout: 120000 });
 
@@ -139,11 +141,11 @@ await tapBoth(4, 4, 45); // RIGHT
 await capture("multiplayer-selected");
 
 // Let P0 establish the cable-check state first.
-await tapSeat(0, 3, 4, 420); // P0 START
+await tapSeat(0, 3, 4, joinDelay); // P0 START, configurable delay before P1
 await capture("host-entered-multi");
 
-// Secondary joins only after P0 has been inside the check state for a while.
-await tapSeat(1, 3, 4, 420); // P1 START delayed
+// Secondary joins after the selected delay.
+await tapSeat(1, 3, 4, 420); // P1 START
 await capture("guest-entered-multi");
 
 await waitFrames(1200);

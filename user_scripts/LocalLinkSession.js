@@ -147,6 +147,7 @@
       this.rcntWrites = [[], []];
       this.siomultiReads = [[], []];
       this.criticalSiomultiReads = [[], []];
+      this.comparisonTrace = [[], []];
       this.protocolTransition = null;
       this.protocolTransitionRemaining = 0;
       this.wedged = false;
@@ -325,6 +326,47 @@
       this.serials[1].setLinkPlayerNumber(1);
 
       for (let seat = 0; seat < 2; seat++) {
+        const io = this.cores[seat]?.IOCore;
+        if (io) {
+          io.linkInstructionObserver = (logicalPc, rawPc) => {
+            const cpu = io.cpu;
+            if (!cpu?.registers) return;
+            const regs = Array.from(cpu.registers.slice(0, 8), (v) => Number(v) >>> 0);
+
+            // Exact protocol comparisons that can return Link error 0x71.
+            if (
+              logicalPc === 0x080C9EC4 ||
+              logicalPc === 0x080C9F24 ||
+              logicalPc === 0x080C9F58 ||
+              logicalPc === 0x080C98E0 ||
+              logicalPc === 0x080C9900
+            ) {
+              const list = this.comparisonTrace[seat];
+              list.push({
+                frame: this.frame,
+                cycle: Number(io.linkCycleCounter) || 0,
+                logicalPc: Number(logicalPc) >>> 0,
+                rawPc: Number(rawPc) >>> 0,
+                r0: regs[0] >>> 0,
+                r1: regs[1] >>> 0,
+                r2: regs[2] >>> 0,
+                r3: regs[3] >>> 0,
+                r4: regs[4] >>> 0,
+                r5: regs[5] >>> 0,
+                r6: regs[6] >>> 0,
+                r7: regs[7] >>> 0,
+                bus: [
+                  this.serials[seat].SIODATA_A & 0xffff,
+                  this.serials[seat].SIODATA_B & 0xffff,
+                  this.serials[seat].SIODATA_C & 0xffff,
+                  this.serials[seat].SIODATA_D & 0xffff
+                ]
+              });
+              if (list.length > 512) list.splice(0, list.length - 512);
+            }
+          };
+        }
+
         this.serials[seat].linkSIOCNTWriteObserver = (entry) => {
           const cycle = Number(this.cores[seat]?.IOCore?.linkCycleCounter) || 0;
           const list = this.siocntWrites[seat];
@@ -799,7 +841,8 @@
         siocntWrites: this.siocntWrites.map((list) => list.slice()),
         rcntWrites: this.rcntWrites.map((list) => list.slice()),
         siomultiReads: this.siomultiReads.map((list) => list.slice()),
-        criticalSiomultiReads: this.criticalSiomultiReads.map((list) => list.slice())
+        criticalSiomultiReads: this.criticalSiomultiReads.map((list) => list.slice()),
+        comparisonTrace: this.comparisonTrace.map((list) => list.slice())
       };
     }
 

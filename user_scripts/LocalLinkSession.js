@@ -148,6 +148,7 @@
       this.siomultiReads = [[], []];
       this.criticalSiomultiReads = [[], []];
       this.comparisonTrace = [[], []];
+      this.mainReturnTrace = [[], []];
       this.protocolTransition = null;
       this.protocolTransitionRemaining = 0;
       this.wedged = false;
@@ -334,7 +335,54 @@
             const regs = Array.from(cpu.registers.slice(0, 8), (v) => Number(v) >>> 0);
 
             // Exact protocol comparisons that can return Link error 0x71.
+            if (logicalPc === 0x080C9D28 && (regs[0] >>> 0) !== 0) {
+              const statePtr = regs[7] >>> 0;
+              const mem = io.memory;
+              const raw8 = (address) => {
+                address = Number(address) >>> 0;
+                const region = address >>> 24;
+                if (region === 0x02 && mem?.externalRAM) return mem.externalRAM[address & 0x3ffff] & 0xff;
+                if (region === 0x03 && mem?.internalRAM) return mem.internalRAM[address & 0x7fff] & 0xff;
+                return null;
+              };
+              const raw16 = (address) => {
+                const lo = raw8(address);
+                const hi = raw8((Number(address) + 1) >>> 0);
+                return lo === null || hi === null ? null : (lo | (hi << 8)) & 0xffff;
+              };
+              const list = this.mainReturnTrace[seat];
+              list.push({
+                frame: this.frame,
+                cycle: Number(io.linkCycleCounter) || 0,
+                code: regs[0] >>> 0,
+                statePtr,
+                state: raw8((statePtr + 0x18) >>> 0),
+                playerMask: raw8((statePtr + 0x1e) >>> 0),
+                substate: raw8((statePtr + 0x1d) >>> 0),
+                timer: raw16((statePtr + 0x16) >>> 0),
+                siocnt: ((this.serials[seat].readSIOCNT1?.() ?? 0) << 8) |
+                  (this.serials[seat].readSIOCNT0?.() ?? 0),
+                rcnt: ((this.serials[seat].readRCNT1?.() ?? 0) << 8) |
+                  (this.serials[seat].readRCNT0?.() ?? 0),
+                bus: [
+                  this.serials[seat].SIODATA_A & 0xffff,
+                  this.serials[seat].SIODATA_B & 0xffff,
+                  this.serials[seat].SIODATA_C & 0xffff,
+                  this.serials[seat].SIODATA_D & 0xffff
+                ],
+                regs: Array.from(cpu.registers, (v) => Number(v) >>> 0)
+              });
+              if (list.length > 128) list.splice(0, list.length - 128);
+            }
+
             if (
+              logicalPc === 0x080C9958 ||
+              logicalPc === 0x080C9988 ||
+              logicalPc === 0x080C99A8 ||
+              logicalPc === 0x080C99D2 ||
+              logicalPc === 0x080C99E4 ||
+              logicalPc === 0x080C9D1C ||
+              logicalPc === 0x080C9D22 ||
               logicalPc === 0x080C9EC4 ||
               logicalPc === 0x080C9F24 ||
               logicalPc === 0x080C9F58 ||
@@ -842,7 +890,8 @@
         rcntWrites: this.rcntWrites.map((list) => list.slice()),
         siomultiReads: this.siomultiReads.map((list) => list.slice()),
         criticalSiomultiReads: this.criticalSiomultiReads.map((list) => list.slice()),
-        comparisonTrace: this.comparisonTrace.map((list) => list.slice())
+        comparisonTrace: this.comparisonTrace.map((list) => list.slice()),
+        mainReturnTrace: this.mainReturnTrace.map((list) => list.slice())
       };
     }
 

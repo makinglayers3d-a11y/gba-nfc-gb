@@ -150,9 +150,13 @@ await capture("multiplayer-selected");
 await tapSeat(0, 3, 4, joinDelay); // P0 START, configurable delay before P1
 await capture("host-entered-multi");
 
-// Secondary joins after the selected delay.
-await tapSeat(1, 3, 4, 420); // P1 START
-await capture("guest-entered-multi");
+// Secondary joins after the selected delay. Capture the exact failure window.
+await tapSeat(1, 3, 4, 0); // P1 START
+await capture("guest-entered-multi-0");
+for (const [label, frames] of [["15f",15],["30f",15],["60f",30],["120f",60],["240f",120],["420f",180]]) {
+  await waitFrames(frames);
+  await capture("guest-" + label);
+}
 
 await waitFrames(1200);
 await capture("final");

@@ -93,7 +93,7 @@ for seat, word, pc, thumb in sorted(entries):
 # Add broad protocol routines even if a particular word writer was not
 # captured in this run. This lets us follow the validation/error branches.
 STATIC_RANGES = [
-    (0x080C9840, 0xC0, True, "pre-handshake FEFE writer"),
+    (0x080C97D4, 0x12C, True, "pre-handshake child state machine"),
     (0x080C9C80, 0xC0, True, "error 0x60 branch"),
     (0x080C96E0, 0xC0, True, "SIOMULTI read/copy helper"),
     (0x080C971C, 0x100, True, "SIOMULTI receive snapshot helper"),

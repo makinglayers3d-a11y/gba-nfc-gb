@@ -14,6 +14,9 @@ function GameBoyAdvanceIO(SKIPBoot, coreExposed, BIOS, ROM) {
     this.cyclesToIterate = 0;
     this.cyclesOveriteratedPreviously = 0;
     this.accumulatedClocks = 0;
+    // Monotonic virtual-time counter used by the local dual-core Link
+    // coordinator. It advances only with emulated GBA clocks.
+    this.linkCycleCounter = 0;
     this.graphicsClocks = 0;
     this.timerClocks = 0;
     this.serialClocks = 0;
@@ -262,6 +265,7 @@ GameBoyAdvanceIO.prototype.updateCoreClocking = function () {
     var clocks = this.accumulatedClocks | 0;
     //Decrement the clocks per iteration counter:
     this.cyclesToIterate = ((this.cyclesToIterate | 0) - (clocks | 0)) | 0;
+    this.linkCycleCounter += clocks | 0;
     //Clock all components:
     this.gfxState.addClocks(((clocks | 0) - (this.graphicsClocks | 0)) | 0);
     this.timer.addClocks(((clocks | 0) - (this.timerClocks | 0)) | 0);

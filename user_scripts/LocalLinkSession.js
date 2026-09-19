@@ -610,8 +610,10 @@
 
       if (mb.stage === "header") {
         if (mb.headerRemaining > 0) {
-          const reply = ((mb.headerRemaining & 0xff) << 8) | mb.clientBit;
+          // The slave reports the number of header halfwords remaining
+          // *after* the word just received: 5F02 ... 0002.
           mb.headerRemaining -= 1;
+          const reply = ((mb.headerRemaining & 0xff) << 8) | mb.clientBit;
           if (mb.headerRemaining === 0) mb.stage = "postHeader0";
           return reply;
         }
@@ -621,9 +623,14 @@
         mb.stage = "postHeader1";
         return mb.clientBit;
       }
-      if (mb.stage === "postHeader1" && (hostWord & 0xfff0) === 0x6200) {
-        mb.stage = "palette";
-        return 0x7200 | mb.clientBit;
+      if (mb.stage === "postHeader1") {
+        if (hostWord === (0x6200 | mb.clientBit)) {
+          mb.stage = "palette";
+          return 0x7200 | mb.clientBit;
+        }
+        // If the master repeats the completion probe, keep returning 0002
+        // without advancing. Only 6202 is the second info exchange.
+        if (hostWord === 0x6200) return mb.clientBit;
       }
       if (mb.stage === "palette" && (hostWord & 0xff00) === 0x6300) {
         mb.stage = "handshake";

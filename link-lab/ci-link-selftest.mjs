@@ -139,7 +139,7 @@ await tapBoth(4, 4, 45); // RIGHT
 await capture("multiplayer-selected");
 
 // Host first, guest second, matching the manual reproduction.
-await tapSeat(0, 0, 4, 120); // P0 A
+await tapSeat(0, 0, 4, 12); // P0 A
 await capture("host-entered-multi");
 await tapSeat(1, 0, 4, 420); // P1 A
 await capture("guest-entered-multi");

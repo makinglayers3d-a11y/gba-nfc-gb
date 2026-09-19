@@ -317,6 +317,15 @@
       this.serials[0].setLinkPlayerNumber(0);
       this.serials[1].attachLinkCable(makeAdapter(1));
       this.serials[1].setLinkPlayerNumber(1);
+
+      for (let seat = 0; seat < 2; seat++) {
+        this.serials[seat].linkSIOCNTWriteObserver = (entry) => {
+          const cycle = Number(this.cores[seat]?.IOCore?.linkCycleCounter) || 0;
+          const list = this.siocntWrites[seat];
+          list.push({ cycle, ...entry });
+          if (list.length > 512) list.splice(0, list.length - 512);
+        };
+      }
     }
 
     carryTransfer() {

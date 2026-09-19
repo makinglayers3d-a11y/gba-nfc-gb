@@ -975,18 +975,28 @@ if (reloadButton) {
 
     backgroundSuspended = false;
 
+    const dualLinkRunning =
+      linkRoomActive &&
+      Boolean(window.ML3DLocalLinkSession?.active);
+
     const gbaNeedsRecovery =
       emulator &&
       (
         resumeGbaAfterBackground ||
-        timer === null ||
+        (!linkRoomActive && timer === null) ||
         emulator.emulatorStatus >= 0x10
       );
 
     if (gbaNeedsRecovery) {
       try {
         emulator.play();
-        startGbaTimers();
+        if (!linkRoomActive) {
+          startGbaTimers();
+        } else if (!dualLinkRunning) {
+          // In dual mode the coordinator owns timing. Never start the legacy
+          // timer as a recovery fallback, even while the peer is reconnecting.
+          stopGbaTimers();
+        }
         unlockAudio();
       } catch (error) {
         console.error("Reanudación GBA:", error);

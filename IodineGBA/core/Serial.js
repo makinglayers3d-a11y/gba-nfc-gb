@@ -155,6 +155,46 @@ GameBoyAdvanceSerial.prototype.getLinkPlayerNumber = function () {
 GameBoyAdvanceSerial.prototype.getLinkSendData = function () {
     return this.SIODATA8 & 0xFFFF;
 };
+GameBoyAdvanceSerial.prototype.getNormalLinkData = function () {
+    if ((this.SIOCNT_MODE | 0) == 0) {
+        return this.SIODATA8 & 0xFF;
+    }
+    // Normal 32-bit mode aliases SIODATA32_L/H onto SIOMULTI0/1.
+    return (((this.SIODATA_B & 0xFFFF) << 16) | (this.SIODATA_A & 0xFFFF)) >>> 0;
+};
+GameBoyAdvanceSerial.prototype.completeExternalNormalTransfer = function (receivedData) {
+    receivedData = Number(receivedData) >>> 0;
+    if ((this.SIOCNT_MODE | 0) == 0) {
+        this.SIODATA8 = receivedData & 0xFF;
+    }
+    else if ((this.SIOCNT_MODE | 0) == 1) {
+        this.SIODATA_A = receivedData & 0xFFFF;
+        this.SIODATA_B = (receivedData >>> 16) & 0xFFFF;
+    }
+    else {
+        return false;
+    }
+
+    this.SIOTransferStarted = false;
+    this.serialBitsShifted = 0;
+    this.shiftClocks = 0;
+    if ((this.SIOCNT_IRQ | 0) != 0 && this.IOCore && this.IOCore.irq) {
+        this.IOCore.irq.requestIRQ(0x80);
+    }
+    if (
+        this.linkCable &&
+        typeof this.linkCable.onNormalTransferComplete == "function"
+    ) {
+        try {
+            this.linkCable.onNormalTransferComplete({
+                mode: this.SIOCNT_MODE | 0,
+                data: receivedData >>> 0
+            });
+        }
+        catch (error) {}
+    }
+    return true;
+};
 GameBoyAdvanceSerial.prototype.notifyLinkSendDataChange = function () {
     if (
         this.linkCable &&
@@ -317,7 +357,14 @@ GameBoyAdvanceSerial.prototype.addClocks = function (clocks) {
         switch (this.SIOCNT_MODE | 0) {
             case 0:
             case 1:
-                if (this.SIOTransferStarted && (this.SIOShiftClockExternal | 0) == 0) {
+                // A connected adapter drives Normal-mode serial transfers.
+                // Preserve the historical disconnected fallback only when no
+                // cable owns the bus.
+                if (
+                    this.SIOTransferStarted &&
+                    !this.linkCableConnected() &&
+                    (this.SIOShiftClockExternal | 0) == 0
+                ) {
                     this.shiftClocks = ((this.shiftClocks | 0) + (clocks | 0)) | 0;
                     while ((this.shiftClocks | 0) >= (this.SIOShiftClockDivider | 0)) {
                         this.shiftClocks = ((this.shiftClocks | 0) - (this.SIOShiftClockDivider | 0)) | 0;
@@ -550,6 +597,30 @@ GameBoyAdvanceSerial.prototype.writeSIOCNT0 = function (data) {
                         this.SIOTransferStarted = true;
                         this.serialBitsShifted = 0;
                         this.shiftClocks = 0;
+
+                        if (
+                            this.linkCableConnected() &&
+                            this.linkCable &&
+                            typeof this.linkCable.startNormalTransfer == "function"
+                        ) {
+                            try {
+                                this.linkTransferSequence = ((this.linkTransferSequence | 0) + 1) | 0;
+                                this.linkCable.startNormalTransfer({
+                                    sequence: this.linkTransferSequence | 0,
+                                    mode: this.SIOCNT_MODE | 0,
+                                    data: this.getNormalLinkData(),
+                                    // GBA SIOCNT bit 0: 1 = internal clock/master,
+                                    // 0 = external clock/slave.
+                                    internalClock: (data & 0x1) != 0,
+                                    fastClock: (data & 0x2) != 0
+                                });
+                            }
+                            catch (error) {
+                                if (this.linkCable && typeof this.linkCable.onLinkError == "function") {
+                                    try { this.linkCable.onLinkError(error); } catch (ignored) {}
+                                }
+                            }
+                        }
                     }
                 }
                 else {

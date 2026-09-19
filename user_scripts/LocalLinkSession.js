@@ -136,6 +136,9 @@
       this.transferCount = 0;
       this.finishSyncCount = 0;
       this.localTransferArmed = false;
+      this.normalPrepared = [null, null];
+      this.normalTransferCount = 0;
+      this.normalTrace = [];
       this.lastLinkError = "";
       this.startSkewLast = 0;
       this.startSkewMin = Infinity;
@@ -292,13 +295,17 @@
           return (this.serials[1]?.SIOCNT_MODE | 0) === 2;
         },
         onSerialModeChange: (mode) => {
+          mode = Number(mode) | 0;
+          if (mode !== 0 && mode !== 1) {
+            this.normalPrepared[seat] = null;
+          }
           // If the parent enters MULTI while the secondary has not entered it
           // naturally, treat the secondary as a no-cartridge BIOS receiver
           // (Single-Pak). If P1 was already in MULTI, leave it untouched for
           // ordinary Multi-Pak play.
           if (
             seat === 0 &&
-            (Number(mode) | 0) === 2 &&
+            mode === 2 &&
             (this.serials[1]?.SIOCNT_MODE | 0) !== 2
           ) {
             this.armMultibootReceiver();
@@ -339,7 +346,60 @@
             this.renderDebug();
           }
         },
-        startMultiplayerTransfer: (info = {}) => {
+        startNormalTransfer: (info = {}) => {
+          const mode = Number(info.mode) | 0;
+          if (mode !== 0 && mode !== 1) return false;
+
+          const core = this.cores[seat];
+          const prepared = {
+            seat,
+            sequence: Number(info.sequence) | 0,
+            mode,
+            data: Number(info.data) >>> 0,
+            internalClock: !!info.internalClock,
+            fastClock: !!info.fastClock,
+            cycle: Number(core?.IOCore?.linkCycleCounter) || 0,
+            frame: this.frame
+          };
+          this.normalPrepared[seat] = prepared;
+
+          const peer = this.normalPrepared[seat ^ 1];
+          if (!peer || peer.mode !== mode) return true;
+
+          // Normal serial requires exactly one clock source. Do not fabricate
+          // a transfer if both ends claim master or both wait for external clock.
+          if (prepared.internalClock === peer.internalClock) return true;
+
+          const p0 = this.normalPrepared[0];
+          const p1 = this.normalPrepared[1];
+          if (!p0 || !p1) return true;
+
+          // Consume before completing because IRQ handlers can immediately
+          // configure the next transfer.
+          this.normalPrepared[0] = null;
+          this.normalPrepared[1] = null;
+
+          const masterSeat = p0.internalClock ? 0 : 1;
+          this.normalTrace.push({
+            frame: this.frame,
+            mode,
+            masterSeat,
+            p0: p0.data >>> 0,
+            p1: p1.data >>> 0,
+            p0Cycle: p0.cycle,
+            p1Cycle: p1.cycle,
+            fastClock: !!(p0.fastClock || p1.fastClock)
+          });
+          if (this.normalTrace.length > 256) this.normalTrace.shift();
+
+          this.serials[0]?.completeExternalNormalTransfer?.(p1.data >>> 0);
+          this.serials[1]?.completeExternalNormalTransfer?.(p0.data >>> 0);
+          this.normalTransferCount += 1;
+          this.renderDebug();
+          return true;
+        },
+        onNormalTransferComplete: () => {},
+                startMultiplayerTransfer: (info = {}) => {
           if (seat !== 0 || this.pendingTransfer || this.localTransferArmed) return false;
           if ((this.serials[1]?.SIOCNT_MODE | 0) !== 2) {
             if ((Number(info.word) & 0xffff) === 0x6200) {
@@ -1218,7 +1278,14 @@
         frame: this.frame,
         transfers: this.transferCount,
         finishSyncs: this.finishSyncCount,
-        pendingTransfer: Boolean(this.pendingTransfer || this.localTransferArmed),
+        normalTransfers: this.normalTransferCount,
+        normalTrace: this.normalTrace.slice(),
+        pendingTransfer: Boolean(
+          this.pendingTransfer ||
+          this.localTransferArmed ||
+          this.normalPrepared[0] ||
+          this.normalPrepared[1]
+        ),
         remoteReady: this.remoteReady,
         romHash: this.romHash,
         remoteHash: this.remoteHash,

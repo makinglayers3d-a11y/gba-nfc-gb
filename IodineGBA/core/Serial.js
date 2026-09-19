@@ -494,10 +494,18 @@ GameBoyAdvanceSerial.prototype.writeSIOCNT0 = function (data) {
                                         this.SIOTransferStarted = false;
                                         this.SIOCOMMERROR = false;
                                     }
+                                    else {
+                                        // A successfully accepted transfer starts with a clean
+                                        // communication-error latch.
+                                        this.SIOCOMMERROR = false;
+                                    }
 
                                 }
                                 catch (error) {
                                     this.SIOCOMMERROR = true;
+                                    if (this.linkCable && typeof this.linkCable.onLinkError == "function") {
+                                        try { this.linkCable.onLinkError(error); } catch (ignored) {}
+                                    }
                                 }
                             }
                         }
@@ -546,11 +554,14 @@ GameBoyAdvanceSerial.prototype.readSIOCNT0 = function () {
                 // Some commercial games check these before enabling multiplayer.
                 var linkConnected = this.linkCableConnected();
                 var linkReady = this.linkCableReady();
-                var terminalState = (linkConnected && (this.getLinkPlayerNumber() | 0) != 0) ? 0x4 : 0;
+                var visiblePlayerNumber = linkConnected
+                    ? (this.getLinkPlayerNumber() | 0) & 0x3
+                    : this.SIOMULT_PLAYER_NUMBER & 0x3;
+                var terminalState = (linkConnected && visiblePlayerNumber != 0) ? 0x4 : 0;
                 var readyState = linkReady ? 0x8 : 0;
                 return ((this.SIOTransferStarted) ? 0x80 : 0) |
                     ((this.SIOCOMMERROR) ? 0x40 : 0) |
-                    (this.SIOMULT_PLAYER_NUMBER << 4) |
+                    (visiblePlayerNumber << 4) |
                     readyState |
                     terminalState |
                     this.SIOBaudRate;

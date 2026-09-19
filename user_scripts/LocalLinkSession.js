@@ -23,7 +23,7 @@
     if (down) localMask |= bit;
     else localMask &= ~bit;
     localMask &= 0x3ff;
-    return Boolean(enabled);
+    return Boolean(controller?.started);
   }
 
   window.ML3DLocalLinkSession = {
@@ -371,10 +371,11 @@
       this.publishLocalInput();
 
       let ran = 0;
-      while (ran < 2 && this.frameReady()) {
-        if (!this.runFrame()) break;
-        ran += 1;
-        this.publishLocalInput();
+      if (this.frameReady()) {
+        if (this.runFrame()) {
+          ran = 1;
+          this.publishLocalInput();
+        }
       }
 
       if (!ran) this.stallCount += 1;
@@ -411,6 +412,7 @@
       const current1 = this.getInput(this.frame, 1);
       this.debug.textContent =
         `LOCAL LINK ${role === "host" ? "H" : "G"} P${mySeat} ${this.started ? "RUN" : "SYNC"}\n` +
+        (!this.started ? `ESPERANDO PEER:${this.remoteReady ? "OK" : "..."} ROM:${this.remoteHash ? (this.remoteHash === this.romHash ? "OK" : "DIFF") : "..."}\n` : "") +
         `F:${this.frame} IN:${current0 === UNKNOWN ? "-" : current0.toString(16)}/${current1 === UNKNOWN ? "-" : current1.toString(16)} D:${INPUT_DELAY}\n` +
         `M:${s0?.SIOCNT_MODE ?? "-"}/${s1?.SIOCNT_MODE ?? "-"} BUSY:${s0?.SIOTransferStarted ? 1 : 0}/${s1?.SIOTransferStarted ? 1 : 0}\n` +
         `XFER:${this.transferCount} PEND:${this.pendingTransfer ? 1 : 0} Δ:${Math.round(c0 - c1)} STALL:${this.stallCount}` +

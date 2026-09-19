@@ -64,6 +64,11 @@ GameBoyAdvanceSerial.prototype.initialize = function () {
     this.linkExternalTransferCycles = 0;
     this.linkExternalTransferHold = false;
     this.linkExternalTransferTimingDone = false;
+    this.linkExternalProgressive = false;
+    this.linkExternalStage0Cycle = 0;
+    this.linkExternalStage1Cycle = 0;
+    this.linkExternalStage0Done = false;
+    this.linkExternalStage1Done = false;
     this.linkSIOCNTWriteObserver = null;
     this.linkSIOMULTIReadObserver = null;
     this.linkRCNTWriteObserver = null;
@@ -181,7 +186,7 @@ GameBoyAdvanceSerial.prototype.beginExternalMultiplayerTransfer = function (play
     }
     return this.getLinkSendData() | 0;
 };
-GameBoyAdvanceSerial.prototype.completeExternalMultiplayerTransfer = function (words, playerNumber, commError, connectedCount, holdCompletion, transferBaud, elapsedCycles, transferCycleOverride) {
+GameBoyAdvanceSerial.prototype.completeExternalMultiplayerTransfer = function (words, playerNumber, commError, connectedCount, holdCompletion, transferBaud, elapsedCycles, transferCycleOverride, progressiveStages) {
     words = words || [];
     connectedCount = Math.max(0, Math.min(3, connectedCount | 0)) | 0;
     this.setLinkPlayerNumber(playerNumber | 0);
@@ -214,6 +219,24 @@ GameBoyAdvanceSerial.prototype.completeExternalMultiplayerTransfer = function (w
     ) | 0;
     this.linkExternalTransferHold = !!holdCompletion;
     this.linkExternalTransferTimingDone = false;
+    this.linkExternalProgressive = !!progressiveStages;
+    this.linkExternalStage0Cycle = progressiveStages ? Math.max(0, progressiveStages[0] | 0) : 0;
+    this.linkExternalStage1Cycle = progressiveStages ? Math.max(0, progressiveStages[1] | 0) : 0;
+    this.linkExternalStage0Done = false;
+    this.linkExternalStage1Done = false;
+
+    // If a secondary receives START slightly late, expose any bus stages that
+    // would already have happened at the shared parent timestamp.
+    if (this.linkExternalProgressive) {
+        if ((this.linkExternalTransferClocks | 0) >= (this.linkExternalStage0Cycle | 0)) {
+            this.SIODATA_A = this.linkExternalTransferWords[0] & 0xFFFF;
+            this.linkExternalStage0Done = true;
+        }
+        if ((this.linkExternalTransferClocks | 0) >= (this.linkExternalStage1Cycle | 0)) {
+            this.SIODATA_B = this.linkExternalTransferWords[1] & 0xFFFF;
+            this.linkExternalStage1Done = true;
+        }
+    }
     this.linkExternalTransferPending = true;
 
     // Network rendezvous is complete. Resume virtual time, but keep SIO BUSY
@@ -239,6 +262,9 @@ GameBoyAdvanceSerial.prototype.finishExternalMultiplayerTransfer = function () {
     this.linkExternalTransferCycles = 0;
     this.linkExternalTransferHold = false;
     this.linkExternalTransferTimingDone = false;
+    this.linkExternalProgressive = false;
+    this.linkExternalStage0Done = false;
+    this.linkExternalStage1Done = false;
     if ((this.SIOCNT_IRQ | 0) != 0 && this.IOCore && this.IOCore.irq) {
         this.IOCore.irq.requestIRQ(0x80);
     }
@@ -307,6 +333,22 @@ GameBoyAdvanceSerial.prototype.addClocks = function (clocks) {
                 ) {
                     this.linkExternalTransferClocks =
                         ((this.linkExternalTransferClocks | 0) + (clocks | 0)) | 0;
+                    if (this.linkExternalProgressive) {
+                        if (
+                            !this.linkExternalStage0Done &&
+                            (this.linkExternalTransferClocks | 0) >= (this.linkExternalStage0Cycle | 0)
+                        ) {
+                            this.SIODATA_A = this.linkExternalTransferWords[0] & 0xFFFF;
+                            this.linkExternalStage0Done = true;
+                        }
+                        if (
+                            !this.linkExternalStage1Done &&
+                            (this.linkExternalTransferClocks | 0) >= (this.linkExternalStage1Cycle | 0)
+                        ) {
+                            this.SIODATA_B = this.linkExternalTransferWords[1] & 0xFFFF;
+                            this.linkExternalStage1Done = true;
+                        }
+                    }
                     if (
                         (this.linkExternalTransferClocks | 0) >=
                         (this.linkExternalTransferCycles | 0)

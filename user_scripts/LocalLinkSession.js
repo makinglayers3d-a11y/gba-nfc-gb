@@ -142,6 +142,7 @@
       this.recentTransfers = [];
       this.sendWordHistory = [[], []];
       this.siocntWrites = [[], []];
+      this.rcntWrites = [[], []];
       this.siomultiReads = [[], []];
       this.criticalSiomultiReads = [[], []];
       this.protocolTransition = null;
@@ -327,6 +328,24 @@
           const list = this.siocntWrites[seat];
           list.push({ cycle, ...entry });
           if (list.length > 512) list.splice(0, list.length - 512);
+        };
+        this.serials[seat].linkRCNTWriteObserver = (byteIndex, data) => {
+          const core = this.cores[seat];
+          const cycle = Number(core?.IOCore?.linkCycleCounter) || 0;
+          const cpu = core?.IOCore?.cpu;
+          const regs = cpu?.registers;
+          const pc = Number(regs?.[15] ?? 0) >>> 0;
+          const lr = Number(regs?.[14] ?? 0) >>> 0;
+          const list = this.rcntWrites[seat];
+          list.push({
+            cycle,
+            byteIndex: Number(byteIndex) | 0,
+            data: Number(data) & 0xff,
+            pc,
+            logicalPc: (pc - 0x40) >>> 0,
+            lr
+          });
+          if (list.length > 256) list.splice(0, list.length - 256);
         };
         this.serials[seat].linkSIOMULTIReadObserver = (index, word) => {
           const core = this.cores[seat];
@@ -769,6 +788,7 @@
           sendHistory: this.protocolTransition.sendHistory.map((history) => history.slice())
         } : null,
         siocntWrites: this.siocntWrites.map((list) => list.slice()),
+        rcntWrites: this.rcntWrites.map((list) => list.slice()),
         siomultiReads: this.siomultiReads.map((list) => list.slice()),
         criticalSiomultiReads: this.criticalSiomultiReads.map((list) => list.slice())
       };

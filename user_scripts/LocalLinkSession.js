@@ -151,6 +151,7 @@
       this.mainReturnTrace = [[], []];
       this.instructionRing = [[], []];
       this.error60Trace = [[], []];
+      this.resetTrace = [[], []];
       this.protocolTransition = null;
       this.protocolTransitionRemaining = 0;
       this.wedged = false;
@@ -352,6 +353,26 @@
               r7: regs[7] >>> 0
             });
             if (ring.length > 32) ring.shift();
+
+            if (logicalPc === 0x080C9900) {
+              const traces = this.resetTrace[seat];
+              traces.push({
+                frame: this.frame,
+                cycle: Number(io.linkCycleCounter) || 0,
+                history: ring.slice(),
+                bus: [
+                  this.serials[seat].SIODATA_A & 0xffff,
+                  this.serials[seat].SIODATA_B & 0xffff,
+                  this.serials[seat].SIODATA_C & 0xffff,
+                  this.serials[seat].SIODATA_D & 0xffff
+                ],
+                siocnt: ((this.serials[seat].readSIOCNT1?.() ?? 0) << 8) |
+                  (this.serials[seat].readSIOCNT0?.() ?? 0),
+                rcnt: ((this.serials[seat].readRCNT1?.() ?? 0) << 8) |
+                  (this.serials[seat].readRCNT0?.() ?? 0)
+              });
+              if (traces.length > 16) traces.shift();
+            }
 
             if (logicalPc === 0x080C9D1C) {
               const traces = this.error60Trace[seat];
@@ -929,7 +950,8 @@
         criticalSiomultiReads: this.criticalSiomultiReads.map((list) => list.slice()),
         comparisonTrace: this.comparisonTrace.map((list) => list.slice()),
         mainReturnTrace: this.mainReturnTrace.map((list) => list.slice()),
-        error60Trace: this.error60Trace.map((list) => list.slice())
+        error60Trace: this.error60Trace.map((list) => list.slice()),
+        resetTrace: this.resetTrace.map((list) => list.slice())
       };
     }
 

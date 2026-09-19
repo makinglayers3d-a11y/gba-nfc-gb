@@ -202,7 +202,9 @@
       const makeAdapter = (seat) => ({
         playerNumber: seat,
         isConnected: () => true,
-        isReady: () => true,
+        isReady: () =>
+          (this.serials[0]?.SIOCNT_MODE | 0) === 2 &&
+          (this.serials[1]?.SIOCNT_MODE | 0) === 2,
         canTransfer: () => {
           if (seat !== 0) return true;
           return (this.serials[1]?.SIOCNT_MODE | 0) === 2;

@@ -444,7 +444,12 @@
               logicalPc === 0x080C9EC4 ||
               logicalPc === 0x080C9F24 ||
               logicalPc === 0x080C9F58 ||
+              logicalPc === 0x080C98B4 ||
+              logicalPc === 0x080C98C6 ||
+              logicalPc === 0x080C98CA ||
               logicalPc === 0x080C98E0 ||
+              logicalPc === 0x080C98EE ||
+              logicalPc === 0x080C98F0 ||
               logicalPc === 0x080C9900
             ) {
               const list = this.comparisonTrace[seat];
@@ -461,6 +466,8 @@
                 r5: regs[5] >>> 0,
                 r6: regs[6] >>> 0,
                 r7: regs[7] >>> 0,
+                lr: regs[14] >>> 0,
+                sp: regs[13] >>> 0,
                 bus: [
                   this.serials[seat].SIODATA_A & 0xffff,
                   this.serials[seat].SIODATA_B & 0xffff,

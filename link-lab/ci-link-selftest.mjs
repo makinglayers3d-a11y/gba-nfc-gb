@@ -171,7 +171,12 @@ await capture("host-link-check");
 await tapSeat(0, 3, 4, 180);
 await capture("host-second-start");
 
-await waitFrames(1200);
+// Mario Bros. Battle now shows its settings screen. Confirm the default
+// settings with START to begin the actual Single-Pak client download.
+await tapSeat(0, 3, 4, 240);
+await capture("battle-settings-confirmed");
+
+await waitFrames(1800);
 await capture("final");
 
 await fs.writeFile(

@@ -201,7 +201,8 @@ GameBoyAdvanceIO.prototype.runTHUMB = function () {
                             : 0;
                         var traceLogicalPC = (traceRawPC - 0x40) >>> 0;
                         if (
-                            (traceLogicalPC >= 0x080C9E80 && traceLogicalPC <= 0x080C9F68) ||
+                            (traceLogicalPC >= 0x080C9948 && traceLogicalPC <= 0x080C9D34) ||
+                            (traceLogicalPC >= 0x080C9E6C && traceLogicalPC <= 0x080C9F68) ||
                             (traceLogicalPC >= 0x080C98D0 && traceLogicalPC <= 0x080C9934)
                         ) {
                             this.linkInstructionObserver(traceLogicalPC, traceRawPC);

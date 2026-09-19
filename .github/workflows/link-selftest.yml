@@ -24,6 +24,7 @@ jobs:
       fail-fast: false
       matrix:
         delay: [420]
+        transfer_cycles: [3000, 4000, 5000, 5755, 6500, 7500, 9000]
         transfer_cycles: [5755, 5900, 6044, 6200]
     steps:
       - uses: actions/checkout@v4

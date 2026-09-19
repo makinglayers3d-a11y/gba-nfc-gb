@@ -156,16 +156,15 @@ await waitFrames(320);
 await tapBoth(3, 4, 180); // START
 await capture("mode-menu");
 
-// Select Multiplayer on both GBAs.
-await tapBoth(4, 4, 45); // RIGHT
-await capture("multiplayer-selected");
+// Single-Pak flow: only Player 1 selects MULTIPLAYER. Player 2 stays
+// idle and is converted by the link coordinator into a BIOS MultiBoot receiver.
+await tapSeat(0, 4, 4, 45); // P0 RIGHT
+await capture("host-multiplayer-selected");
 
-// Multi-Pak manual flow: secondary players confirm MULTIPLAYER first
-// and wait. Player 1 then confirms and becomes the cable parent.
-await tapSeat(1, 3, 4, joinDelay); // P1/secondary START first
-await capture("guest-waiting-multi");
+await waitFrames(joinDelay);
+await capture("guest-awaiting-multiboot");
 
-await tapSeat(0, 3, 4, 420); // P0/parent START after guest is ready
+await tapSeat(0, 3, 4, 420); // P0 START; begins MultiBoot discovery/download
 await capture("host-entered-multi");
 
 await waitFrames(1200);

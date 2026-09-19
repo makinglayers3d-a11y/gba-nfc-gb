@@ -158,6 +158,7 @@
       // Single-Game-Pak / BIOS MultiBoot proxy. Mario Bros. in SMA4 does
       // not expect a second cartridge: the parent downloads a RAM client.
       this.multibootProxy = {
+        armed: false,
         active: false,
         stage: "idle",
         headerRemaining: 0,
@@ -284,7 +285,20 @@
           if (seat !== 0) return true;
           return (this.serials[1]?.SIOCNT_MODE | 0) === 2;
         },
-        onSerialModeChange: () => this.renderDebug(),
+        onSerialModeChange: (mode) => {
+          // If the parent enters MULTI while the secondary has not entered it
+          // naturally, treat the secondary as a no-cartridge BIOS receiver
+          // (Single-Pak). If P1 was already in MULTI, leave it untouched for
+          // ordinary Multi-Pak play.
+          if (
+            seat === 0 &&
+            (Number(mode) | 0) === 2 &&
+            (this.serials[1]?.SIOCNT_MODE | 0) !== 2
+          ) {
+            this.armMultibootReceiver();
+          }
+          this.renderDebug();
+        },
         onSendDataChange: (word) => {
           const core = this.cores[seat];
           const cycle = Number(core?.IOCore?.linkCycleCounter) || 0;
@@ -321,7 +335,12 @@
         },
         startMultiplayerTransfer: (info = {}) => {
           if (seat !== 0 || this.pendingTransfer || this.localTransferArmed) return false;
-          if ((this.serials[1]?.SIOCNT_MODE | 0) !== 2) return false;
+          if ((this.serials[1]?.SIOCNT_MODE | 0) !== 2) {
+            if ((Number(info.word) & 0xffff) === 0x6200) {
+              this.armMultibootReceiver();
+            }
+            if ((this.serials[1]?.SIOCNT_MODE | 0) !== 2) return false;
+          }
           this.pendingTransfer = {
             sequence: Number(info.sequence) | 0,
             word: Number(info.word) & 0xffff,
@@ -585,11 +604,45 @@
       }
     }
 
+    armMultibootReceiver() {
+      const mb = this.multibootProxy;
+      const child = this.serials[1];
+      if (!child || mb.booted || mb.active) return false;
+      if ((child.SIOCNT_MODE | 0) === 2 && !mb.armed) return false;
+
+      mb.armed = true;
+      mb.active = false;
+      mb.stage = "idle";
+      mb.headerRemaining = 0;
+      mb.bootSrc = 0;
+      mb.bootEnd = 0;
+      mb.booted = false;
+
+      // Recreate the serial-facing part of the BIOS multiboot wait state.
+      // The child CPU can remain at its title/menu code until the payload is
+      // ready; the proxy owns SIO during the download and later jumps it to RAM.
+      child.RCNTMode = 0;
+      child.SIOCNT_MODE = 2;
+      child.SIOBaudRate = Number(this.serials[0]?.SIOBaudRate ?? 3) & 0x3;
+      child.SIOTransferStarted = false;
+      child.SIOCOMMERROR = false;
+      child.linkPlayerIdValid = true;
+      child.SIOMULT_PLAYER_NUMBER = 1;
+      child.SIODATA_A = 0xffff;
+      child.SIODATA_B = 0xffff;
+      child.SIODATA_C = 0xffff;
+      child.SIODATA_D = 0xffff;
+      child.SIODATA8 = 0;
+      return true;
+    }
+
     multibootReply(hostWord) {
       const mb = this.multibootProxy;
       hostWord &= 0xffff;
 
       // Recognition. First child in multiplayer wiring uses client bit 0x2.
+      if (!mb.armed && !mb.active) return null;
+
       if (!mb.active && hostWord === 0x6200) {
         mb.active = true;
         mb.stage = "detect";
@@ -686,6 +739,7 @@
         mb.bootEnd = bootEnd >>> 0;
         mb.booted = true;
         mb.active = false;
+        mb.armed = false;
         mb.stage = "running";
         return true;
       } catch (error) {

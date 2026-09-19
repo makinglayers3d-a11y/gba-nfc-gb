@@ -65,6 +65,7 @@ GameBoyAdvanceSerial.prototype.initialize = function () {
     this.linkExternalTransferHold = false;
     this.linkExternalTransferTimingDone = false;
     this.linkSIOCNTWriteObserver = null;
+    this.linkSIOMULTIReadObserver = null;
 }
 GameBoyAdvanceSerial.prototype.SIOMultiplayerBaudRate = [
       9600,
@@ -397,6 +398,12 @@ GameBoyAdvanceSerial.prototype.writeSIODATA_A0 = function (data) {
     this.SIODATA_A = (this.SIODATA_A & 0xFF00) | data;
 }
 GameBoyAdvanceSerial.prototype.readSIODATA_A0 = function () {
+    if (typeof this.linkSIOMULTIReadObserver == "function") {
+        try {
+            this.linkSIOMULTIReadObserver(0, this.SIODATA_A & 0xFFFF);
+        }
+        catch (error) {}
+    }
     return this.SIODATA_A & 0xFF;
 }
 GameBoyAdvanceSerial.prototype.writeSIODATA_A1 = function (data) {
@@ -411,6 +418,12 @@ GameBoyAdvanceSerial.prototype.writeSIODATA_B0 = function (data) {
     this.SIODATA_B = (this.SIODATA_B & 0xFF00) | data;
 }
 GameBoyAdvanceSerial.prototype.readSIODATA_B0 = function () {
+    if (typeof this.linkSIOMULTIReadObserver == "function") {
+        try {
+            this.linkSIOMULTIReadObserver(1, this.SIODATA_B & 0xFFFF);
+        }
+        catch (error) {}
+    }
     return this.SIODATA_B & 0xFF;
 }
 GameBoyAdvanceSerial.prototype.writeSIODATA_B1 = function (data) {
@@ -425,6 +438,12 @@ GameBoyAdvanceSerial.prototype.writeSIODATA_C0 = function (data) {
     this.SIODATA_C = (this.SIODATA_C & 0xFF00) | data;
 }
 GameBoyAdvanceSerial.prototype.readSIODATA_C0 = function () {
+    if (typeof this.linkSIOMULTIReadObserver == "function") {
+        try {
+            this.linkSIOMULTIReadObserver(2, this.SIODATA_C & 0xFFFF);
+        }
+        catch (error) {}
+    }
     return this.SIODATA_C & 0xFF;
 }
 GameBoyAdvanceSerial.prototype.writeSIODATA_C1 = function (data) {
@@ -439,6 +458,12 @@ GameBoyAdvanceSerial.prototype.writeSIODATA_D0 = function (data) {
     this.SIODATA_D = (this.SIODATA_D & 0xFF00) | data;
 }
 GameBoyAdvanceSerial.prototype.readSIODATA_D0 = function () {
+    if (typeof this.linkSIOMULTIReadObserver == "function") {
+        try {
+            this.linkSIOMULTIReadObserver(3, this.SIODATA_D & 0xFFFF);
+        }
+        catch (error) {}
+    }
     return this.SIODATA_D & 0xFF;
 }
 GameBoyAdvanceSerial.prototype.writeSIODATA_D1 = function (data) {

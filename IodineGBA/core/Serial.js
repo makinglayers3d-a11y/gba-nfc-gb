@@ -165,8 +165,12 @@ GameBoyAdvanceSerial.prototype.beginExternalMultiplayerTransfer = function (play
     this.setLinkPlayerNumber(playerNumber | 0);
     this.SIOTransferStarted = true;
     this.SIOCOMMERROR = false;
-    // Keep the previous SIOMULTI receive registers visible while BUSY.
-    // mGBA/hardware replace SIOMULTI0..3 only when the transfer finishes.
+    // GBATEK documents SIOMULTI0..3 as reset to FFFF on transfer
+    // start on every participating GBA.
+    this.SIODATA_A = 0xFFFF;
+    this.SIODATA_B = 0xFFFF;
+    this.SIODATA_C = 0xFFFF;
+    this.SIODATA_D = 0xFFFF;
     this.serialBitsShifted = 0;
     this.shiftClocks = 0;
     this.linkExternalTransferPending = false;
@@ -744,12 +748,9 @@ GameBoyAdvanceSerial.prototype.readRCNT0 = function () {
             }
         }
         else {
-            // The physical SC clock line is shared. VBA-M exposes it low on
-            // secondary GBAs while the parent transfer is BUSY, and high while
-            // idle. Keep SI high for the child in either state.
-            if (!busy) {
-                pins |= 0x1;
-            }
+            // Keep SC high on secondary GBAs throughout MULTI mode, matching
+            // mGBA's lockstep driver. SI identifies this console as a child.
+            pins |= 0x1;
             pins |= 0x4;
         }
         if (this.linkCableReady()) {

@@ -363,7 +363,7 @@
         words, 0, false, 1, true, pending.baud
       );
       this.serials[1].completeExternalMultiplayerTransfer(
-        words, 1, false, 1, false, pending.baud
+        words, 1, false, 1, false, pending.baud, Math.max(0, childCycles - pending.parentCycle)
       );
 
       this.pendingTransfer = null;

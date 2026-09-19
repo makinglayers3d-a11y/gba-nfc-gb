@@ -175,5 +175,14 @@ await fs.writeFile(
   JSON.stringify(states, null, 2)
 );
 
-console.log("FINAL", JSON.stringify(await status()));
+const finalState = await status();
+console.log("FINAL", JSON.stringify(finalState));
+
+if (!finalState?.multibootProxy?.booted) {
+  throw new Error(
+    "Mario Single-Pak did not boot the secondary GBA from RAM; " +
+    "multiboot stage=" + String(finalState?.multibootProxy?.stage || "unknown")
+  );
+}
+
 await browser.close();

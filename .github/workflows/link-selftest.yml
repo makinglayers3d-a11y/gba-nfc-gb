@@ -24,6 +24,7 @@ jobs:
       fail-fast: false
       matrix:
         delay: [420]
+        transfer_cycles: [5755, 5900, 6044, 6200]
     steps:
       - uses: actions/checkout@v4
 
@@ -50,6 +51,7 @@ jobs:
       - name: Run Super Mario Advance 4 dual-core selftest
         env:
           JOIN_DELAY: ${{ matrix.delay }}
+          LINK_TRANSFER_CYCLES: ${{ matrix.transfer_cycles }}
         run: node link-lab/ci-link-selftest.mjs
 
       - name: Disassemble protocol writer routines

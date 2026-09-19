@@ -164,8 +164,12 @@ await capture("host-multiplayer-selected");
 await waitFrames(joinDelay);
 await capture("guest-awaiting-multiboot");
 
-await tapSeat(0, 3, 4, 420); // P0 START; begins MultiBoot discovery/download
-await capture("host-entered-multi");
+await tapSeat(0, 3, 4, 120); // P0 START; begin cable check
+await capture("host-link-check");
+
+// Single-Pak flow asks Player 1 to press START again after the cable check.
+await tapSeat(0, 3, 4, 180);
+await capture("host-second-start");
 
 await waitFrames(1200);
 await capture("final");

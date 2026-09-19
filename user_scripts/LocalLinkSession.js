@@ -703,7 +703,8 @@
           before: this.protocolTransition.before.slice(),
           after: this.protocolTransition.after.slice(),
           sendHistory: this.protocolTransition.sendHistory.map((history) => history.slice())
-        } : null
+        } : null,
+        siocntWrites: this.siocntWrites.map((list) => list.slice())
       };
     }
 

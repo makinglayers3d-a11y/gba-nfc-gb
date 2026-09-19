@@ -94,6 +94,7 @@ for seat, word, pc, thumb in sorted(entries):
 # Add broad protocol routines even if a particular word writer was not
 # captured in this run. This lets us follow the validation/error branches.
 STATIC_RANGES = [
+    (0x080C96E0, 0xC0, True, "SIOMULTI read/copy helper"),
     (0x080C9948, 0x430, True, "main link state machine"),
     (0x080C9E6C, 0x180, True, "link status helper"),
     (0x080C9900, 0x48, True, "link reset/start helper"),

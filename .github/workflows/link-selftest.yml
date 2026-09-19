@@ -1,0 +1,53 @@
+name: GBA Link Selftest
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "IodineGBA/core/RunLoop.js"
+      - "IodineGBA/core/Serial.js"
+      - "user_scripts/LocalLinkSession.js"
+      - "user_scripts/LinkCableBridge.js"
+      - "app.js"
+      - "index.html"
+      - "link-lab/ci-link-selftest.mjs"
+      - ".github/workflows/link-selftest.yml"
+  workflow_dispatch:
+
+jobs:
+  mario-link:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install browser driver
+        run: npm install --no-save puppeteer-core@24
+
+      - name: Start local emulator server
+        run: |
+          python3 -m http.server 8000 --bind 127.0.0.1 > /tmp/ml3d-http.log 2>&1 &
+          echo $! > /tmp/ml3d-http.pid
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:8000/ >/dev/null; then
+              exit 0
+            fi
+            sleep 0.5
+          done
+          cat /tmp/ml3d-http.log
+          exit 1
+
+      - name: Run Super Mario Advance 4 dual-core selftest
+        run: node link-lab/ci-link-selftest.mjs
+
+      - name: Upload selftest evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gba-link-selftest
+          path: artifacts/link-selftest
+          if-no-files-found: warn

@@ -80,6 +80,16 @@
       this.romHash = hash;
       this.cores = mySeat === 0 ? [visible, hidden] : [hidden, visible];
       this.serials = this.cores.map((core) => core.IOCore.serial);
+      // The cycle counter is coordinator-only metadata. Normalize both cores
+      // at the moment the deterministic session is created so pre-session UI
+      // activity can never become a permanent scheduling skew.
+      for (const core of this.cores) {
+        if (core?.IOCore) {
+          core.IOCore.linkCycleCounter = 0;
+          core.IOCore.cyclesOveriteratedPreviously = 0;
+          core.IOCore.linkIterationCut = false;
+        }
+      }
       this.frame = 0;
       this.sessionId = "";
       this.started = false;
@@ -206,7 +216,9 @@
             parentCycle: Number(this.cores[0].IOCore.linkCycleCounter) || 0
           };
           try {
-            this.cores[0].IOCore.flagIterationEnd();
+            const io = this.cores[0].IOCore;
+            if (typeof io.flagLinkIterationEnd === "function") io.flagLinkIterationEnd();
+            else io.flagIterationEnd();
           } catch {}
           return true;
         }
@@ -294,7 +306,17 @@
       const before = Number(io.linkCycleCounter) || 0;
       io.enter(Math.max(1, cycles | 0));
       const after = Number(io.linkCycleCounter) || 0;
-      return after > before;
+
+      if (after > before) return true;
+
+      // A tiny negative overrun can legitimately consume a scheduler slice
+      // without advancing hardware. Clear it once and retry on the next round
+      // instead of declaring the whole dual-core session wedged.
+      if ((io.cyclesOveriteratedPreviously | 0) < 0) {
+        io.cyclesOveriteratedPreviously = 0;
+        return true;
+      }
+      return false;
     }
 
     runFrame() {
@@ -307,6 +329,7 @@
       );
 
       let rounds = 0;
+      let noProgressRounds = 0;
       const MAX_ROUNDS = 12000;
       while (rounds++ < MAX_ROUNDS) {
         if (this.pendingTransfer && this.carryTransfer()) continue;
@@ -346,9 +369,14 @@
         }
 
         const progressed = this.stepCore(seat, Math.min(slice, remaining));
-        if (!progressed && !this.pendingTransfer) {
-          this.wedged = true;
-          break;
+        if (progressed) {
+          noProgressRounds = 0;
+        } else if (!this.pendingTransfer) {
+          noProgressRounds += 1;
+          if (noProgressRounds >= 16) {
+            this.wedged = true;
+            break;
+          }
         }
       }
 

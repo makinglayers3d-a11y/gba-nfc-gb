@@ -29,13 +29,9 @@ for state in states:
         transition = state["protocolTransition"]
         break
 
-if not transition:
-    out_path.write_text("No protocol transition captured.\n")
-    raise SystemExit(0)
-
 entries = []
 seen = set()
-for seat, history in enumerate(transition.get("sendHistory", [])):
+for seat, history in enumerate((transition or {}).get("sendHistory", [])):
     for item in history:
         word = int(item.get("word", 0)) & 0xFFFF
         pc = int(item.get("pc", 0)) & 0xFFFFFFFF
@@ -49,10 +45,13 @@ for seat, history in enumerate(transition.get("sendHistory", [])):
         entries.append(key)
 
 lines = []
-lines.append(
-    f"Protocol transition frame={transition.get('detectedAtFrame')} "
-    f"seq={transition.get('detectedAtSequence')}"
-)
+if transition:
+    lines.append(
+        f"Protocol transition frame={transition.get('detectedAtFrame')} "
+        f"seq={transition.get('detectedAtSequence')}"
+    )
+else:
+    lines.append("No protocol transition captured; static protocol disassembly follows.")
 
 for seat, word, pc, thumb in sorted(entries):
     rom_offset = None
@@ -94,6 +93,7 @@ for seat, word, pc, thumb in sorted(entries):
 # Add broad protocol routines even if a particular word writer was not
 # captured in this run. This lets us follow the validation/error branches.
 STATIC_RANGES = [
+    (0x080C9840, 0xC0, True, "pre-handshake FEFE writer"),
     (0x080C9C80, 0xC0, True, "error 0x60 branch"),
     (0x080C96E0, 0xC0, True, "SIOMULTI read/copy helper"),
     (0x080C971C, 0x100, True, "SIOMULTI receive snapshot helper"),

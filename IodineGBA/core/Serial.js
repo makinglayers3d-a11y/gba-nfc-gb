@@ -170,12 +170,16 @@ GameBoyAdvanceSerial.prototype.beginExternalMultiplayerTransfer = function (play
     this.setLinkPlayerNumber(playerNumber | 0);
     this.SIOTransferStarted = true;
     this.SIOCOMMERROR = false;
-    // GBATEK documents SIOMULTI0..3 as reset to FFFF on transfer
-    // start on every participating GBA.
-    this.SIODATA_A = 0xFFFF;
-    this.SIODATA_B = 0xFFFF;
-    this.SIODATA_C = 0xFFFF;
-    this.SIODATA_D = 0xFFFF;
+    // Match mGBA lockstep: the primary clears SIOMULTI0..3 when it
+    // asserts START. A secondary only becomes BUSY when it receives that
+    // transfer-start event and retains its previous receive words until the
+    // transfer completes.
+    if ((this.linkPlayerNumber & 0x3) == 0) {
+        this.SIODATA_A = 0xFFFF;
+        this.SIODATA_B = 0xFFFF;
+        this.SIODATA_C = 0xFFFF;
+        this.SIODATA_D = 0xFFFF;
+    }
     this.serialBitsShifted = 0;
     this.shiftClocks = 0;
     this.linkExternalTransferPending = false;

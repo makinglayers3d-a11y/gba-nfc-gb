@@ -764,6 +764,25 @@
         this.serials[1] = childIO.serial;
         this.installLocalCable();
 
+        // The slave BIOS does NOT hand the downloaded program a reset SIO
+        // block. In MultiPlay mode it leaves the cable configured as player 1
+        // at 115200 baud, with START/BUSY clear after the final transfer.
+        // The downloaded Mario client polls this state immediately at startup.
+        const childSerial = this.serials[1];
+        childSerial.RCNTMode = 0;
+        childSerial.SIOCNT_MODE = 2;
+        childSerial.SIOBaudRate = 3;
+        childSerial.SIOTransferStarted = false;
+        childSerial.SIOCOMMERROR = false;
+        childSerial.linkPlayerIdValid = true;
+        childSerial.setLinkPlayerNumber?.(1);
+        childSerial.SIOMULT_PLAYER_NUMBER = 1;
+        childSerial.SIODATA_A = 0xffff;
+        childSerial.SIODATA_B = 0xffff;
+        childSerial.SIODATA_C = 0xffff;
+        childSerial.SIODATA_D = 0xffff;
+        childSerial.SIODATA8 = 0xffff;
+
         const childMem = childIO.memory;
         const childCPU = childIO.cpu;
         if (!childMem?.externalRAM || !childCPU) return false;

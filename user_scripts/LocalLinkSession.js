@@ -657,18 +657,26 @@
       if (!mb.active) return null;
 
       if (mb.stage === "detect") {
-        if (hostWord === 0x6200 && mb.detectRemaining > 0) {
-          mb.detectRemaining -= 1;
+        if (hostWord === 0x6200) {
+          // Detection succeeds on the first valid 720x response. The master's
+          // 16-count is a retry budget, not a requirement for 15 consecutive
+          // acknowledgements.
+          mb.detectRemaining = Math.max(0, (mb.detectRemaining | 0) - 1);
+          mb.stage = "confirm";
           return 0x7200 | mb.clientBit;
         }
-        if (
-          mb.detectRemaining === 0 &&
-          hostWord === (0x6100 | mb.clientBit)
-        ) {
+        return null;
+      }
+
+      if (mb.stage === "confirm") {
+        if (hostWord === (0x6100 | mb.clientBit)) {
           mb.stage = "header";
           mb.headerRemaining = 0x60;
           return 0x7200 | mb.clientBit;
         }
+        // Keep acknowledging discovery if the master performs another probe
+        // before sending 610Y.
+        if (hostWord === 0x6200) return 0x7200 | mb.clientBit;
         return null;
       }
 

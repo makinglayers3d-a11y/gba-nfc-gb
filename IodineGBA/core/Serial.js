@@ -604,6 +604,14 @@ GameBoyAdvanceSerial.prototype.readSIOCNT0 = function () {
     }
     return 0xFF;
 }
+GameBoyAdvanceSerial.prototype.writeSIOCNT16 = function (data) {
+    data = data | 0;
+    // SIOCNT is one 16-bit hardware register. For halfword/word writes the
+    // mode bits in the high byte take effect before interpreting the low-byte
+    // mode-specific fields. This matches mGBA's atomic GBASIOWriteSIOCNT().
+    this.writeSIOCNT1((data >> 8) & 0xFF);
+    this.writeSIOCNT0(data & 0xFF);
+};
 GameBoyAdvanceSerial.prototype.writeSIOCNT1 = function (data) {
     this.SIOCNT_IRQ = data & 0x40;
     var oldMode = this.SIOCNT_MODE | 0;

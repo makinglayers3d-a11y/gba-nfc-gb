@@ -25,9 +25,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        delay: [420]
+        delay: [0, 30, 60, 120, 240, 420]
         transfer_cycles: [5755]
-        progressive: [0, 1]
+        progressive: [0]
     steps:
       - uses: actions/checkout@v4
 

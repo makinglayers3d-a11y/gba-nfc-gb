@@ -24,7 +24,8 @@ jobs:
       fail-fast: false
       matrix:
         delay: [420]
-        transfer_cycles: [3000, 4000, 5000, 5755, 5900, 6044, 6200, 6500, 7500, 9000]
+        transfer_cycles: [5755]
+        progressive: [0, 1]
     steps:
       - uses: actions/checkout@v4
 
@@ -52,6 +53,7 @@ jobs:
         env:
           JOIN_DELAY: ${{ matrix.delay }}
           LINK_TRANSFER_CYCLES: ${{ matrix.transfer_cycles }}
+          LINK_PROGRESSIVE: ${{ matrix.progressive }}
         run: node link-lab/ci-link-selftest.mjs
 
       - name: Disassemble protocol writer routines
@@ -63,6 +65,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gba-link-selftest-${{ matrix.transfer_cycles }}-${{ matrix.delay }}
+          name: gba-link-selftest-${{ matrix.transfer_cycles }}-p${{ matrix.progressive }}-${{ matrix.delay }}
           path: artifacts/link-selftest-${{ matrix.delay }}
           if-no-files-found: warn

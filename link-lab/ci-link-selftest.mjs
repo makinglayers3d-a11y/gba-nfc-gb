@@ -191,14 +191,27 @@ await capture("host-second-start");
 await tapSeat(0, 3, 4, 240);
 await capture("battle-settings-confirmed");
 
-// Sample the post-MultiBoot protocol while the client is still negotiating.
+// Wait until the Single-Pak payload is actually running on P2. Once the
+// colored-player screen appears, every connected player must press START to
+// announce readiness; otherwise Mario Bros. eventually reports ERROR.
+await page.waitForFunction(
+  () => window.ML3DLocalLinkSession?.status?.multibootProxy?.booted === true,
+  { timeout: 120000 }
+);
+await waitFrames(45);
+await capture("clients-loaded");
+
+await tapBoth(3, 4, 45); // START on P1 + P2 after client boot
+await capture("players-ready");
+
+// Keep sampling the protocol after the ready input.
 for (let i = 1; i <= 6; i++) {
   await waitFrames(30);
   await capture("client-protocol-" + i);
 }
 await dumpMultibootClient();
 
-await waitFrames(1620);
+await waitFrames(1450);
 await capture("final");
 
 await fs.writeFile(

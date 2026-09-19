@@ -125,25 +125,25 @@ async function capture(label) {
 await waitFrames(240);
 await capture("language");
 
-// Select English on both local GBAs.
+// Select English on both GBAs.
 await tapBoth(0, 4, 360); // A
 await capture("after-language");
 
-// Let formatting/intro advance, then skip to the Mario Bros. mode menu.
-await tapBoth(3, 4, 240); // START
+// Skip/advance the opening, but wait long enough for the mode menu to settle.
+await tapBoth(3, 4, 420); // START
 await capture("mode-menu");
 
-// Move both cursors from Single Player to Multiplayer.
+// Single Player is the default. Move to Multiplayer only after the menu exists.
 await tapBoth(4, 4, 45); // RIGHT
 await capture("multiplayer-selected");
 
-// Match the manual reproduction: host enters first, guest shortly after.
+// Reproduce the manual order: P0 enters first, then P1.
 await tapSeat(0, 0, 4, 120); // P0 A
 await capture("host-entered-multi");
-await tapSeat(1, 0, 4, 600); // P1 A
+await tapSeat(1, 0, 4, 420); // P1 A
 await capture("guest-entered-multi");
 
-// Keep running long enough for the handshake/error/result screen.
+// Observe the handshake/result.
 await waitFrames(900);
 await capture("final");
 

@@ -333,7 +333,10 @@
         const multi =
           (this.serials[0].SIOCNT_MODE | 0) === 2 ||
           (this.serials[1].SIOCNT_MODE | 0) === 2;
-        const slice = multi ? 1024 : 4096;
+        // Before MULTI there is no cable edge to catch, so use coarse slices.
+        // Once either core enters MULTI, tighten the skew to ~0.24 ms of GBA
+        // time while still keeping the JS call count mobile-friendly.
+        const slice = multi ? 4096 : 65536;
 
         if (this.pendingTransfer && seat === 1) {
           remaining = Math.max(

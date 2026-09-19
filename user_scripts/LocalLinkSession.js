@@ -14,6 +14,7 @@
   const INPUT_DELAY = 4;
   const RING = 256;
   const UNKNOWN = -1;
+  // MultiBoot direct receiver is intentionally coordinated with the HLE SWI path.
 
   let localMask = 0;
   const selfTestMasks = [0, 0];

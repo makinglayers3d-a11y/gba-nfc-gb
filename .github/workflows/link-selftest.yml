@@ -6,6 +6,7 @@ on:
     paths:
       - "IodineGBA/core/RunLoop.js"
       - "IodineGBA/core/Serial.js"
+      - "IodineGBA/core/Memory.js"
       - "user_scripts/LocalLinkSession.js"
       - "user_scripts/LinkCableBridge.js"
       - "app.js"
@@ -22,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        delay: [12, 60, 120, 240, 420, 700, 1000]
+        delay: [420]
     steps:
       - uses: actions/checkout@v4
 

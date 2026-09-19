@@ -744,10 +744,13 @@ GameBoyAdvanceSerial.prototype.readRCNT0 = function () {
             }
         }
         else {
-            // mGBA keeps SC high on secondary GBAs throughout MULTI mode.
-            // Mario Bros. explicitly expects this line to remain high.
-            pins |= 0x1;
-            pins |= 0x4; // Child SI remains high in MULTI mode.
+            // The physical SC clock line is shared. VBA-M exposes it low on
+            // secondary GBAs while the parent transfer is BUSY, and high while
+            // idle. Keep SI high for the child in either state.
+            if (!busy) {
+                pins |= 0x1;
+            }
+            pins |= 0x4;
         }
         if (this.linkCableReady()) {
             // mGBA mirrors multiplayer READY onto RCNT SD as well.

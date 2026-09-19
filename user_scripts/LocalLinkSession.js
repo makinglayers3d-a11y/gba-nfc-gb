@@ -167,6 +167,10 @@
         clientData: 0x01,
         bootSrc: 0,
         bootEnd: 0,
+        swiCalled: false,
+        swiParamPtr: 0,
+        swiMode: 0,
+        swiError: "",
         booted: false
       };
       this.wedged = false;
@@ -618,6 +622,10 @@
       mb.headerRemaining = 0;
       mb.bootSrc = 0;
       mb.bootEnd = 0;
+      mb.swiCalled = false;
+      mb.swiParamPtr = 0;
+      mb.swiMode = 0;
+      mb.swiError = "";
       mb.booted = false;
 
       // Recreate the serial-facing part of the BIOS multiboot wait state.
@@ -705,7 +713,14 @@
 
     performDirectMultiboot(paramPtr, mode) {
       const mb = this.multibootProxy;
-      if (!mb.active || mb.stage !== "bios") return false;
+      mb.swiCalled = true;
+      mb.swiParamPtr = Number(paramPtr) >>> 0;
+      mb.swiMode = Number(mode) >>> 0;
+      mb.swiError = "";
+      if (!mb.active || mb.stage !== "bios") {
+        mb.swiError = "SWI called before multiboot handshake reached bios stage";
+        return false;
+      }
 
       try {
         const hostMem = this.cores[0]?.IOCore?.memory;
@@ -728,7 +743,8 @@
 
         // BIOS fields for a multiplayer-cable boot, first child.
         childMem.externalRAM[0xc4] = Number(mode) & 0xff;
-        childMem.externalRAM[0xc5] = 0x01;
+        // Client ID is player number minus one: first child/player 2 => 0.
+        childMem.externalRAM[0xc5] = 0x00;
 
         // Recreate the important post-BIOS CPU state, then execute the RAM
         // entry branch at 020000C0.
@@ -749,7 +765,8 @@
         mb.stage = "running";
         return true;
       } catch (error) {
-        this.lastLinkError = "MULTIBOOT: " + String(error?.stack || error?.message || error);
+        mb.swiError = String(error?.stack || error?.message || error);
+        this.lastLinkError = "MULTIBOOT: " + mb.swiError;
         return false;
       }
     }

@@ -188,20 +188,22 @@ await capture("host-second-start");
 
 // Mario Bros. Battle now shows its settings screen. Confirm the default
 // settings with START to begin the actual Single-Pak client download.
-await tapSeat(0, 3, 4, 240);
+// Confirm Battle, but do not wait through the client's short ready timeout.
+await tapSeat(0, 3, 4, 4);
 await capture("battle-settings-confirmed");
 
-// Wait until the Single-Pak payload is actually running on P2. Once the
-// colored-player screen appears, every connected player must press START to
-// announce readiness; otherwise Mario Bros. eventually reports ERROR.
+// The download completes quickly after confirmation. As soon as P2 is running
+// the RAM client, acknowledge readiness on both cores before the FEFE timeout.
 await page.waitForFunction(
   () => window.ML3DLocalLinkSession?.status?.multibootProxy?.booted === true,
-  { timeout: 120000 }
+  { timeout: 120000, polling: "raf" }
 );
-await waitFrames(45);
+await waitFrames(6);
 await capture("clients-loaded");
 
-await tapBoth(3, 4, 45); // START on P1 + P2 after client boot
+await tapBoth(3, 4, 8); // START on P1 + P2 immediately after client boot
+await waitFrames(12);
+await tapBoth(3, 4, 8); // second pulse covers the player-color screen boundary
 await capture("players-ready");
 
 // Keep sampling the protocol after the ready input.

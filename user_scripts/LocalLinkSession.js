@@ -262,9 +262,18 @@
         },
         onSerialModeChange: () => this.renderDebug(),
         onSendDataChange: (word) => {
-          const cycle = Number(this.cores[seat]?.IOCore?.linkCycleCounter) || 0;
+          const core = this.cores[seat];
+          const cycle = Number(core?.IOCore?.linkCycleCounter) || 0;
+          const cpu = core?.IOCore?.cpu;
+          const pc = Number(cpu?.registers?.[15] ?? 0) >>> 0;
+          const thumb = Boolean((Number(cpu?.modeFlags) | 0) & 0x20);
           const history = this.sendWordHistory[seat];
-          history.push({ cycle, word: Number(word) & 0xffff });
+          history.push({
+            cycle,
+            word: Number(word) & 0xffff,
+            pc,
+            thumb
+          });
           if (history.length > 256) history.splice(0, history.length - 256);
         },
         onLinkError: (error) => {

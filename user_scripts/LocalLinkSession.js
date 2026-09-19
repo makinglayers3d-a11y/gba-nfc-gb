@@ -161,6 +161,7 @@
         armed: false,
         active: false,
         stage: "idle",
+        detectRemaining: 0,
         headerRemaining: 0,
         clientBit: 0x2,
         clientData: 0x01,
@@ -613,6 +614,7 @@
       mb.armed = true;
       mb.active = false;
       mb.stage = "idle";
+      mb.detectRemaining = 0;
       mb.headerRemaining = 0;
       mb.bootSrc = 0;
       mb.bootEnd = 0;
@@ -646,19 +648,28 @@
       if (!mb.active && hostWord === 0x6200) {
         mb.active = true;
         mb.stage = "detect";
+        mb.detectRemaining = 15;
         mb.headerRemaining = 0;
         mb.booted = false;
-        return 0x7200 | mb.clientBit;
+        // BIOS slave first reports that it has just entered MULTI mode.
+        return 0x0000;
       }
       if (!mb.active) return null;
 
       if (mb.stage === "detect") {
-        if ((hostWord & 0xfff0) === 0x6100) {
+        if (hostWord === 0x6200 && mb.detectRemaining > 0) {
+          mb.detectRemaining -= 1;
+          return 0x7200 | mb.clientBit;
+        }
+        if (
+          mb.detectRemaining === 0 &&
+          hostWord === (0x6100 | mb.clientBit)
+        ) {
           mb.stage = "header";
           mb.headerRemaining = 0x60;
           return 0x7200 | mb.clientBit;
         }
-        return hostWord === 0x6200 ? (0x7200 | mb.clientBit) : null;
+        return null;
       }
 
       if (mb.stage === "header") {

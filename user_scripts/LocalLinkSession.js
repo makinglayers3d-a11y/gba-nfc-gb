@@ -324,9 +324,15 @@
       this.applyMask(0, masks[0]);
       this.applyMask(1, masks[1]);
 
-      const targets = this.cores.map((core) =>
-        (Number(core.IOCore.linkCycleCounter) || 0) + FRAME_CYCLES
-      );
+      // Preserve the emulator shell lifecycle even though the coordinator owns
+      // the clock. Direct IOCore stepping alone skips start/end callbacks used
+      // by renderer/audio glue.
+      for (const core of this.cores) {
+        try { core.runStartJobs?.(); } catch {}
+      }
+
+      const frameTarget = (this.frame + 1) * FRAME_CYCLES;
+      const targets = [frameTarget, frameTarget];
 
       let rounds = 0;
       let noProgressRounds = 0;
@@ -357,9 +363,9 @@
           (this.serials[0].SIOCNT_MODE | 0) === 2 ||
           (this.serials[1].SIOCNT_MODE | 0) === 2;
         // Before MULTI there is no cable edge to catch, so use coarse slices.
-        // Once either core enters MULTI, tighten the skew to ~0.24 ms of GBA
-        // time while still keeping the JS call count mobile-friendly.
-        const slice = multi ? 4096 : 65536;
+        // In MULTI keep the two local GBAs within roughly 1K cycles so the
+        // child cannot drift most of a transfer ahead of the parent.
+        const slice = multi ? 1024 : 65536;
 
         if (this.pendingTransfer && seat === 1) {
           remaining = Math.max(
@@ -386,6 +392,10 @@
         this.visible.submitAudioBuffer?.();
         this.hidden.submitAudioBuffer?.();
       } catch {}
+
+      for (const core of this.cores) {
+        try { core.runEndJobs?.(); } catch {}
+      }
 
       this.inputs[this.slot(this.frame, 0)] = UNKNOWN;
       this.inputs[this.slot(this.frame, 1)] = UNKNOWN;
@@ -446,7 +456,7 @@
         (!this.started ? `ESPERANDO PEER:${this.remoteReady ? "OK" : "..."} ROM:${this.remoteHash ? (this.remoteHash === this.romHash ? "OK" : "DIFF") : "..."}\n` : "") +
         `F:${this.frame} IN:${current0 === UNKNOWN ? "-" : current0.toString(16)}/${current1 === UNKNOWN ? "-" : current1.toString(16)} D:${INPUT_DELAY}\n` +
         `M:${s0?.SIOCNT_MODE ?? "-"}/${s1?.SIOCNT_MODE ?? "-"} BUSY:${s0?.SIOTransferStarted ? 1 : 0}/${s1?.SIOTransferStarted ? 1 : 0}\n` +
-        `XFER:${this.transferCount} PEND:${this.pendingTransfer ? 1 : 0} Δ:${Math.round(c0 - c1)} STALL:${this.stallCount}` +
+        `XFER:${this.transferCount} PEND:${this.pendingTransfer ? 1 : 0} Δ:${Math.round(c0 - c1)} T:${Math.round((this.frame + 1) * FRAME_CYCLES - Math.min(c0, c1))} STALL:${this.stallCount}` +
         (this.wedged ? "\nWEDGED" : "");
     }
 

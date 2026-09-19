@@ -492,6 +492,29 @@
             1,
             Math.min(remaining, Math.max(1, this.pendingTransfer.parentCycle - current))
           );
+        } else if (multi && seat === 1) {
+          // P0 owns the serial clock. Never let P1 execute beyond P0's current
+          // virtual timestamp, otherwise P1 can run game logic for hundreds of
+          // cycles before seeing a START that should already have made it BUSY.
+          const parentNow = Number(this.cores[0].IOCore.linkCycleCounter) || 0;
+          const childGap = parentNow - current;
+          if (childGap <= 0) {
+            // Give P0 the next slice instead of allowing P1 into the future.
+            const parentCurrent = Number(this.cores[0].IOCore.linkCycleCounter) || 0;
+            const parentRemaining = Math.max(1, targets[0] - parentCurrent);
+            const progressed = this.stepCore(0, Math.min(slice, parentRemaining));
+            if (progressed) {
+              noProgressRounds = 0;
+            } else {
+              noProgressRounds += 1;
+              if (noProgressRounds >= 16) {
+                this.wedged = true;
+                break;
+              }
+            }
+            continue;
+          }
+          remaining = Math.max(1, Math.min(remaining, childGap));
         }
 
         const progressed = this.stepCore(seat, Math.min(slice, remaining));

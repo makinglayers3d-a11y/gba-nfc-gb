@@ -631,18 +631,11 @@ GameBoyAdvanceSerial.prototype.writeSIOCNT0 = function (data) {
                     }
                 }
                 else {
-                    // Current mGBA behavior: a secondary GBA can latch bit 7 by
-                    // writing SIOCNT even though it cannot generate the serial
-                    // clock. The bit then remains set until the master transfer
-                    // actually completes. Do not start a transfer here.
-                    if ((data & 0x80) != 0 && !this.SIOTransferStarted) {
-                        this.SIOTransferStarted = true;
-                        this.serialBitsShifted = 0;
-                        this.shiftClocks = 0;
-                        this.SIOCOMMERROR = false;
-                    }
-                    // A write with bit 7 clear cannot cancel a latched/active
-                    // secondary BUSY state; hardware clears it at completion.
+                    // On a secondary GBA the START/BUSY flag is hardware-owned.
+                    // Software writes must not assert BUSY: only the master's
+                    // transfer-start event (beginExternalMultiplayerTransfer)
+                    // may do so. This mirrors mGBA lockstep and real MULTI mode.
+                    // Software also cannot clear BUSY during an active transfer.
                 }
                 break;
             //UART:

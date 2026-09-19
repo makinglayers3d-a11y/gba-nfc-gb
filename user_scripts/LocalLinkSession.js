@@ -143,6 +143,7 @@
       this.sendWordHistory = [[], []];
       this.siocntWrites = [[], []];
       this.siomultiReads = [[], []];
+      this.criticalSiomultiReads = [[], []];
       this.protocolTransition = null;
       this.protocolTransitionRemaining = 0;
       this.wedged = false;
@@ -333,15 +334,55 @@
           const cpu = core?.IOCore?.cpu;
           const pc = Number(cpu?.registers?.[15] ?? 0) >>> 0;
           const regs = cpu?.registers ? Array.from(cpu.registers.slice(0, 8), (v) => Number(v) >>> 0) : [];
-          const list = this.siomultiReads[seat];
-          list.push({
+          const entry = {
             cycle,
             pc,
             index: Number(index) | 0,
             word: Number(word) & 0xffff,
             regs
-          });
+          };
+          const list = this.siomultiReads[seat];
+          list.push(entry);
           if (list.length > 1024) list.splice(0, list.length - 1024);
+
+          if (pc >= 0x080C9E00 && pc <= 0x080C9FA0 && regs.length >= 4) {
+            const mem = core?.IOCore?.memory;
+            const raw8 = (address) => {
+              address = Number(address) >>> 0;
+              const region = address >>> 24;
+              if (region === 0x02 && mem?.externalRAM) {
+                return mem.externalRAM[address & 0x3ffff] & 0xff;
+              }
+              if (region === 0x03 && mem?.internalRAM) {
+                return mem.internalRAM[address & 0x7fff] & 0xff;
+              }
+              return null;
+            };
+            const raw32 = (address) => {
+              const b0 = raw8(address);
+              const b1 = raw8((Number(address) + 1) >>> 0);
+              const b2 = raw8((Number(address) + 2) >>> 0);
+              const b3 = raw8((Number(address) + 3) >>> 0);
+              if ([b0,b1,b2,b3].some((v) => v === null)) return null;
+              return (b0 | (b1 << 8) | (b2 << 16) | (b3 << 24)) >>> 0;
+            };
+            const statePtr = regs[3] >>> 0;
+            const critical = this.criticalSiomultiReads[seat];
+            critical.push({
+              ...entry,
+              statePtr,
+              state: raw8((statePtr + 0x18) >>> 0),
+              playerMask: raw8((statePtr + 0x1e) >>> 0),
+              expected: raw32((statePtr + 4) >>> 0),
+              bus: [
+                this.serials[seat].SIODATA_A & 0xffff,
+                this.serials[seat].SIODATA_B & 0xffff,
+                this.serials[seat].SIODATA_C & 0xffff,
+                this.serials[seat].SIODATA_D & 0xffff
+              ]
+            });
+            if (critical.length > 512) critical.splice(0, critical.length - 512);
+          }
         };
       }
     }
@@ -723,7 +764,8 @@
           sendHistory: this.protocolTransition.sendHistory.map((history) => history.slice())
         } : null,
         siocntWrites: this.siocntWrites.map((list) => list.slice()),
-        siomultiReads: this.siomultiReads.map((list) => list.slice())
+        siomultiReads: this.siomultiReads.map((list) => list.slice()),
+        criticalSiomultiReads: this.criticalSiomultiReads.map((list) => list.slice())
       };
     }
 

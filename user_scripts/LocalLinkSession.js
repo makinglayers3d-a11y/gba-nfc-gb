@@ -333,10 +333,15 @@
           const cycle = Number(core?.IOCore?.linkCycleCounter) || 0;
           const cpu = core?.IOCore?.cpu;
           const pc = Number(cpu?.registers?.[15] ?? 0) >>> 0;
+          // Iodine's visible r15 is ahead of the currently executing Thumb
+          // instruction in this ROM. Empirically SIOMULTI @080C96F6 appears
+          // as r15=080C9736, so expose the logical instruction address too.
+          const logicalPc = (pc - 0x40) >>> 0;
           const regs = cpu?.registers ? Array.from(cpu.registers.slice(0, 8), (v) => Number(v) >>> 0) : [];
           const entry = {
             cycle,
             pc,
+            logicalPc,
             index: Number(index) | 0,
             word: Number(word) & 0xffff,
             regs
@@ -345,7 +350,7 @@
           list.push(entry);
           if (list.length > 1024) list.splice(0, list.length - 1024);
 
-          if (pc >= 0x080C9E00 && pc <= 0x080C9FA0 && regs.length >= 4) {
+          if (logicalPc >= 0x080C9E00 && logicalPc <= 0x080C9FA0 && regs.length >= 4) {
             const mem = core?.IOCore?.memory;
             const raw8 = (address) => {
               address = Number(address) >>> 0;

@@ -473,11 +473,17 @@
       const c1 = Number(this.cores?.[1]?.IOCore?.linkCycleCounter) || 0;
       const current0 = this.getInput(this.frame, 0);
       const current1 = this.getInput(this.frame, 1);
+      let s0v = 0, s1v = 0, r0v = 0, r1v = 0;
+      try { s0v = s0?.readSIOCNT0?.() ?? 0; } catch {}
+      try { s1v = s1?.readSIOCNT0?.() ?? 0; } catch {}
+      try { r0v = s0?.readRCNT0?.() ?? 0; } catch {}
+      try { r1v = s1?.readRCNT0?.() ?? 0; } catch {}
+      const hx = (value) => (Number(value) & 0xff).toString(16).padStart(2, "0");
       this.debug.textContent =
         `LOCAL LINK ${role === "host" ? "H" : "G"} P${mySeat} ${this.started ? "RUN" : "SYNC"}\n` +
         (!this.started ? `ESPERANDO PEER:${this.remoteReady ? "OK" : "..."} ROM:${this.remoteHash ? (this.remoteHash === this.romHash ? "OK" : "DIFF") : "..."}\n` : "") +
         `F:${this.frame} IN:${current0 === UNKNOWN ? "-" : current0.toString(16)}/${current1 === UNKNOWN ? "-" : current1.toString(16)} D:${INPUT_DELAY}\n` +
-        `M:${s0?.SIOCNT_MODE ?? "-"}/${s1?.SIOCNT_MODE ?? "-"} BUSY:${s0?.SIOTransferStarted ? 1 : 0}/${s1?.SIOTransferStarted ? 1 : 0}\n` +
+        `M:${s0?.SIOCNT_MODE ?? "-"}/${s1?.SIOCNT_MODE ?? "-"} BUSY:${s0?.SIOTransferStarted ? 1 : 0}/${s1?.SIOTransferStarted ? 1 : 0} S:${hx(s0v)}/${hx(s1v)} R:${hx(r0v)}/${hx(r1v)}\n` +
         `XFER:${this.transferCount} HS:${this.finishSyncCount} PEND:${this.pendingTransfer ? 1 : 0}/${this.localTransferArmed ? 1 : 0} Δ:${Math.round(c0 - c1)} T:${Math.round((this.frame + 1) * FRAME_CYCLES - Math.min(c0, c1))} STALL:${this.stallCount}` +
         (this.wedged ? "\nWEDGED" : "");
     }

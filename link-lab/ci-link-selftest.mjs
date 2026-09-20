@@ -201,9 +201,9 @@ await page.waitForFunction(
 await waitFrames(6);
 await capture("clients-loaded");
 
-await tapBoth(3, 4, 8); // START on P1 + P2 immediately after client boot
+await tapSeat(0, 3, 4, 8); // Only P1 confirms after the client boot; P2 is the downloaded client
 await waitFrames(12);
-await tapBoth(3, 4, 8); // second pulse covers the player-color screen boundary
+await tapSeat(0, 3, 4, 8); // second host pulse covers the player-color screen boundary
 await capture("players-ready");
 
 // Keep sampling the protocol after the ready input.

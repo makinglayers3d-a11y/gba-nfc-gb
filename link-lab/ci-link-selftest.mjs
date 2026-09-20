@@ -180,21 +180,6 @@ async function capture(label) {
   });
 }
 
-async function dumpMultibootClient() {
-  const bytes = await page.evaluate(() => {
-    const ctl = window.ML3DLocalLinkSession?.test?.controller;
-    const mb = ctl?.multibootProxy;
-    const ram = ctl?.cores?.[1]?.IOCore?.memory?.externalRAM;
-    if (!ram || !mb?.booted) return null;
-    const end = Math.max(0x100, Math.min(ram.length, (Number(mb.bootEnd) >>> 0) - 0x02000000));
-    return Array.from(ram.slice(0, end), (v) => Number(v) & 0xff);
-  });
-  if (bytes?.length) {
-    await fs.writeFile(path.join(outDir, "multiboot-client.bin"), Buffer.from(bytes));
-    console.log("MULTIBOOT_CLIENT_BYTES", bytes.length);
-  }
-}
-
 await waitFrames(240);
 await capture("language");
 
@@ -207,47 +192,30 @@ await waitFrames(320);
 await tapBoth(3, 4, 180); // START
 await capture("mode-menu");
 
-// Single-Pak flow: only Player 1 selects MULTIPLAYER. Player 2 stays
-// idle and is converted by the link coordinator into a BIOS MultiBoot receiver.
-await tapSeat(0, 4, 4, 45); // P0 RIGHT
-await capture("host-multiplayer-selected");
+// Multi-Pak flow: both consoles own the cartridge, so both players walk into
+// MULTIPLAYER on their own screen. This is what a lobby session actually does.
+await tapBoth(4, 4, 45); // RIGHT -> MULTIPLAYER on both seats
+await capture("both-multiplayer-selected");
 
 await waitFrames(joinDelay);
-await capture("guest-awaiting-multiboot");
+await capture("both-awaiting-peer");
 
-await tapSeat(0, 3, 4, 120); // P0 START; begin cable check
-await capture("host-link-check");
+await tapBoth(3, 4, 150); // START on both: begin the cable check
+await capture("both-link-check");
 
-// Single-Pak flow asks Player 1 to press START again after the cable check.
-await tapSeat(0, 3, 4, 180);
-await capture("host-second-start");
+// Mario Bros. Battle asks for a second START once the cable check passes.
+await tapBoth(3, 4, 180);
+await capture("both-second-start");
 
-// Mario Bros. Battle now shows its settings screen. Confirm the default
-// settings with START to begin the actual Single-Pak client download.
-// Confirm Battle, but do not wait through the client's short ready timeout.
-await tapSeat(0, 3, 4, 4);
-await capture("battle-settings-confirmed");
+// Confirm the default Battle settings.
+await tapBoth(3, 4, 120);
+await capture("both-settings-confirmed");
 
-// The download completes quickly after confirmation. As soon as P2 is running
-// the RAM client, acknowledge readiness on both cores before the FEFE timeout.
-await page.waitForFunction(
-  () => window.ML3DLocalLinkSession?.status?.multibootProxy?.booted === true,
-  { timeout: 120000, polling: "raf" }
-);
-await waitFrames(6);
-await capture("clients-loaded");
-
-await tapSeat(0, 3, 4, 8); // Only P1 confirms after the client boot; P2 is the downloaded client
-await waitFrames(12);
-await tapSeat(0, 3, 4, 8); // second host pulse covers the player-color screen boundary
-await capture("players-ready");
-
-// Keep sampling the protocol after the ready input.
+// Keep sampling the protocol while the session runs.
 for (let i = 1; i <= 6; i++) {
-  await waitFrames(30);
-  await capture("client-protocol-" + i);
+  await waitFrames(60);
+  await capture("multipak-" + i);
 }
-await dumpMultibootClient();
 
 await waitFrames(1450);
 await capture("final");
@@ -260,11 +228,33 @@ await fs.writeFile(
 const finalState = await status();
 console.log("FINAL", JSON.stringify(finalState));
 
-if (!finalState?.multibootProxy?.booted) {
+// When the in-game link check fails, the game drops SIOCNT back to Normal
+// mode and prints ERROR!, so a session still wired for Multi-Player is what
+// actually proves the link held.
+const finalModes = (finalState?.serial || []).map((s) => Number(s?.mode));
+if (finalModes.length !== 2 || finalModes.some((mode) => mode !== 2)) {
   throw new Error(
-    "Mario Single-Pak did not boot the secondary GBA from RAM; " +
-    "multiboot stage=" + String(finalState?.multibootProxy?.stage || "unknown")
+    "Link collapsed out of Multi-Player mode (game reported a link error); " +
+    "final SIOCNT modes=" + JSON.stringify(finalModes) +
+    " transfers=" + String(finalState?.transfers ?? "unknown")
   );
+}
+
+if (!(Number(finalState?.transfers) > 0)) {
+  throw new Error("No Multi-Player transfer ever completed between the two cores");
+}
+
+// Both games reaching their own protocol words (parent F00F / child FDFD)
+// proves the two cartridges talked to each other rather than to a stub.
+if (!finalState?.protocolTransition) {
+  throw new Error(
+    "The two cores never exchanged the Mario link handshake (F00F/FDFD); " +
+    "transfers=" + String(finalState?.transfers ?? "unknown")
+  );
+}
+
+if (finalState?.wedged) {
+  throw new Error("Dual-core coordinator wedged during the session");
 }
 
 await browser.close();

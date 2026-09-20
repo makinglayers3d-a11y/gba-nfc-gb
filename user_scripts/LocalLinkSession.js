@@ -14,7 +14,6 @@
   const INPUT_DELAY = 4;
   const RING = 256;
   const UNKNOWN = -1;
-  // MultiBoot direct receiver is intentionally coordinated with the HLE SWI path.
 
   let localMask = 0;
   const selfTestMasks = [0, 0];
@@ -136,11 +135,6 @@
       this.transferCount = 0;
       this.finishSyncCount = 0;
       this.localTransferArmed = false;
-      // After a completed post-MultiBoot MULTI transfer, the secondary must
-      // process its SIO IRQ and rewrite SIOMLT_SEND before the primary may
-      // clock the next round. Otherwise START clears SIOMULTI0..3 too early.
-      this.childPostIrqReady = true;
-      this.postIrqWaitBlocks = 0;
       this.normalPrepared = [null, null];
       this.normalTransferCount = 0;
       this.normalTrace = [];
@@ -152,7 +146,6 @@
       this.startSkewTotal = 0;
       this.startSkewCount = 0;
       this.recentTransfers = [];
-      this.multibootTrace = [];
       this.sendWordHistory = [[], []];
       this.siocntWrites = [[], []];
       this.siocntReads = [[], []];
@@ -166,24 +159,6 @@
       this.resetTrace = [[], []];
       this.protocolTransition = null;
       this.protocolTransitionRemaining = 0;
-      // Single-Game-Pak / BIOS MultiBoot proxy. Mario Bros. in SMA4 does
-      // not expect a second cartridge: the parent downloads a RAM client.
-      this.multibootProxy = {
-        armed: false,
-        active: false,
-        stage: "idle",
-        detectRemaining: 0,
-        headerRemaining: 0,
-        clientBit: 0x2,
-        clientData: 0x01,
-        bootSrc: 0,
-        bootEnd: 0,
-        swiCalled: false,
-        swiParamPtr: 0,
-        swiMode: 0,
-        swiError: "",
-        booted: false
-      };
       this.wedged = false;
       this.inputTimer = null;
       this.readyTimer = null;
@@ -306,17 +281,6 @@
           if (mode !== 0 && mode !== 1) {
             this.normalPrepared[seat] = null;
           }
-          // If the parent enters MULTI while the secondary has not entered it
-          // naturally, treat the secondary as a no-cartridge BIOS receiver
-          // (Single-Pak). If P1 was already in MULTI, leave it untouched for
-          // ordinary Multi-Pak play.
-          if (
-            seat === 0 &&
-            mode === 2 &&
-            (this.serials[1]?.SIOCNT_MODE | 0) !== 2
-          ) {
-            this.armMultibootReceiver();
-          }
           this.renderDebug();
         },
         onSendDataChange: (word) => {
@@ -333,9 +297,6 @@
             thumb
           });
           if (history.length > 256) history.splice(0, history.length - 256);
-          if (seat === 1 && this.multibootProxy.booted) {
-            this.childPostIrqReady = true;
-          }
         },
         onLinkError: (error) => {
           this.lastLinkError = String(error?.stack || error?.message || error || "unknown");
@@ -346,12 +307,6 @@
           if (seat === 1) {
             // Match mGBA's finish hard-sync: the clock owner must not expose
             // completion/IRQ until the secondary has finished the same transfer.
-            // Once the downloaded client is running, preserve the completed
-            // SIOMULTI receive words until P1 has actually serviced the IRQ and
-            // prepared its next SIOMLT_SEND word.
-            if (this.multibootProxy.booted) {
-              this.childPostIrqReady = false;
-            }
             this.finishSyncCount += 1;
             this.serials[0]?.releaseExternalMultiplayerTransfer?.(false);
             return;
@@ -422,16 +377,11 @@
         onNormalTransferComplete: () => {},
                 startMultiplayerTransfer: (info = {}) => {
           if (seat !== 0 || this.pendingTransfer || this.localTransferArmed) return false;
-          if (this.multibootProxy.booted && !this.childPostIrqReady) {
-            this.postIrqWaitBlocks += 1;
-            return false;
-          }
-          if ((this.serials[1]?.SIOCNT_MODE | 0) !== 2) {
-            if ((Number(info.word) & 0xffff) === 0x6200) {
-              this.armMultibootReceiver();
-            }
-            if ((this.serials[1]?.SIOCNT_MODE | 0) !== 2) return false;
-          }
+          // The secondary has its own copy of the cartridge and reaches MULTI
+          // on its own schedule. Until it does there is nobody to clock, so
+          // leave BUSY clear and let the parent retry, exactly as a cable with
+          // an unready peer behaves.
+          if ((this.serials[1]?.SIOCNT_MODE | 0) !== 2) return false;
           this.pendingTransfer = {
             sequence: Number(info.sequence) | 0,
             word: Number(info.word) & 0xffff,
@@ -444,10 +394,6 @@
             else io.flagIterationEnd();
           } catch {}
           return true;
-        },
-        performMultiboot: (paramPtr, mode) => {
-          if (seat !== 0) return false;
-          return this.performDirectMultiboot(paramPtr, mode);
         }
       });
 
@@ -750,226 +696,6 @@
       }
     }
 
-    armMultibootReceiver() {
-      const mb = this.multibootProxy;
-      const child = this.serials[1];
-      if (!child || mb.booted || mb.active) return false;
-      if ((child.SIOCNT_MODE | 0) === 2 && !mb.armed) return false;
-
-      mb.armed = true;
-      mb.active = false;
-      mb.stage = "idle";
-      mb.detectRemaining = 0;
-      mb.headerRemaining = 0;
-      mb.bootSrc = 0;
-      mb.bootEnd = 0;
-      mb.swiCalled = false;
-      mb.swiParamPtr = 0;
-      mb.swiMode = 0;
-      mb.swiError = "";
-      mb.booted = false;
-
-      // Recreate the serial-facing part of the BIOS multiboot wait state.
-      // The child CPU can remain at its title/menu code until the payload is
-      // ready; the proxy owns SIO during the download and later jumps it to RAM.
-      child.RCNTMode = 0;
-      child.SIOCNT_MODE = 2;
-      child.SIOBaudRate = Number(this.serials[0]?.SIOBaudRate ?? 3) & 0x3;
-      child.SIOTransferStarted = false;
-      child.SIOCOMMERROR = false;
-      child.linkPlayerIdValid = true;
-      child.SIOMULT_PLAYER_NUMBER = 1;
-      child.SIODATA_A = 0xffff;
-      child.SIODATA_B = 0xffff;
-      child.SIODATA_C = 0xffff;
-      child.SIODATA_D = 0xffff;
-      child.SIODATA8 = 0;
-      return true;
-    }
-
-    multibootReply(hostWord) {
-      const mb = this.multibootProxy;
-      hostWord &= 0xffff;
-
-      // Recognition. First child in multiplayer wiring uses client bit 0x2.
-      if (!mb.armed && !mb.active) return null;
-
-      if (!mb.active && hostWord === 0x6200) {
-        mb.active = true;
-        mb.stage = "confirm";
-        mb.detectRemaining = 0;
-        mb.headerRemaining = 0;
-        mb.booted = false;
-        // BIOS multiboot discovery: a detected first child answers 7202.
-        return 0x7200 | mb.clientBit;
-      }
-      if (!mb.active) return null;
-
-      if (mb.stage === "confirm") {
-        if (hostWord === (0x6100 | mb.clientBit)) {
-          mb.stage = "header";
-          mb.headerRemaining = 0x60;
-          return 0x7200 | mb.clientBit;
-        }
-        // The parent can repeat 6200 up to its retry budget before 610Y.
-        if (hostWord === 0x6200) return 0x7200 | mb.clientBit;
-        return null;
-      }
-
-      if (mb.stage === "header") {
-        if (mb.headerRemaining > 0) {
-          // BIOS expects NN02 where NN is the number of header halfwords
-          // remaining INCLUDING the one just transferred: 6002 ... 0102.
-          const reply = ((mb.headerRemaining & 0xff) << 8) | mb.clientBit;
-          mb.headerRemaining -= 1;
-          if (mb.headerRemaining === 0) mb.stage = "postHeader0";
-          return reply;
-        }
-      }
-
-      if (mb.stage === "postHeader0" && hostWord === 0x6200) {
-        mb.stage = "postHeader1";
-        return mb.clientBit;
-      }
-      if (mb.stage === "postHeader1") {
-        if (hostWord === (0x6200 | mb.clientBit)) {
-          mb.stage = "palette";
-          return 0x7200 | mb.clientBit;
-        }
-        // If the master repeats the completion probe, keep returning 0002
-        // without advancing. Only 6202 is the second info exchange.
-        if (hostWord === 0x6200) return mb.clientBit;
-      }
-      if (mb.stage === "palette") {
-        // Some software pipelines the final 620Y word for one extra transfer.
-        // Keep acknowledging it until the first 63PP palette command arrives.
-        if (hostWord === (0x6200 | mb.clientBit)) {
-          return 0x7200 | mb.clientBit;
-        }
-        if ((hostWord & 0xff00) === 0x6300) {
-          mb.stage = "handshake";
-          return 0x7300 | mb.clientData;
-        }
-      }
-      if (mb.stage === "handshake") {
-        // Palette command may also be repeated until 73CC is observed.
-        if ((hostWord & 0xff00) === 0x6300) {
-          return 0x7300 | mb.clientData;
-        }
-        if ((hostWord & 0xff00) === 0x6400) {
-          mb.stage = "bios";
-          return 0x7300 | mb.clientData;
-        }
-      }
-      if (mb.stage === "bios" && (hostWord & 0xff00) === 0x6400) {
-        return 0x7300 | mb.clientData;
-      }
-
-      return null;
-    }
-
-    performDirectMultiboot(paramPtr, mode) {
-      const mb = this.multibootProxy;
-      mb.swiCalled = true;
-      mb.swiParamPtr = Number(paramPtr) >>> 0;
-      mb.swiMode = Number(mode) >>> 0;
-      mb.swiError = "";
-      if (!mb.active || mb.stage !== "bios") {
-        mb.swiError = "SWI called before multiboot handshake reached bios stage";
-        return false;
-      }
-
-      try {
-        const hostMem = this.cores[0]?.IOCore?.memory;
-        const childEmu = this.cores[1];
-        if (!hostMem || !childEmu) return false;
-
-        // A real Single-Pak slave is not running the cartridge game before
-        // MultiBoot. Rebuild the secondary IOCore here so the downloaded
-        // client starts with clean IWRAM, timers, IRQ/DMA/SIO and graphics
-        // state instead of inheriting the title-screen state of our helper ROM.
-        const sharedCycle = Number(this.cores[0]?.IOCore?.linkCycleCounter) || 0;
-        if ((childEmu.initializeCore?.() | 0) === 0) {
-          mb.swiError = "secondary IOCore reset failed";
-          return false;
-        }
-        const childIO = childEmu.IOCore;
-        if (!childIO) return false;
-        childIO.linkCycleCounter = sharedCycle;
-        childIO.cyclesOveriteratedPreviously = 0;
-        childIO.linkIterationCut = false;
-
-        // Refresh the coordinator's serial reference and reattach the local
-        // deterministic cable/observers to the newly created secondary core.
-        this.serials[1] = childIO.serial;
-        this.installLocalCable();
-
-        // The slave BIOS does NOT hand the downloaded program a reset SIO
-        // block. In MultiPlay mode it leaves the cable configured as player 1
-        // at 115200 baud, with START/BUSY clear after the final transfer.
-        // The downloaded Mario client polls this state immediately at startup.
-        const childSerial = this.serials[1];
-        childSerial.RCNTMode = 0;
-        childSerial.SIOCNT_MODE = 2;
-        childSerial.SIOBaudRate = 3;
-        childSerial.SIOTransferStarted = false;
-        childSerial.SIOCOMMERROR = false;
-        childSerial.linkPlayerIdValid = true;
-        childSerial.setLinkPlayerNumber?.(1);
-        childSerial.SIOMULT_PLAYER_NUMBER = 1;
-        childSerial.SIODATA_A = 0xffff;
-        childSerial.SIODATA_B = 0xffff;
-        childSerial.SIODATA_C = 0xffff;
-        childSerial.SIODATA_D = 0xffff;
-        childSerial.SIODATA8 = 0xffff;
-
-        const childMem = childIO.memory;
-        const childCPU = childIO.cpu;
-        if (!childMem?.externalRAM || !childCPU) return false;
-
-        const read32 = (address) => hostMem.memoryRead32(Number(address) | 0) >>> 0;
-        const bootSrc = read32((Number(paramPtr) + 0x20) >>> 0);
-        const bootEnd = read32((Number(paramPtr) + 0x24) >>> 0);
-        if (bootSrc < 0xc0 || bootEnd <= bootSrc) return false;
-        const imageStart = (bootSrc - 0xc0) >>> 0;
-        const imageSize = (bootEnd - imageStart) >>> 0;
-        if (imageSize < 0x100 || imageSize > 0x40000) return false;
-
-        for (let i = 0; i < imageSize; i++) {
-          childMem.externalRAM[i] = hostMem.memoryRead8((imageStart + i) | 0) & 0xff;
-        }
-
-        // Extended multiboot header values written by the slave BIOS.
-        // SWI r1 mode 1 is MultiPlay, which the downloaded program observes
-        // as boot mode 03h. The first slave ID is 01h.
-        childMem.externalRAM[0xc4] = ((Number(mode) | 0) === 1) ? 0x03 : 0x02;
-        childMem.externalRAM[0xc5] = 0x01;
-
-        // Recreate the important post-BIOS CPU state, then execute the RAM
-        // entry branch at 020000C0.
-        childCPU.switchMode(0x13);
-        childCPU.THUMB.writeSP(0x03007fe0);
-        childCPU.switchMode(0x12);
-        childCPU.THUMB.writeSP(0x03007fa0);
-        childCPU.switchMode(0x1f);
-        childCPU.THUMB.writeSP(0x03007f00);
-        childCPU.enterARM();
-        childCPU.branch(0x020000c0);
-
-        mb.bootSrc = bootSrc >>> 0;
-        mb.bootEnd = bootEnd >>> 0;
-        mb.booted = true;
-        mb.active = false;
-        mb.armed = false;
-        mb.stage = "running";
-        return true;
-      } catch (error) {
-        mb.swiError = String(error?.stack || error?.message || error);
-        this.lastLinkError = "MULTIBOOT: " + mb.swiError;
-        return false;
-      }
-    }
-
     carryTransfer() {
       const pending = this.pendingTransfer;
       if (!pending) return false;
@@ -1021,8 +747,7 @@
         };
       });
 
-      const proxyWord = this.multibootReply(pending.word);
-      const effectiveChildWord = proxyWord === null ? currentChildWord : (proxyWord & 0xffff);
+      const effectiveChildWord = currentChildWord;
 
       const transferRecord = {
         frame: this.frame,
@@ -1033,10 +758,6 @@
         hostWord: pending.word & 0xffff,
         currentChildWord,
         effectiveChildWord,
-        proxyWord: proxyWord === null ? null : (proxyWord & 0xffff),
-        multibootStage: this.multibootProxy.stage,
-        multibootActive: !!this.multibootProxy.active,
-        multibootBooted: !!this.multibootProxy.booted,
         timestampedChildWord,
         timestampedCycle,
         baud: pending.baud,
@@ -1045,26 +766,6 @@
 
       this.recentTransfers.push(transferRecord);
       if (this.recentTransfers.length > 160) this.recentTransfers.shift();
-
-      if (
-        this.multibootProxy.armed ||
-        this.multibootProxy.active ||
-        ((pending.word & 0xff00) >= 0x6100 && (pending.word & 0xff00) <= 0x6400)
-      ) {
-        this.multibootTrace.push({
-          frame: this.frame,
-          sequence: pending.sequence,
-          hostWord: pending.word & 0xffff,
-          rawChildWord: currentChildWord & 0xffff,
-          effectiveChildWord: effectiveChildWord & 0xffff,
-          proxyWord: proxyWord === null ? null : (proxyWord & 0xffff),
-          stage: this.multibootProxy.stage,
-          armed: !!this.multibootProxy.armed,
-          active: !!this.multibootProxy.active,
-          booted: !!this.multibootProxy.booted
-        });
-        if (this.multibootTrace.length > 2048) this.multibootTrace.shift();
-      }
 
       if (
         !this.protocolTransition &&
@@ -1359,8 +1060,6 @@
         transfers: this.transferCount,
         finishSyncs: this.finishSyncCount,
         normalTransfers: this.normalTransferCount,
-        childPostIrqReady: this.childPostIrqReady,
-        postIrqWaitBlocks: this.postIrqWaitBlocks,
         normalTrace: this.normalTrace.slice(),
         normalAttemptTrace: this.normalAttemptTrace.slice(),
         normalPrepared: this.normalPrepared.map((entry) => entry ? { ...entry } : null),
@@ -1377,7 +1076,6 @@
         stalls: this.stallCount,
         transferCycles: requestedTransferCycles || null,
         progressiveTransfer,
-        multibootProxy: { ...this.multibootProxy },
         coreExecution: this.cores.map((core, seat) => {
           const io = core?.IOCore;
           const cpu = io?.cpu;
@@ -1415,7 +1113,6 @@
           count: this.startSkewCount
         },
         recentTransfers: this.recentTransfers.slice(),
-        multibootTrace: this.multibootTrace.slice(),
         protocolTransition: this.protocolTransition ? {
           detectedAtFrame: this.protocolTransition.detectedAtFrame,
           detectedAtSequence: this.protocolTransition.detectedAtSequence,

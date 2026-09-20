@@ -139,5 +139,24 @@ for start_addr, size, thumb, label in STATIC_RANGES:
         ann = literal_annotation(insn, rom, base_used)
         lines.append(f"   {insn.address:08X}: {insn.mnemonic:<9} {insn.op_str}{ann}")
 
+
+# Disassemble the downloaded MultiBoot client around the observed SIOCNT=0
+# writer (02001AC2) and its caller (LR 02001D41).
+client_path = selftest_dir / "multiboot-client.bin"
+if client_path.exists():
+    client = client_path.read_bytes()
+    for start_addr, size, label in [
+        (0x02001A80, 0x100, "downloaded client SIOCNT transition"),
+        (0x02001CC0, 0x100, "downloaded client caller around LR 02001D41"),
+    ]:
+        lines.append("")
+        lines.append(f"=== CLIENT {label} {start_addr:08X}+{size:X} ===")
+        start = start_addr - 0x02000000
+        end = min(len(client), start + size)
+        md = Cs(CS_ARCH_ARM, CS_MODE_THUMB | CS_MODE_LITTLE_ENDIAN)
+        for insn in md.disasm(client[start:end], start_addr):
+            marker = ">>" if insn.address in (0x02001AC2, 0x02001D40) else "  "
+            lines.append(f"{marker} {insn.address:08X}: {insn.mnemonic:<9} {insn.op_str}")
+
 out_path.write_text("\n".join(lines) + "\n")
 print(out_path.read_text())

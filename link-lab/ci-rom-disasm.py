@@ -146,8 +146,9 @@ client_path = selftest_dir / "multiboot-client.bin"
 if client_path.exists():
     client = client_path.read_bytes()
     for start_addr, size, label in [
-        (0x02001A80, 0x100, "downloaded client SIOCNT transition"),
-        (0x02001CC0, 0x100, "downloaded client caller around LR 02001D41"),
+        (0x02000580, 0x300, "downloaded client main/IRQ wait loop"),
+        (0x02000A80, 0x120, "downloaded client MULTI setup"),
+        (0x02001CC0, 0x380, "downloaded client MULTI to Normal transition"),
     ]:
         lines.append("")
         lines.append(f"=== CLIENT {label} {start_addr:08X}+{size:X} ===")
@@ -155,7 +156,7 @@ if client_path.exists():
         end = min(len(client), start + size)
         md = Cs(CS_ARCH_ARM, CS_MODE_THUMB | CS_MODE_LITTLE_ENDIAN)
         for insn in md.disasm(client[start:end], start_addr):
-            marker = ">>" if insn.address in (0x02001AC2, 0x02001D40) else "  "
+            marker = ">>" if insn.address in (0x02000604, 0x02000620, 0x02000638, 0x02000ADC, 0x02001D42, 0x02001FC0) else "  "
             lines.append(f"{marker} {insn.address:08X}: {insn.mnemonic:<9} {insn.op_str}")
 
 out_path.write_text("\n".join(lines) + "\n")

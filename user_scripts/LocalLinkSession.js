@@ -136,6 +136,11 @@
       this.transferCount = 0;
       this.finishSyncCount = 0;
       this.localTransferArmed = false;
+      // After a completed post-MultiBoot MULTI transfer, the secondary must
+      // process its SIO IRQ and rewrite SIOMLT_SEND before the primary may
+      // clock the next round. Otherwise START clears SIOMULTI0..3 too early.
+      this.childPostIrqReady = true;
+      this.postIrqWaitBlocks = 0;
       this.normalPrepared = [null, null];
       this.normalTransferCount = 0;
       this.normalTrace = [];
@@ -328,6 +333,9 @@
             thumb
           });
           if (history.length > 256) history.splice(0, history.length - 256);
+          if (seat === 1 && this.multibootProxy.booted) {
+            this.childPostIrqReady = true;
+          }
         },
         onLinkError: (error) => {
           this.lastLinkError = String(error?.stack || error?.message || error || "unknown");
@@ -338,6 +346,12 @@
           if (seat === 1) {
             // Match mGBA's finish hard-sync: the clock owner must not expose
             // completion/IRQ until the secondary has finished the same transfer.
+            // Once the downloaded client is running, preserve the completed
+            // SIOMULTI receive words until P1 has actually serviced the IRQ and
+            // prepared its next SIOMLT_SEND word.
+            if (this.multibootProxy.booted) {
+              this.childPostIrqReady = false;
+            }
             this.finishSyncCount += 1;
             this.serials[0]?.releaseExternalMultiplayerTransfer?.(false);
             return;
@@ -408,6 +422,10 @@
         onNormalTransferComplete: () => {},
                 startMultiplayerTransfer: (info = {}) => {
           if (seat !== 0 || this.pendingTransfer || this.localTransferArmed) return false;
+          if (this.multibootProxy.booted && !this.childPostIrqReady) {
+            this.postIrqWaitBlocks += 1;
+            return false;
+          }
           if ((this.serials[1]?.SIOCNT_MODE | 0) !== 2) {
             if ((Number(info.word) & 0xffff) === 0x6200) {
               this.armMultibootReceiver();
@@ -1341,6 +1359,8 @@
         transfers: this.transferCount,
         finishSyncs: this.finishSyncCount,
         normalTransfers: this.normalTransferCount,
+        childPostIrqReady: this.childPostIrqReady,
+        postIrqWaitBlocks: this.postIrqWaitBlocks,
         normalTrace: this.normalTrace.slice(),
         normalAttemptTrace: this.normalAttemptTrace.slice(),
         normalPrepared: this.normalPrepared.map((entry) => entry ? { ...entry } : null),

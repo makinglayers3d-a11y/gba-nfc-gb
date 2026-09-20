@@ -595,6 +595,7 @@
           const core = this.cores[seat];
           const cpu = core?.IOCore?.cpu;
           const regs = cpu?.registers;
+          const ram = core?.IOCore?.memory?.internalRAM;
           const pc = Number(regs?.[15] ?? 0) >>> 0;
           const lr = Number(regs?.[14] ?? 0) >>> 0;
           list.push({
@@ -606,7 +607,16 @@
             r0: Number(regs?.[0] ?? 0) >>> 0,
             r1: Number(regs?.[1] ?? 0) >>> 0,
             r2: Number(regs?.[2] ?? 0) >>> 0,
-            r3: Number(regs?.[3] ?? 0) >>> 0
+            r3: Number(regs?.[3] ?? 0) >>> 0,
+            iwramCEC: ram ? (Number(ram[0x0CEC]) & 0xff) : null,
+            iwramCF0: ram ? (Number(ram[0x0CF0]) & 0xff) : null,
+            iwramD04: ram ? (Number(ram[0x0D04]) & 0xff) : null,
+            bus: [
+              this.serials[seat].SIODATA_A & 0xffff,
+              this.serials[seat].SIODATA_B & 0xffff,
+              this.serials[seat].SIODATA_C & 0xffff,
+              this.serials[seat].SIODATA_D & 0xffff
+            ]
           });
           if (list.length > 512) list.splice(0, list.length - 512);
         };
@@ -615,6 +625,7 @@
           const io = core?.IOCore;
           const cpu = io?.cpu;
           const regs = cpu?.registers;
+          const ram = io?.memory?.internalRAM;
           const rawPc = Number(regs?.[15] ?? 0) >>> 0;
           const thumb = !!((Number(cpu?.modeFlags) | 0) & 0x20);
           const logicalPc = thumb ? ((rawPc - 4) >>> 0) : ((rawPc - 8) >>> 0);
@@ -626,7 +637,16 @@
             mode: this.serials[seat].SIOCNT_MODE | 0,
             rawPc,
             logicalPc,
-            thumb
+            thumb,
+            iwramCEC: ram ? (Number(ram[0x0CEC]) & 0xff) : null,
+            iwramCF0: ram ? (Number(ram[0x0CF0]) & 0xff) : null,
+            iwramD04: ram ? (Number(ram[0x0D04]) & 0xff) : null,
+            bus: [
+              this.serials[seat].SIODATA_A & 0xffff,
+              this.serials[seat].SIODATA_B & 0xffff,
+              this.serials[seat].SIODATA_C & 0xffff,
+              this.serials[seat].SIODATA_D & 0xffff
+            ]
           });
           if (list.length > 2048) list.splice(0, list.length - 2048);
         };

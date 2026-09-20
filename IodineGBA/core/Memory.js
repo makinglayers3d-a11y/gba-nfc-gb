@@ -2932,6 +2932,9 @@ GameBoyAdvanceMemory.prototype.readIODispatch8 = function (address) {
         case 0x4000128:
             this.IOCore.updateSerialClocking();
             data = this.serial.readSIOCNT0() | 0;
+            if (typeof this.serial.linkSIOCNTReadObserver == "function") {
+                try { this.serial.linkSIOCNTReadObserver(data & 0xFF); } catch (error) {}
+            }
             break;
         //4000129h - SIOCNT - SIO Sub Mode Control (R/W)
         case 0x4000129:
@@ -3419,6 +3422,9 @@ GameBoyAdvanceMemory.prototype.readIO16 = function (address) {
         case 0x4000128:
             this.IOCore.updateSerialClocking();
             data = this.serial.readSIOCNT0() | (this.serial.readSIOCNT1() << 8);
+            if (typeof this.serial.linkSIOCNTReadObserver == "function") {
+                try { this.serial.linkSIOCNTReadObserver(data & 0xFFFF); } catch (error) {}
+            }
             break;
         //400012Ah - SIOMLT_SEND - Data Send Register (R/W)
         case 0x400012A:

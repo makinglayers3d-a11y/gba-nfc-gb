@@ -591,7 +591,22 @@
         this.serials[seat].linkSIOCNTWriteObserver = (entry) => {
           const cycle = Number(this.cores[seat]?.IOCore?.linkCycleCounter) || 0;
           const list = this.siocntWrites[seat];
-          list.push({ cycle, ...entry });
+          const core = this.cores[seat];
+          const cpu = core?.IOCore?.cpu;
+          const regs = cpu?.registers;
+          const pc = Number(regs?.[15] ?? 0) >>> 0;
+          const lr = Number(regs?.[14] ?? 0) >>> 0;
+          list.push({
+            cycle,
+            ...entry,
+            pc,
+            logicalPc: (pc - 0x40) >>> 0,
+            lr,
+            r0: Number(regs?.[0] ?? 0) >>> 0,
+            r1: Number(regs?.[1] ?? 0) >>> 0,
+            r2: Number(regs?.[2] ?? 0) >>> 0,
+            r3: Number(regs?.[3] ?? 0) >>> 0
+          });
           if (list.length > 512) list.splice(0, list.length - 512);
         };
         this.serials[seat].linkRCNTWriteObserver = (byteIndex, data) => {

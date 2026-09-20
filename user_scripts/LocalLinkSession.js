@@ -139,6 +139,7 @@
       this.normalPrepared = [null, null];
       this.normalTransferCount = 0;
       this.normalTrace = [];
+      this.normalAttemptTrace = [];
       this.lastLinkError = "";
       this.startSkewLast = 0;
       this.startSkewMin = Infinity;
@@ -362,6 +363,11 @@
             frame: this.frame
           };
           this.normalPrepared[seat] = prepared;
+          this.normalAttemptTrace.push({
+            ...prepared,
+            peer: this.normalPrepared[seat ^ 1] ? { ...this.normalPrepared[seat ^ 1] } : null
+          });
+          if (this.normalAttemptTrace.length > 256) this.normalAttemptTrace.shift();
 
           const peer = this.normalPrepared[seat ^ 1];
           if (!peer || peer.mode !== mode) return true;
@@ -1280,6 +1286,8 @@
         finishSyncs: this.finishSyncCount,
         normalTransfers: this.normalTransferCount,
         normalTrace: this.normalTrace.slice(),
+        normalAttemptTrace: this.normalAttemptTrace.slice(),
+        normalPrepared: this.normalPrepared.map((entry) => entry ? { ...entry } : null),
         pendingTransfer: Boolean(
           this.pendingTransfer ||
           this.localTransferArmed ||

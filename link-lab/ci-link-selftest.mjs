@@ -79,9 +79,45 @@ async function status() {
         multi3: byte(ram[0x79CE]) | (byte(ram[0x79CF]) << 8)
       };
     });
+    const hardwareState = cores.map((core) => {
+      const io = core?.IOCore;
+      const ram = io?.memory?.internalRAM;
+      const gfx = io?.gfxState;
+      const u16 = (off) => ram
+        ? (byte(ram[off]) | (byte(ram[off + 1]) << 8))
+        : null;
+      const u32 = (off) => ram
+        ? ((byte(ram[off]) |
+            (byte(ram[off + 1]) << 8) |
+            (byte(ram[off + 2]) << 16) |
+            (byte(ram[off + 3]) << 24)) >>> 0)
+        : null;
+      return {
+        irqSoftFlags0030: u16(0x30),
+        irqVector7FFC: u32(0x7FFC),
+        vblankHandler0C94: u32(0x0C94),
+        gfx: gfx ? {
+          currentScanLine: Number(gfx.currentScanLine) | 0,
+          lcdTicks: Number(gfx.LCDTicks) | 0,
+          statusFlags: Number(gfx.statusFlags) | 0,
+          irqFlags: Number(gfx.IRQFlags) | 0,
+          nextVBlankIRQ: typeof gfx.nextVBlankIRQEventTime === "function"
+            ? (Number(gfx.nextVBlankIRQEventTime()) | 0)
+            : null
+        } : null,
+        scheduler: io ? {
+          linkCycleCounter: Number(io.linkCycleCounter) || 0,
+          accumulatedClocks: Number(io.accumulatedClocks) | 0,
+          graphicsClocks: Number(io.graphicsClocks) | 0,
+          nextEventClocks: Number(io.nextEventClocks) | 0,
+          cyclesToIterate: Number(io.cyclesToIterate) | 0
+        } : null
+      };
+    });
     return {
       ...s,
       marioLinkState,
+      hardwareState,
       masks: api?.test?.masks || null,
       serial: serials.map((ser) => ({
         mode: ser?.SIOCNT_MODE ?? null,

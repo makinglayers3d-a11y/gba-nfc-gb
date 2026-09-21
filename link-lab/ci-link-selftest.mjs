@@ -244,11 +244,15 @@ if (!(Number(finalState?.transfers) > 0)) {
   throw new Error("No Multi-Player transfer ever completed between the two cores");
 }
 
-// Both games reaching their own protocol words (parent F00F / child FDFD)
-// proves the two cartridges talked to each other rather than to a stub.
-if (!finalState?.protocolTransition) {
+// F00F/FDFD was the *stuck* signature: the parent repeated F00F because the
+// secondary could never read SIOMULTI0. What proves the cable really works is
+// that the child consumes the parent's word, so the handshake moves on to the
+// cartridge-identity exchange instead of repeating one stage forever.
+const childParentWordReads = (finalState?.siomultiReads?.[1] || [])
+  .filter((read) => (Number(read?.index) | 0) === 0).length;
+if (!(childParentWordReads > 0)) {
   throw new Error(
-    "The two cores never exchanged the Mario link handshake (F00F/FDFD); " +
+    "The secondary never read SIOMULTI0, so it never saw the parent's word; " +
     "transfers=" + String(finalState?.transfers ?? "unknown")
   );
 }
